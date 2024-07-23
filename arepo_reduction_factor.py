@@ -69,7 +69,7 @@ while (cycle < max_cycles):
     args =  [number_of_points, rloc_boundary, rloc_center, "postprocess"]
     
 # Running the file (for Python 3.6 compatibility)
-    result = subprocess.run(['python3', file_to_run] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(['python3', file_to_run] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
 
     # Accessing the output and errors
     output = result.stdout
