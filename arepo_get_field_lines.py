@@ -60,7 +60,7 @@ else:
 
 pp = sys.argv[-1]
 
-filename = 'arepo_data/snap_ideal_430.hdf5'
+filename = 'arepo_data/snap_430.hdf5'
 
 
 start_time=time.time()
