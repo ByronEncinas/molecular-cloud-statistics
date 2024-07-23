@@ -69,13 +69,15 @@ while (cycle < max_cycles):
 
     args =  [number_of_points, rloc_boundary, rloc_center, "postprocess"]
     
-    # Running the file
-    result = subprocess.run(['python3', file_to_run] + args, capture_output=True, text=True)
+# Running the file (for Python 3.6 compatibility)
+    result = subprocess.run(['python3', file_to_run] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Accessing the output and return code
-    print('Output:', result.stdout)
-    print('Errors:', result.stderr)
-    print('Return Code:', result.returncode)
+    # Accessing the output and errors
+    output = result.stdout
+    errors = result.stderr
+
+    print("Output:", output)
+    print("Errors:", errors)
 
     distance     = np.array(np.load(f"arepo_output_data/ArepoTrajectory_0.npy", mmap_mode='r'))
     bfield       = np.array(np.load(f"arepo_output_data/ArepoMagneticFields_0.npy", mmap_mode='r'))
