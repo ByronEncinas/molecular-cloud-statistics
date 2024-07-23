@@ -282,7 +282,7 @@ ax.set_title('From Core to Outside in +s, -s directions')
 #plt.close()
 #plt.show()
 
-curr_time=time.time()-start_time
+
 
 for j, _ in enumerate(path[0,:,0]):
 	# for trajectory 
@@ -307,10 +307,14 @@ for j, _ in enumerate(path[0,:,0]):
 
 	trajectory[0] *= 0.0
 
-	np.save("arepo_output_data/ArePositions.npy", radius_vector)
-	np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
-	np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
-	np.save("arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
+elapsed_time=time.time()-start_time
+
+print("Elapsed Time: ", elapsed_time)
+
+np.save("arepo_output_data/ArePositions.npy", radius_vector)
+np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
+np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
+np.save("arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
 
 if True:
 	# Create a figure and axes for the subplot layout
