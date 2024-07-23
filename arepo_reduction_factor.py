@@ -43,6 +43,8 @@ reduction_factor_at_gas_density = defaultdict()
 number_of_points = "100"
 rloc_boundary    = "80"
 
+print(sys.argv)
+
 if sys.argv[1] == "-1":
     # Assuming your JSON file is named 'data.json'
     file_path = 'random_distributed_reduction_factor.json'
