@@ -57,8 +57,7 @@ else:
     reduction_factor = np.zeros(max_cycles)
 
 while (cycle < max_cycles):
-    if (cycle == 10):
-        break
+
     
     # Path to the Python file you want to execute
     file_to_run = 'arepo_get_field_lines.py'
@@ -79,9 +78,9 @@ while (cycle < max_cycles):
     print("Output:", output)
     print("Errors:", errors)
 
-    distance     = np.array(np.load("arepo_output_data/ArepoTrajectory_0.npy", mmap_mode='r'))
-    bfield       = np.array(np.load("arepo_output_data/ArepoMagneticFields_0.npy", mmap_mode='r'))
-    numb_density = np.array(np.load("arepo_output_data/ArepoNumberDensities_0.npy", mmap_mode='r'))
+    distance     = np.array(np.load("arepo_output_data/ArepoTrajectory.npy", mmap_mode='r'))
+    bfield       = np.array(np.load("arepo_output_data/ArepoMagneticFields.npy", mmap_mode='r'))
+    numb_density = np.array(np.load("arepo_output_data/ArepoNumberDensities.npy", mmap_mode='r'))
 
     """# Obtained position along the field lines, now we find the pocket"""
 

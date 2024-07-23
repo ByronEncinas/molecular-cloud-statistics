@@ -143,9 +143,9 @@ Volume = Mass/Density
 
 # printing relevant info about the data
 
-Bfield  *=  1.0 #1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0 #1.9885e33 * (1.496e13)**(-3)				# in cgs
-Mass    *= 1.0 #1.9885e33
+Bfield  *=  1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
+Density *= 1.9885e33 * (1.496e13)**(-3)				# in cgs
+Mass    *= 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -167,7 +167,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 nside = 1      # sets number of cells sampling the spherical boundary layers = 12*nside**2
 npix  = 4 #12 * nside ** 2 
 
-rloc_boundary  = zoom_boundary      # radius of the boundary in code units. (zoom_boundary is of the order or less of the Boxsize)
+rloc_boundary  = zoom_boundary      # radius of the boundary in cgs units. (zoom_boundary is of the order or less of the Boxsize)
 rloc_center    = zoom_center		# radius of sphere at the center of cloud (order of 1% of zoom_boundary)
 
 # Add BOLA (slicing the spherical region we want to work with)
@@ -318,15 +318,15 @@ if True:
 
 	axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
 	axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
-	axs[0].set_xlabel("trajectory (Code Units Au)")
-	axs[0].set_ylabel("$B(s)$ (Code Units )")
+	axs[0].set_xlabel("trajectory (cgs units Au)")
+	axs[0].set_ylabel("$B(s)$ (cgs units )")
 	axs[0].set_title("Individual Magnetic Field Shape")
 	axs[0].legend()
 	axs[0].grid(True)
 
 	axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
-	axs[1].set_xlabel("trajectory (Code Units Au)")
-	axs[1].set_ylabel("$n_g(s)$ Field (Code Units $M_{sun}/Au^3$) ")
+	axs[1].set_xlabel("trajectory (cgs units Au)")
+	axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
 	axs[1].set_title("Gas Density along Magnetic Lines")
 	axs[1].legend()
 	axs[1].grid(True)

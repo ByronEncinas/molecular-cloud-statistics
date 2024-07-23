@@ -10,8 +10,8 @@ import sys
 
 #pocket_finder(bmag, cycle=0, plot =False):
  
-distance = np.array(np.load("arepo_output_data/ArepoTrajectory_2.npy", mmap_mode='r'))
-bfield   = np.array(np.load("arepo_output_data/ArepoMagneticFields_2.npy", mmap_mode='r'))
+distance = np.array(np.load("arepo_output_data/ArepoTrajectory.npy", mmap_mode='r'))
+bfield   = np.array(np.load("arepo_output_data/ArepoMagneticFields.npy", mmap_mode='r'))
 
 print(" Data Successfully Loaded")
 
