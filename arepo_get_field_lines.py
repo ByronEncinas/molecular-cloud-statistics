@@ -184,9 +184,9 @@ if pp[0] == "p":
 	npix  = 12 * nside ** 2 
 	ipix_center       = np.arange(npix)
 	xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-	xx = np.array(random.sample(sorted(xx),2))
-	yy = np.array(random.sample(sorted(yy),2))
-	zz = np.array(random.sample(sorted(zz),2))
+	xx = np.array(random.sample(sorted(xx),1))
+	yy = np.array(random.sample(sorted(yy),1))
+	zz = np.array(random.sample(sorted(zz),1))
 
 m = len(zz) # amount of values that hold which_up_down
 
@@ -309,10 +309,10 @@ for j, _ in enumerate(path[0,:,0]):
 
 	trajectory[0] *= 0.0
 
-	np.save(f"arepo_output_data/ArePositions_{j}.npy", radius_vector)
-	np.save(f"arepo_output_data/ArepoTrajectory_{j}.npy", trajectory)
-	np.save(f"arepo_output_data/ArepoNumberDensities_{j}.npy", gas_densities)
-	np.save(f"arepo_output_data/ArepoMagneticFields_{j}.npy", magnetic_fields)
+	np.save(f"arepo_output_data/ArePositions.npy", radius_vector)
+	np.save(f"arepo_output_data/ArepoTrajectory.npy", trajectory)
+	np.save(f"arepo_output_data/ArepoNumberDensities.npy", gas_densities)
+	np.save(f"arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
 
 if True:
 	# Create a figure and axes for the subplot layout
