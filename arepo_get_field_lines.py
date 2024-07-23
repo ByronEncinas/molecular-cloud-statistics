@@ -184,9 +184,9 @@ if pp[0] == "p":
 	npix  = 12 * nside ** 2 
 	ipix_center       = np.arange(npix)
 	xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-	xx = np.array(random.sample(sorted(xx),1))
-	yy = np.array(random.sample(sorted(yy),1))
-	zz = np.array(random.sample(sorted(zz),1))
+	xx = np.array(random.sample(sorted(xx),2))
+	yy = np.array(random.sample(sorted(yy),2))
+	zz = np.array(random.sample(sorted(zz),2))
 
 m = len(zz) # amount of values that hold which_up_down
 
