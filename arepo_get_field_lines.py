@@ -309,10 +309,10 @@ for j, _ in enumerate(path[0,:,0]):
 
 	trajectory[0] *= 0.0
 
-	np.save(f"arepo_output_data/ArePositions.npy", radius_vector)
-	np.save(f"arepo_output_data/ArepoTrajectory.npy", trajectory)
-	np.save(f"arepo_output_data/ArepoNumberDensities.npy", gas_densities)
-	np.save(f"arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
+	np.save("arepo_output_data/ArePositions.npy", radius_vector)
+	np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
+	np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
+	np.save("arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
 
 if True:
 	# Create a figure and axes for the subplot layout
