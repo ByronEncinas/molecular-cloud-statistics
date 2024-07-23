@@ -79,9 +79,9 @@ while (cycle < max_cycles):
     print("Output:", output)
     print("Errors:", errors)
 
-    distance     = np.array(np.load(f"arepo_output_data/ArepoTrajectory_0.npy", mmap_mode='r'))
-    bfield       = np.array(np.load(f"arepo_output_data/ArepoMagneticFields_0.npy", mmap_mode='r'))
-    numb_density = np.array(np.load(f"arepo_output_data/ArepoNumberDensities_0.npy", mmap_mode='r'))
+    distance     = np.array(np.load("arepo_output_data/ArepoTrajectory_0.npy", mmap_mode='r'))
+    bfield       = np.array(np.load("arepo_output_data/ArepoMagneticFields_0.npy", mmap_mode='r'))
+    numb_density = np.array(np.load("arepo_output_data/ArepoNumberDensities_0.npy", mmap_mode='r'))
 
     """# Obtained position along the field lines, now we find the pocket"""
 
@@ -196,8 +196,8 @@ axs[1].set_ylabel('Frequency')
 plt.tight_layout()
 
 # Save the figure
-#plt.savefig(f"c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig(f"arepo_output_data/histogramdata={len(reduction_factor)}bins={bins}.png")
+#plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
+plt.savefig("arepo_output_data/histogramdata={len(reduction_factor)}bins={bins}.png")
 
 # Show the plot
 #plt.show()

@@ -335,7 +335,7 @@ if True:
 	plt.tight_layout()
 
 	# Save the figure
-	plt.savefig(f"field_shapes/arepo_field_shape.png")
+	plt.savefig("field_shapes/arepo_field_shape.png")
 
 	# Show the plot
 	#plt.show()
