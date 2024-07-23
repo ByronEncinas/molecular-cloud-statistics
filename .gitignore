@@ -1,0 +1,11 @@
+#
+arepo_*/
+field_shapes/
+*.png
+colors.py
+rs_output
+random*
+*.gif
+.venv
+__*
+.ipynb*
