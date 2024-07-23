@@ -56,9 +56,9 @@ if sys.argv[-1] == "-1":
 
     cycle == max_cycles
 else:
-    reduction_factor = np.zeros(max_cycles)
+    reduction_factor = np.zeros(int(max_cycles))
 
-while (cycle < max_cycles):
+while (cycle < int(max_cycles)):
 
     
     # Path to the Python file you want to execute
