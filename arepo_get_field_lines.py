@@ -48,7 +48,7 @@ Parameters
 FloatType = np.float64
 IntType = np.int32
 
-if len(sys.argv)>2:
+if len(sys.argv)>3:
 	# first argument is a number related to zoom_boundary
 	N=int(sys.argv[1])
 	zoom_boundary=float(sys.argv[2])
@@ -195,23 +195,23 @@ x_init[:,0]      = rloc_center * xx[:]
 x_init[:,1]      = rloc_center * yy[:]
 x_init[:,2]      = rloc_center * zz[:]
 
-line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-bfields   = np.zeros((N+1,m))
-densities = np.zeros((N+1,m))
+shape = (N+1,m,3)
 
-line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-bfields_rev = np.zeros((N+1,m))
-densities_rev = np.zeros((N+1,m))
+line      = np.zeros((N+1,3)) # from N+1 elements to the double, since it propagates forward and backward
+bfields   = np.zeros((N+1,))
+densities = np.zeros((N+1,))
 
-line[0,:,:]     =x_init
-line_rev[0,:,:] =x_init
+line_rev=np.zeros((N+1,3)) # from N+1 elements to the double, since it propagates forward and backward
+bfields_rev = np.zeros((N+1,))
+densities_rev = np.zeros((N+1,))
+
+line[0,:]     =x_init
+line_rev[0,:] =x_init
 
 x = x_init
 
-print(x_init[0,:])
-
-dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+dummy, bfields[0], densities[0], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+dummy, bfields_rev[0], densities_rev[0], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
 # propagates from same inner region to the outside in -dx direction
 for k in range(N):
@@ -219,9 +219,9 @@ for k in range(N):
 	dx = 1.0
 	x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
 	
-	line[k+1,:,:] = x
-	bfields[k+1,:] = bfield
-	densities[k+1,:] = dens
+	line[k+1,:] = x
+	bfields[k+1] = bfield
+	densities[k+1] = dens
 	#print(x, bfield, dens)
 
 # propagates from same inner region to the outside in -dx direction
@@ -229,14 +229,14 @@ for k in range(N):
 for k in range(N):
 	x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
 	
-	line_rev[k+1,:,:] = x
-	bfields_rev[k+1,:] = bfield
-	densities_rev[k+1,:] = dens
+	line_rev[k+1,:] = x
+	bfields_rev[k+1] = bfield
+	densities_rev[k+1] = dens
 	#print(x, bfield, dens)
 
-line_rev = line_rev[1:,:,:]
-bfields_rev = bfields_rev[1:,:] 
-densities_rev = densities_rev[1:,:]
+line_rev = line_rev[1:,:]
+bfields_rev = bfields_rev[1:] 
+densities_rev = densities_rev[1:]
 
 dens_min = np.log10(min(np.min(densities),np.min(densities_rev)))
 dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
@@ -247,6 +247,7 @@ path           = np.append(line, line_rev, axis=0)
 path_bfields   = np.append(bfields, bfields_rev, axis=0)
 path_densities = np.append(densities, densities_rev, axis=0)
 
+"""
 ax = plt.figure().add_subplot(projection='3d')
 
 for k in range(m):
@@ -277,33 +278,33 @@ ax.set_ylabel('y [AU]')
 ax.set_zlabel('z [AU]')
 ax.set_title('From Core to Outside in +s, -s directions')
 
-plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
+#plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
 
 #plt.close()
 #plt.show()
+"""
 
-for j, _ in enumerate(path[0,:,0]):
-	# for trajectory 
-	radius_vector      = np.zeros_like(path[:,j,:])
-	magnetic_fields    = np.zeros_like(path_bfields[:,j])
-	gas_densities      = np.zeros_like(path_densities[:,j])
-	trajectory         = np.zeros_like(path[:,j,0])
+# for trajectory 
+radius_vector      = np.zeros_like(path[:,:])
+magnetic_fields    = np.zeros_like(path_bfields[:])
+gas_densities      = np.zeros_like(path_densities[:])
+trajectory         = np.zeros_like(path[:,0])
 
-	prev_radius_vector = path[0,j,:]
-	diff_rj_ri = 0.0
+prev_radius_vector = path[0,:]
+diff_rj_ri = 0.0
 
-	for k, pk in enumerate(path[:,j,0]):
-		
-		radius_vector[k]    = path[k,j,:]
-		magnetic_fields[k]  = path_bfields[k,j]
-		gas_densities[k]    = path_densities[k,j]
-		diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
-		trajectory[k] = trajectory[k-1] + diff_rj_ri
-		#print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
-		
-		prev_radius_vector  = radius_vector[k] 
+for k, pk in enumerate(path[:,0]):
+	
+	radius_vector[k]    = path[k,:]
+	magnetic_fields[k]  = path_bfields[k]
+	gas_densities[k]    = path_densities[k]
+	diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+	trajectory[k] = trajectory[k-1] + diff_rj_ri
+	#print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+	
+	prev_radius_vector  = radius_vector[k] 
 
-	trajectory[0] *= 0.0
+trajectory[0] *= 0.0
 
 elapsed_time=time.time()-start_time
 
@@ -351,8 +352,8 @@ print("Center: ", Center) # 256
 print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
-print("Elapsed Time (Minutes): ", curr_time//60, ":", curr_time - 60*(curr_time//60))
+print("Elapsed Time (Minutes): ", curr_time)
 
 if __name__=="__main__":
 	
-	
+	pass
