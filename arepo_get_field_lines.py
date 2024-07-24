@@ -320,14 +320,14 @@ if True:
 	axs[0].set_xlabel("trajectory (cgs units Au)")
 	axs[0].set_ylabel("$B(s)$ (cgs units )")
 	axs[0].set_title("Individual Magnetic Field Shape")
-	#axs[0].legend()
+	axs[0].legend()
 	axs[0].grid(True)
 
 	axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
 	axs[1].set_xlabel("trajectory (cgs units Au)")
 	axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
 	axs[1].set_title("Gas Density along Magnetic Lines")
-	#axs[1].legend()
+	axs[1].legend()
 	axs[1].grid(True)
 
 	# Adjust layout to prevent overlap
