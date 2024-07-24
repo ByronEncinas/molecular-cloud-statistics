@@ -179,7 +179,7 @@ xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 #print(xx)
 
 
-if pp[0] == "p":
+if True:
 	nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
 	npix  = 12 * nside ** 2 
 	ipix_center       = np.arange(npix)
@@ -188,7 +188,7 @@ if pp[0] == "p":
 	yy = np.array(random.sample(sorted(yy),1))
 	zz = np.array(random.sample(sorted(zz),1))
 
-m = 1 #len(zz) # amount of values that hold which_up_down
+m = len(zz) # amount of values that hold which_up_down
 
 x_init = np.zeros((m,3))
 x_init[:,0]      = rloc_center * xx[:]
