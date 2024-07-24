@@ -313,7 +313,7 @@ with Pool(num_workers) as pool:
 elapsed_time = time.time() - start_time
 
 # Print elapsed time
-print(f"Elapsed time: {elapsed_time:.2f} seconds")
+print(f"Elapsed time: {elapsed_time} seconds")
 
 
 for i, pack_dist_field_dens in enumerate(results):
