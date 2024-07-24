@@ -397,7 +397,7 @@ for i, pack_dist_field_dens in enumerate(results):
         
 
 # Specify the file path
-file_path = 'random_distributed_reduction_factor.json'
+file_path = f'random_distributed_reduction_factor{sys.argv[-1]}.json'
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
