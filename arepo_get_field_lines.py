@@ -165,7 +165,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 # idk how but this picks the regions to be worked on	
 nside = 1      # sets number of cells sampling the spherical boundary layers = 12*nside**2
-npix  = 4 #12 * nside ** 2 
+npix  = 1 #12 * nside ** 2 
 
 rloc_boundary  = zoom_boundary      # radius of the boundary in cgs units. (zoom_boundary is of the order or less of the Boxsize)
 rloc_center    = zoom_center		# radius of sphere at the center of cloud (order of 1% of zoom_boundary)

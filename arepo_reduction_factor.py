@@ -37,6 +37,7 @@ else:
     max_cycles = int(100)
     print("max cycles:", max_cycles)
 
+max_cycles = int(max_cycles)
 
 reduction_factor_at_gas_density = defaultdict()
 
@@ -45,9 +46,9 @@ rloc_boundary    = "80"
 
 print(sys.argv)
 
-reduction_factor = np.zeros(int(max_cycles))
+reduction_factor = np.zeros(max_cycles)
 
-if sys.argv[-1] == "-1":
+if "-1" in sys.argv:
     # Assuming your JSON file is named 'data.json'
     file_path = 'random_distributed_reduction_factor.json'
 
