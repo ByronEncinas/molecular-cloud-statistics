@@ -188,7 +188,7 @@ if pp[0] == "p":
 	yy = np.array(random.sample(sorted(yy),1))
 	zz = np.array(random.sample(sorted(zz),1))
 
-m = len(zz) # amount of values that hold which_up_down
+m = 1 #len(zz) # amount of values that hold which_up_down
 
 x_init = np.zeros((m,3))
 x_init[:,0]      = rloc_center * xx[:]
@@ -197,21 +197,21 @@ x_init[:,2]      = rloc_center * zz[:]
 
 shape = (N+1,m,3)
 
-line      = np.zeros((N+1,3)) # from N+1 elements to the double, since it propagates forward and backward
-bfields   = np.zeros((N+1,))
-densities = np.zeros((N+1,))
+line      = np.zeros(shape) # from N+1 elements to the double, since it propagates forward and backward
+bfields   = np.zeros((N+1,m))
+densities = np.zeros((N+1,m))
 
-line_rev=np.zeros((N+1,3)) # from N+1 elements to the double, since it propagates forward and backward
-bfields_rev = np.zeros((N+1,))
-densities_rev = np.zeros((N+1,))
+line_rev=np.zeros(shape) # from N+1 elements to the double, since it propagates forward and backward
+bfields_rev = np.zeros((N+1,m))
+densities_rev = np.zeros((N+1,m))
 
-line[0,:]     =x_init
-line_rev[0,:] =x_init
+line[0,:,:]     =x_init
+line_rev[0,:,:] =x_init
 
 x = x_init
 
-dummy, bfields[0], densities[0], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-dummy, bfields_rev[0], densities_rev[0], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
 # propagates from same inner region to the outside in -dx direction
 for k in range(N):
@@ -219,9 +219,9 @@ for k in range(N):
 	dx = 1.0
 	x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
 	
-	line[k+1,:] = x
-	bfields[k+1] = bfield
-	densities[k+1] = dens
+	line[k+1,:,:] = x
+	bfields[k+1,:] = bfield
+	densities[k+1,:] = dens
 	#print(x, bfield, dens)
 
 # propagates from same inner region to the outside in -dx direction
@@ -229,14 +229,14 @@ for k in range(N):
 for k in range(N):
 	x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
 	
-	line_rev[k+1,:] = x
-	bfields_rev[k+1] = bfield
-	densities_rev[k+1] = dens
+	line_rev[k+1,:,:] = x
+	bfields_rev[k+1,:] = bfield
+	densities_rev[k+1,:] = dens
 	#print(x, bfield, dens)
 
-line_rev = line_rev[1:,:]
-bfields_rev = bfields_rev[1:] 
-densities_rev = densities_rev[1:]
+line_rev = line_rev[1:,:,:]
+bfields_rev = bfields_rev[1:,:] 
+densities_rev = densities_rev[1:,:]
 
 dens_min = np.log10(min(np.min(densities),np.min(densities_rev)))
 dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
@@ -285,19 +285,19 @@ ax.set_title('From Core to Outside in +s, -s directions')
 """
 
 # for trajectory 
-radius_vector      = np.zeros_like(path[:,:])
-magnetic_fields    = np.zeros_like(path_bfields[:])
-gas_densities      = np.zeros_like(path_densities[:])
-trajectory         = np.zeros_like(path[:,0])
+radius_vector      = np.zeros_like(path[:,0,:])
+magnetic_fields    = np.zeros_like(path_bfields[:,0])
+gas_densities      = np.zeros_like(path_densities[:,0])
+trajectory         = np.zeros_like(path[:,0,0])
 
-prev_radius_vector = path[0,:]
+prev_radius_vector = path[0,0,:]
 diff_rj_ri = 0.0
 
-for k, pk in enumerate(path[:,0]):
+for k, pk in enumerate(path[:,0,0]):
 	
-	radius_vector[k]    = path[k,:]
-	magnetic_fields[k]  = path_bfields[k]
-	gas_densities[k]    = path_densities[k]
+	radius_vector[k]    = path[k,0,:]
+	magnetic_fields[k]  = path_bfields[k,0]
+	gas_densities[k]    = path_densities[k,0]
 	diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
 	trajectory[k] = trajectory[k-1] + diff_rj_ri
 	#print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
@@ -353,5 +353,4 @@ print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 print("Elapsed Time: ", curr_time)
 
 if __name__=="__main__":
-	
 	pass
