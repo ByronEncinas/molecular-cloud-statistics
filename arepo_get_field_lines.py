@@ -306,10 +306,6 @@ for k, pk in enumerate(path[:,0]):
 
 trajectory[0] *= 0.0
 
-elapsed_time=time.time()-start_time
-
-print("Elapsed Time: ", elapsed_time)
-
 np.save("arepo_output_data/ArePositions.npy", radius_vector)
 np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
 np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
@@ -324,14 +320,14 @@ if True:
 	axs[0].set_xlabel("trajectory (cgs units Au)")
 	axs[0].set_ylabel("$B(s)$ (cgs units )")
 	axs[0].set_title("Individual Magnetic Field Shape")
-	axs[0].legend()
+	#axs[0].legend()
 	axs[0].grid(True)
 
 	axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
 	axs[1].set_xlabel("trajectory (cgs units Au)")
 	axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
 	axs[1].set_title("Gas Density along Magnetic Lines")
-	axs[1].legend()
+	#axs[1].legend()
 	axs[1].grid(True)
 
 	# Adjust layout to prevent overlap
@@ -344,6 +340,8 @@ if True:
 	#plt.show()
 	plt.close(fig)
 
+elapsed_time=time.time()-start_time
+
 print("Steps in Simulation: ", N)
 print("rloc_boundary      : ", zoom_boundary)
 print("rloc_center        : ", zoom_center)
@@ -352,7 +350,7 @@ print("Center: ", Center) # 256
 print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
-print("Elapsed Time (Minutes): ", curr_time)
+print("Elapsed Time: ", curr_time)
 
 if __name__=="__main__":
 	

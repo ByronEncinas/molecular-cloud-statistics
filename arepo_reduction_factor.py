@@ -141,24 +141,21 @@ while (int(cycle) < int(max_cycles)):
         R = 1 - np.sqrt(1-B_r/B_l)
         reduction_factor[cycle] = R
         cycle += 1
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
     else:
         R = 1
         reduction_factor[cycle] = 1.
         cycle += 1
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
     
     print("Closest local maxima 'p':", closest_values)
     print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
-    try:
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
-    except:
-        # this statement won't reach cycle += 1 so the cycle will continue again.
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
-
+    
     """
     bs: where bs is the field magnitude at the random point chosen 
     bl: magnetic at position s of the trajectory
     """
-    print(cycle, print("\n",reduction_factor.size,"\n"))
+    print(cycle)
         
 
 # Specify the file path
