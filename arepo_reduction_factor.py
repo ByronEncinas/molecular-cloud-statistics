@@ -3,6 +3,7 @@ from collections import Counter, defaultdict
 import random
 import subprocess
 import matplotlib.pyplot as plt
+import sys
 import json
 
 """  
@@ -28,16 +29,12 @@ contain results using at least 20 boxes that contain equally spaced intervals fo
 # flow control to repeat calculations in no peak situations
 cycle = 0 
 
-import sys
-
 if len(sys.argv) >= 2:
     max_cycles = int(sys.argv[1])
     print("max cycles:", max_cycles)
 else:
     max_cycles = int(100)
     print("max cycles:", max_cycles)
-
-max_cycles = int(max_cycles)
 
 reduction_factor_at_gas_density = defaultdict()
 
@@ -46,7 +43,7 @@ rloc_boundary    = "80"
 
 print(sys.argv)
 
-reduction_factor = np.zeros(max_cycles)
+reduction_factor = np.zeros(int(max_cycles))
 
 if "-1" in sys.argv:
     # Assuming your JSON file is named 'data.json'
@@ -57,10 +54,9 @@ if "-1" in sys.argv:
         # Load the JSON data into a Python list
         reduction_factor = np.array(json.load(file))
 
-    cycle == max_cycles
-    
+    cycle == int(max_cycles)
 
-while (int(cycle) < int(max_cycles)):
+while (cycle < int(max_cycles)):
 
     # Path to the Python file you want to execute
     file_to_run = 'arepo_get_field_lines.py'
