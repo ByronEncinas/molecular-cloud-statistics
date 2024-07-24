@@ -178,15 +178,16 @@ ipix_center       = np.arange(npix)
 xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 #print(xx)
 
+how_many = 1 
 
 if True:
 	nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
 	npix  = 12 * nside ** 2 
 	ipix_center       = np.arange(npix)
 	xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-	xx = np.array(random.sample(sorted(xx),1))
-	yy = np.array(random.sample(sorted(yy),1))
-	zz = np.array(random.sample(sorted(zz),1))
+	xx = np.array(random.sample(sorted(xx),how_many))
+	yy = np.array(random.sample(sorted(yy),how_many))
+	zz = np.array(random.sample(sorted(zz),how_many))
 
 m = len(zz) # amount of values that hold which_up_down
 
@@ -334,7 +335,7 @@ if True:
 	plt.tight_layout()
 
 	# Save the figure
-	plt.savefig("field_shapes/field-density_shape.png")
+	plt.savefig("arepo_output_data/field-density_shape.png")
 
 	# Show the plot
 	#plt.show()
