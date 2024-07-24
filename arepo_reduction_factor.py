@@ -34,7 +34,7 @@ if len(sys.argv) >= 2:
     max_cycles = int(sys.argv[1])
     print("max cycles:", max_cycles)
 else:
-    max_cycles = str(100)
+    max_cycles = int(100)
     print("max cycles:", max_cycles)
 
 
@@ -44,6 +44,8 @@ number_of_points = "100"
 rloc_boundary    = "80"
 
 print(sys.argv)
+
+reduction_factor = np.zeros(int(max_cycles))
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -55,12 +57,10 @@ if sys.argv[-1] == "-1":
         reduction_factor = np.array(json.load(file))
 
     cycle == max_cycles
-else:
-    reduction_factor = np.zeros(int(max_cycles))
-
-while (cycle < int(max_cycles)):
-
     
+
+while (int(cycle) < int(max_cycles)):
+
     # Path to the Python file you want to execute
     file_to_run = 'arepo_get_field_lines.py'
     
