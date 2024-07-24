@@ -407,7 +407,10 @@ with open(file_path, 'w') as json_file:
 
 #plot_trajectory_versus_magnitude(distance, bfield, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
 
-bins=len(reduction_factor)//10
+bins=len(reduction_factor)//10 
+
+if bins == 0:
+    bins=1
 
 inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 
