@@ -277,12 +277,10 @@ ax.set_ylabel('y [AU]')
 ax.set_zlabel('z [AU]')
 ax.set_title('From Core to Outside in +s, -s directions')
 
-#plt.savefig(f'field_shapes/InBothDirection.png',bbox_inches='tight')
+plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
 
 #plt.close()
 #plt.show()
-
-
 
 for j, _ in enumerate(path[0,:,0]):
 	# for trajectory 
@@ -339,20 +337,22 @@ if True:
 	plt.tight_layout()
 
 	# Save the figure
-	plt.savefig("field_shapes/arepo_field_shape.png")
+	plt.savefig("field_shapes/field-density_shape.png")
 
 	# Show the plot
 	#plt.show()
 	plt.close(fig)
 
+print("Steps in Simulation: ", N)
+print("rloc_boundary      : ", zoom_boundary)
+print("rloc_center        : ", zoom_center)
+print("\nBoxsize: ", Boxsize) # 256
+print("Center: ", Center) # 256
+print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
+print("Elapsed Time (Minutes): ", curr_time//60, ":", curr_time - 60*(curr_time//60))
+
 if __name__=="__main__":
 	
-	print("Steps in Simulation: ", N)
-	print("rloc_boundary      : ", zoom_boundary)
-	print("rloc_center        : ", zoom_center)
-	print("\nBoxsize: ", Boxsize) # 256
-	print("Center: ", Center) # 256
-	print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
-	print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
-	print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
-	print("Elapsed Time (Minutes): ", curr_time//60, ":", curr_time - 60*(curr_time//60))
+	
