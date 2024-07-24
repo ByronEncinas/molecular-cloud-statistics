@@ -365,15 +365,15 @@ for i, pack_dist_field_dens in enumerate(results):
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
     else:
         # If p_i is None, select the two closest values based on some other criteria
+        print("skipped")
         continue
 
     if len(closest_values) == 2:
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+        print(B_l, B_h)
     else:
-        R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor[cycle] = R
-        cycle += 1
+        print("skipped")
         continue
 
     if B_r/B_l < 1:
