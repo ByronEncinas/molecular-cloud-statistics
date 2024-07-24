@@ -316,10 +316,13 @@ elapsed_time = time.time() - start_time
 print("Integration results (first task):", distance[0])
 print(f"Elapsed time: {elapsed_time:.2f} seconds")
 
+print(distance.shape)
+
 
 exit()
 
 for i ,traj in enumerate(distance):
+    
     bfield   = np.array(bfield[i])
      
     #while False:
@@ -346,7 +349,6 @@ for i ,traj in enumerate(distance):
     # we gotta find peaks in the interval   (B_l < random_element < B_h)
     # Generate a random index within the range
     p_r = random.randint(index_pocket[0], index_pocket[-1])
-    #s_r = distance[p_r]
     B_r = bfield[p_r]
 
     print("random index: ", p_r, "peak's index: ", index_pocket)
@@ -374,6 +376,9 @@ for i ,traj in enumerate(distance):
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
     else:
+        R = 1 - np.sqrt(1-B_r/B_l)
+        reduction_factor[cycle] = R
+        cycle += 1
         continue
 
     if B_r/B_l < 1:
@@ -394,7 +399,6 @@ for i ,traj in enumerate(distance):
     bs: where bs is the field magnitude at the random point chosen 
     bl: magnetic at position s of the trajectory
     """
-    print(cycle)
         
 
 # Specify the file path
