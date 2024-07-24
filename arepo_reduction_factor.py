@@ -307,23 +307,18 @@ start_time = time.time()
 # Create a Pool of worker processes
 with Pool(num_workers) as pool:
     # Map the euler_integration function to the list of tasks
-    distance, bfield, numb_density = pool.map(get_along_lines, tasks)
+    results = pool.map(get_along_lines, tasks)
 
 # Record the end time
 elapsed_time = time.time() - start_time
 
-# Print results and elapsed time
-print("Integration results (first task):", distance[0])
+# Print elapsed time
 print(f"Elapsed time: {elapsed_time:.2f} seconds")
 
-print(distance.shape)
 
-
-exit()
-
-for i ,traj in enumerate(distance):
+for i, pack_dist_field_dens in enumerate(results):
     
-    bfield   = np.array(bfield[i])
+    distance, bfield, numb_density = pack_dist_field_dens
      
     #while False:
 
