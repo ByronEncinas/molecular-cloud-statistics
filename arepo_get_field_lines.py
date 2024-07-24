@@ -48,7 +48,7 @@ Parameters
 FloatType = np.float64
 IntType = np.int32
 
-if len(sys.argv)>3:
+if len(sys.argv)>2:
 	# first argument is a number related to zoom_boundary
 	N=int(sys.argv[1])
 	zoom_boundary=float(sys.argv[2])
@@ -64,7 +64,6 @@ filename = 'arepo_data/snap_430.hdf5'
 
 
 start_time=time.time()
-curr_time=0
 
 """
 Functions/Methods
@@ -141,6 +140,7 @@ Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
 Volume = Mass/Density
 
+
 # printing relevant info about the data
 
 Bfield  *=  1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
@@ -178,16 +178,23 @@ ipix_center       = np.arange(npix)
 xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 #print(xx)
 
-how_many = 1 
+print("Steps in Simulation: ", N)
+print("rloc_boundary      : ", zoom_boundary)
+print("rloc_center        : ", zoom_center)
+print("\nBoxsize: ", Boxsize) # 256
+print("Center: ", Center) # 256
+print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 
 if True:
 	nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
 	npix  = 12 * nside ** 2 
 	ipix_center       = np.arange(npix)
 	xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-	xx = np.array(random.sample(sorted(xx),how_many))
-	yy = np.array(random.sample(sorted(yy),how_many))
-	zz = np.array(random.sample(sorted(zz),how_many))
+	xx = np.array(random.sample(sorted(xx),1))
+	yy = np.array(random.sample(sorted(yy),1))
+	zz = np.array(random.sample(sorted(zz),1))
 
 m = len(zz) # amount of values that hold which_up_down
 
@@ -196,13 +203,11 @@ x_init[:,0]      = rloc_center * xx[:]
 x_init[:,1]      = rloc_center * yy[:]
 x_init[:,2]      = rloc_center * zz[:]
 
-shape = (N+1,m,3)
-
-line      = np.zeros(shape) # from N+1 elements to the double, since it propagates forward and backward
+line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
 bfields   = np.zeros((N+1,m))
 densities = np.zeros((N+1,m))
 
-line_rev=np.zeros(shape) # from N+1 elements to the double, since it propagates forward and backward
+line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
 bfields_rev = np.zeros((N+1,m))
 densities_rev = np.zeros((N+1,m))
 
@@ -210,6 +215,8 @@ line[0,:,:]     =x_init
 line_rev[0,:,:] =x_init
 
 x = x_init
+
+print(x_init[0,:])
 
 dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
@@ -223,17 +230,15 @@ for k in range(N):
 	line[k+1,:,:] = x
 	bfields[k+1,:] = bfield
 	densities[k+1,:] = dens
-	#print(x, bfield, dens)
 
 # propagates from same inner region to the outside in -dx direction
 
 for k in range(N):
-	x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
+	x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
 	
 	line_rev[k+1,:,:] = x
 	bfields_rev[k+1,:] = bfield
 	densities_rev[k+1,:] = dens
-	#print(x, bfield, dens)
 
 line_rev = line_rev[1:,:,:]
 bfields_rev = bfields_rev[1:,:] 
@@ -248,69 +253,37 @@ path           = np.append(line, line_rev, axis=0)
 path_bfields   = np.append(bfields, bfields_rev, axis=0)
 path_densities = np.append(densities, densities_rev, axis=0)
 
-"""
-ax = plt.figure().add_subplot(projection='3d')
+for j, _ in enumerate(path[0,:,0]):
+	# for trajectory 
+	radius_vector      = np.zeros_like(path[:,j,:])
+	magnetic_fields    = np.zeros_like(path_bfields[:,j])
+	gas_densities      = np.zeros_like(path_densities[:,j])
+	trajectory         = np.zeros_like(path[:,j,0])
 
-for k in range(m):
-	print(k)
-	x=path[:,k,0] # 1D array
-	y=path[:,k,1]
-	z=path[:,k,2]
-	
-	which = x**2 + y**2 + z**2 <= zoom_boundary**2
-	
-	x=x[which]
-	y=y[which]
-	z=z[which]
-	
-	for l in range(len(z)):
-		ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
+	prev_radius_vector = path[0,j,:]
+	diff_rj_ri = 0.0
 
-	#ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-	ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-	ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-	
+	for k, pk in enumerate(path[:,j,0]):
+		
+		radius_vector[k]    = path[k,j,:]
+		magnetic_fields[k]  = path_bfields[k,j]
+		gas_densities[k]    = path_densities[k,j]
+		diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+		trajectory[k] = trajectory[k-1] + diff_rj_ri
+		#print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+		
+		prev_radius_vector  = radius_vector[k] 
 
-ax.set_xlim(-zoom_boundary,zoom_boundary)
-ax.set_ylim(-zoom_boundary,zoom_boundary)
-ax.set_zlim(-zoom_boundary,zoom_boundary)
-ax.set_xlabel('x [AU]')
-ax.set_ylabel('y [AU]')
-ax.set_zlabel('z [AU]')
-ax.set_title('From Core to Outside in +s, -s directions')
+	trajectory[0] *= 0.0
 
-#plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
-
-#plt.close()
-#plt.show()
-"""
-
-# for trajectory 
-radius_vector      = np.zeros_like(path[:,0,:])
-magnetic_fields    = np.zeros_like(path_bfields[:,0])
-gas_densities      = np.zeros_like(path_densities[:,0])
-trajectory         = np.zeros_like(path[:,0,0])
-
-prev_radius_vector = path[0,0,:]
-diff_rj_ri = 0.0
-
-for k, pk in enumerate(path[:,0,0]):
-	
-	radius_vector[k]    = path[k,0,:]
-	magnetic_fields[k]  = path_bfields[k,0]
-	gas_densities[k]    = path_densities[k,0]
-	diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
-	trajectory[k] = trajectory[k-1] + diff_rj_ri
-	#print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
-	
-	prev_radius_vector  = radius_vector[k] 
-
-trajectory[0] *= 0.0
+time_end = time.time()-start_time
+elapsed_time_minutes= time_end/60
 
 np.save("arepo_output_data/ArePositions.npy", radius_vector)
 np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
 np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
 np.save("arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
+
 
 if True:
 	# Create a figure and axes for the subplot layout
@@ -335,23 +308,45 @@ if True:
 	plt.tight_layout()
 
 	# Save the figure
-	plt.savefig("arepo_output_data/field-density_shape.png")
+	plt.savefig("field_shapes/field-density_shape.png")
 
 	# Show the plot
 	#plt.show()
 	plt.close(fig)
 
-elapsed_time=time.time()-start_time
+	ax = plt.figure().add_subplot(projection='3d')
 
-print("Steps in Simulation: ", N)
-print("rloc_boundary      : ", zoom_boundary)
-print("rloc_center        : ", zoom_center)
-print("\nBoxsize: ", Boxsize) # 256
-print("Center: ", Center) # 256
-print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
-print("Elapsed Time: ", curr_time)
+	for k in range(m):
+		print(k)
+		x=path[:,k,0] # 1D array
+		y=path[:,k,1]
+		z=path[:,k,2]
+		
+		which = x**2 + y**2 + z**2 <= zoom_boundary**2
+		
+		x=x[which]
+		y=y[which]
+		z=z[which]
+		
+		for l in range(len(z)):
+			ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
 
-if __name__=="__main__":
-	pass
+		#ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
+		ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+		ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+		
+
+	ax.set_xlim(-zoom_boundary,zoom_boundary)
+	ax.set_ylim(-zoom_boundary,zoom_boundary)
+	ax.set_zlim(-zoom_boundary,zoom_boundary)
+	ax.set_xlabel('x [AU]')
+	ax.set_ylabel('y [AU]')
+	ax.set_zlabel('z [AU]')
+	ax.set_title('From Core to Outside in +s, -s directions')
+
+	#plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
+
+	#plt.close()
+	#plt.show()
+
+print("Elapsed Time (Minutes): ", elapsed_time_minutes)
