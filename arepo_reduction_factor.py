@@ -51,7 +51,7 @@ if len(sys.argv)>2:
 	rloc_center  =int(sys.argv[3])
 	max_cycles   =int(sys.argv[4])
 else:
-    N            =100
+    N            =200
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     rloc_center  =1     # rloc_boundary for inner region of the cloud
     max_cycles   =100
@@ -108,9 +108,9 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
 		
 	if dx > 0:
-		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = 0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 	else:
-		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = -0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 
 	x_tilde = x + dx * local_fields_1
 	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
@@ -142,13 +142,34 @@ Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
 Volume = Mass/Density
 
 # printing relevant info about the data
+# 1 Parsec  = 3.086e+18 cm
+# 1 Solar M = 1.9885e33 gr
+# 1 Km/s    = 100000 cm/s
 
-Bfield  *= 1.0#1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0#1.9885e33 * (1.496e13)**(-3)				# in cgs
-Mass    *= 1.0#1.9885e33
+"""  
+Attribute: UnitLength_in_cm = 3.086e+18
+Attribute: UnitMass_in_g = 1.99e+33
+Attribute: UnitVelocity_in_cm_per_s = 100000.0
+
+Name: PartType0/Coordinates
+    Attribute: to_cgs = 3.086e+18
+Name: PartType0/Density
+    Attribute: to_cgs = 6.771194847794873e-23
+Name: PartType0/Masses
+    Attribute: to_cgs = 1.99e+33
+Name: PartType0/Velocities
+    Attribute: to_cgs = 100_000.0
+Name: PartType0/MagneticField
+
+"""
+
+Bfield  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0# 6.771194847794873e-23          # in cgs
+Mass    *= 1.0# 1.9885e33                      # in cgs
 Volume   = Mass/Density
 
-#Center= 0.5 * Boxsize * np.ones(3) # Center
+#Center= 0.5 * Boxsize * np.ones(3) # Center # Default
+
 #Center = np.array( [91,       -110,          -64.5]) #117
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
@@ -159,8 +180,8 @@ Center = Pos[np.argmax(Density),:] #430
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 1.0#1.496e13
-Pos        *= 1.0#1.496e13
+VoronoiPos *= 1.0 #3.086e+18                  # in cgs
+Pos        *= 1.0 #3.086e+18                  # in cgs
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
@@ -268,7 +289,7 @@ if sys.argv[-1] == "-1":
 tasks = []
 for i in range(max_cycles):
     
-    rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
+    rloc_center      = float(random.uniform(0,rloc_center))
     
     if True:
         nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
@@ -289,9 +310,7 @@ for i in range(max_cycles):
     initial_conditions = (x_init)
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
-        
-
-#distance, bfield, numb_density = 
+    
 # Number of worker processes
 num_workers = 6
 
@@ -314,19 +333,16 @@ for i, pack_dist_field_dens in enumerate(results):
     
     radius_vector, distance, bfield, numb_density = pack_dist_field_dens
      
-    #while False:
+    x_init = np.array(tasks[i])
+    print(i, x_init)
+    
+    lmn = np.argwhere(np.all(radius_vector == x_init, axis=-1))
 
     """# Obtained position along the field lines, now we find the pocket"""
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
-
-
-    # we can evaluate reduction factor if there are no pockets
-    if len(index_pocket) < 2:
-        # it there a minimum value of peaks we can work with? yes, two
-        continue
 
     globalmax_index = global_info[0]
     globalmax_field = global_info[1]
@@ -337,36 +353,39 @@ for i, pack_dist_field_dens in enumerate(results):
 
     # we gotta find peaks in the interval   (B_l < random_element < B_h)
     # Generate a random index within the range
-    p_r = random.randint(index_pocket[0], index_pocket[-1])
-    B_r = bfield[p_r]
+    B_r = bfield[lmn]
 
-    print("random index: ", p_r, "peak's index: ", index_pocket)
+    print("random index: ", lmn, "peak's index: ", index_pocket)
     
     """How to find index of Bl?"""
 
     # Bl it is definitely between two peaks, we need to verify is also inside a pocket
-    # such that Bl < Bs < Bh (p_i < p_r < p_j)
+    # such that Bl < Bs < Bh (p_i < lmn < p_j)
 
-    # finds index at which to insert p_r and be kept sorted
-    p_i = find_insertion_point(index_pocket, p_r)
+    # finds index at which to insert lmn and be kept sorted
 
     #print()
-    print("Random Index:", p_r, "assoc. B(s_r):",B_r)
-    print("Maxima Values related to pockets: ",len(index_pocket), p_i)
 
-    if p_i is not None:
-        # If p_i is not None, select the values at indices p_i-1 and p_i
+    if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
+        p_i = find_insertion_point(index_pocket, lmn)
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
+        print("Maxima Values related to pockets: ",len(index_pocket), p_i)
+
     else:
-        # If p_i is None, select the two closest values based on some other criteria
-        print("skipped")
+        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
+        print("No Pockets, R = 1.")
+
+        reduction_factor = np.append(reduction_factor, 1.)
+        cycle += 1
         continue
 
     if len(closest_values) == 2:
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
     else:
-        print("skipped")
+        reduction_factor = np.append(reduction_factor, 1.)
+        cycle += 1
         continue
 
     if B_r/B_l < 1:
@@ -381,12 +400,77 @@ for i, pack_dist_field_dens in enumerate(results):
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
     
     print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+    print("Bs: ", bfield[lmn], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
     
     """
     bs: where bs is the field magnitude at the random point chosen 
     bl: magnetic at position s of the trajectory
     """
+    
+    if False:
+        # Create a figure and axes for the subplot layout
+        fig, axs = plt.subplots(2, 1, figsize=(8, 6))
+
+        axs[0].plot(distance, bfield, linestyle="--", color="m")
+        axs[0].scatter(distance, bfield, marker="+", color="m")
+        axs[0].set_xlabel("trajectory (cgs units Au)")
+        axs[0].set_ylabel("$B(s)$ (cgs units )")
+        axs[0].set_title("Individual Magnetic Field Shape")
+        axs[0].legend()
+        axs[0].grid(True)
+
+        axs[1].plot(distance, numb_density, linestyle="--", color="m")
+        axs[1].set_xlabel("trajectory (cgs units Au)")
+        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
+        axs[1].set_title("Gas Density along Magnetic Lines")
+        axs[1].legend()
+        axs[1].grid(True)
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+
+        # Save the figure
+        plt.savefig("field_shapes/field-density_shape.png")
+
+        # Show the plot
+        #plt.show()
+        plt.close(fig)
+
+        ax = plt.figure().add_subplot(projection='3d')
+
+        for k in range(1):
+            print(k)
+            x=distance[:,k,0] # 1D array
+            y=distance[:,k,1]
+            z=distance[:,k,2]
+            
+            which = x**2 + y**2 + z**2 <= rloc_boundary**2
+            
+            x=x[which]
+            y=y[which]
+            z=z[which]
+            
+            for l in range(len(z)):
+                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
+
+            #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
+            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+            
+
+        ax.set_xlim(-rloc_boundary,rloc_boundary)
+        ax.set_ylim(-rloc_boundary,rloc_boundary)
+        ax.set_zlim(-rloc_boundary,rloc_boundary)
+        ax.set_xlabel('x [pc]')
+        ax.set_ylabel('y [pc]')
+        ax.set_zlabel('z [pc]')
+        ax.set_title('From Core to Outside in +s, -s directions')
+
+        #plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
+
+        #plt.close()
+        plt.show()
+
         
 print(reduction_factor)
 

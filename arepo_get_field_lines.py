@@ -49,12 +49,12 @@ if len(sys.argv)>2:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	rloc_center  =int(sys.argv[3])
-	max_cycles   =int(sys.argv[4])
+	max_cycles   =1
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     rloc_center  =1     # rloc_boundary for inner region of the cloud
-    max_cycles   =100
+    max_cycles   =1
 
 
 # flow control to repeat calculations in no peak situations
@@ -142,10 +142,30 @@ Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
 Volume = Mass/Density
 
 # printing relevant info about the data
+# 1 Parsec  = 3.086e+18 cm
+# 1 Solar M = 1.9885e33 gr
+# 1 Km/s    = 100000 cm/s
 
-Bfield  *= 1.0#1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0#1.9885e33 * (1.496e13)**(-3)				# in cgs
-Mass    *= 1.0#1.9885e33
+"""  
+Attribute: UnitLength_in_cm = 3.086e+18
+Attribute: UnitMass_in_g = 1.99e+33
+Attribute: UnitVelocity_in_cm_per_s = 100000.0
+
+Name: PartType0/Coordinates
+    Attribute: to_cgs = 3.086e+18
+Name: PartType0/Density
+    Attribute: to_cgs = 6.771194847794873e-23
+Name: PartType0/Masses
+    Attribute: to_cgs = 1.99e+33
+Name: PartType0/Velocities
+    Attribute: to_cgs = 100_000.0
+Name: PartType0/MagneticField
+
+"""
+
+Bfield  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0# 6.771194847794873e-23
+Mass    *= 1.0# 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -170,11 +190,12 @@ print("Steps in Simulation: ", N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
 print("max_cycles         : ", max_cycles)
-print("\nBoxsize: ", Boxsize) # 256
-print("Center: ", Center) # 256
-print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
+print("Boxsize            : ", Boxsize) # 256
+print("Center             : ", Center) # 256
+print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
+print("Data Loaded        : ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
 
@@ -253,17 +274,6 @@ def get_along_lines(x_init):
 
     return radius_vector, trajectory, magnetic_fields, gas_densities
 
-if sys.argv[-1] == "-1":
-    # Assuming your JSON file is named 'data.json'
-    file_path = 'random_distributed_reduction_factor.json'
-
-    # Open the file in read mode
-    with open(file_path, 'r') as file:
-        # Load the JSON data into a Python list
-        reduction_factor = np.array(json.load(file))
-
-    cycle == int(max_cycles)
-
 # Generate a list of tasks
 tasks = []
 for i in range(1):
@@ -290,10 +300,8 @@ for i in range(1):
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
         
-
-#distance, bfield, numb_density = 
 # Number of worker processes
-num_workers = 6
+num_workers = 4
 
 # Record the start time
 start_time = time.time()
@@ -350,15 +358,15 @@ if True:
 
 	for k in range(1):
 		print(k)
-		x=trajectory[:,k,0] # 1D array
-		y=trajectory[:,k,1]
-		z=trajectory[:,k,2]
+		x=trajectory[:,0] # 1D array
+		y=trajectory[:,1]
+		z=trajectory[:,2]
 		
-		which = x**2 + y**2 + z**2 <= rloc_boundary**2
+		#which = x**2 + y**2 + z**2 <= rloc_boundary**2
 		
-		x=x[which]
-		y=y[which]
-		z=z[which]
+		#x=x[which]
+		#y=y[which]
+		#z=z[which]
 		
 		for l in range(len(z)):
 			ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
