@@ -55,7 +55,7 @@ if len(sys.argv)>2:
 	zoom_center=float(sys.argv[3])
 else:
 	N            =100
-	zoom_boundary=256   # rloc_boundary for boundary region of the cloud
+	zoom_boundary=80   # rloc_boundary for boundary region of the cloud
 	zoom_center  =1      # rloc_boundary for inner region of the cloud
 
 pp = sys.argv[-1]
@@ -143,9 +143,9 @@ Volume = Mass/Density
 
 # printing relevant info about the data
 
-Bfield  *=  1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
-Density *= 1.9885e33 * (1.496e13)**(-3)				# in cgs
-Mass    *= 1.9885e33
+Bfield  *= 1# 1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
+Density *= 1#1.9885e33 * (1.496e13)**(-3)				# in cgs
+Mass    *= 1#1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center

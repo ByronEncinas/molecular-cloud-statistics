@@ -431,7 +431,7 @@ plt.tight_layout()
 
 # Save the figure
 #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig("arepo_output_data/hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig("histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 # Show the plot
 #plt.show()
