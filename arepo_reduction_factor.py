@@ -251,7 +251,7 @@ def get_along_lines(x_init):
 
         trajectory[0] *= 0.0
 
-    return trajectory, magnetic_fields, gas_densities
+    return radius_vector, trajectory, magnetic_fields, gas_densities
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -312,7 +312,7 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 for i, pack_dist_field_dens in enumerate(results):
     
-    distance, bfield, numb_density = pack_dist_field_dens
+    radius_vector, distance, bfield, numb_density = pack_dist_field_dens
      
     #while False:
 
@@ -431,7 +431,7 @@ plt.tight_layout()
 
 # Save the figure
 #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig("histograms/hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 # Show the plot
 #plt.show()
