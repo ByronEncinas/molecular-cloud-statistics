@@ -62,7 +62,7 @@ cycle = 0
 
 reduction_factor_at_gas_density = defaultdict()
 
-reduction_factor = np.zeros(max_cycles)
+reduction_factor = np.array([])
 
 filename = 'arepo_data/snap_430.hdf5'
 
@@ -143,9 +143,9 @@ Volume = Mass/Density
 
 # printing relevant info about the data
 
-Bfield  *=  1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
-Density *= 1.9885e33 * (1.496e13)**(-3)				# in cgs
-Mass    *= 1.9885e33
+Bfield  *= 1.0#1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0#1.9885e33 * (1.496e13)**(-3)				# in cgs
+Mass    *= 1.0#1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -158,6 +158,9 @@ Center = Pos[np.argmax(Density),:] #430
 # all positions are relative to the 'Center'
 VoronoiPos-=Center
 Pos-=Center
+
+VoronoiPos *= 1.0#1.496e13
+Pos        *= 1.0#1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
@@ -368,12 +371,12 @@ for i, pack_dist_field_dens in enumerate(results):
 
     if B_r/B_l < 1:
         R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor[cycle] = R
+        reduction_factor = np.append(reduction_factor, R)
         cycle += 1
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
     else:
         R = 1
-        reduction_factor[cycle] = 1.
+        reduction_factor = np.append(reduction_factor, 1.)
         cycle += 1
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
     
