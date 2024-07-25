@@ -51,7 +51,7 @@ def process_line(line):
 """ b_ionization_model Methods """
 """ c_reduction_factor Methods """
 
-def pocket_finder(bmag, cycle=0, plot =False):
+def pocket_finder(bmag, cycle=0, plot=False):
     """  
     j = i+1 > i
     """
@@ -101,9 +101,8 @@ def pocket_finder(bmag, cycle=0, plot =False):
 
         # Adjust layout to prevent overlap
         plt.tight_layout()
-
         # Save the figure
-        plt.savefig(f"output_field_shape{cycle}.png")
+        plt.savefig(f"./field_shapes/field_shape{cycle}.png")
         plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)

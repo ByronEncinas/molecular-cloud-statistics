@@ -1,23 +1,14 @@
-from library import *
-from collections import Counter, defaultdict
+from collections import defaultdict
 from multiprocessing import Pool
 import random
-import subprocess
 import matplotlib.pyplot as plt
-import sys
-import json
-import matplotlib.pyplot as plt
-from scipy.spatial import ConvexHull
-from scipy.spatial import distance
 from scipy import spatial
 import healpy as hp
 import numpy as np
-import time
-import matplotlib
 import random
-import copy
+import time
 import h5py
-import os
+import json
 import sys
 
 from library import *
@@ -57,8 +48,8 @@ if len(sys.argv)>2:
 	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
-	max_cycles   =int(sys.argv[3])
-	rloc_center  =1     
+	rloc_center  =int(sys.argv[3])
+	max_cycles   =int(sys.argv[4])
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
@@ -150,7 +141,6 @@ Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
 Volume = Mass/Density
 
-
 # printing relevant info about the data
 
 Bfield  *=  1/1.496e8 * (1.496e13/1.9885e33)**(-1/2) # in cgs
@@ -176,6 +166,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 print("Steps in Simulation: ", N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
+print("max_cycles         : ", max_cycles)
 print("\nBoxsize: ", Boxsize) # 256
 print("Center: ", Center) # 256
 print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
@@ -313,7 +304,7 @@ with Pool(num_workers) as pool:
 elapsed_time = time.time() - start_time
 
 # Print elapsed time
-print(f"Elapsed time: {elapsed_time} seconds")
+print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 
 for i, pack_dist_field_dens in enumerate(results):
@@ -325,7 +316,7 @@ for i, pack_dist_field_dens in enumerate(results):
     """# Obtained position along the field lines, now we find the pocket"""
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+    pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
 
@@ -371,7 +362,6 @@ for i, pack_dist_field_dens in enumerate(results):
     if len(closest_values) == 2:
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-        print(B_l, B_h)
     else:
         print("skipped")
         continue
@@ -395,6 +385,7 @@ for i, pack_dist_field_dens in enumerate(results):
     bl: magnetic at position s of the trajectory
     """
         
+print(reduction_factor)
 
 # Specify the file path
 file_path = f'random_distributed_reduction_factor{sys.argv[-1]}.json'
