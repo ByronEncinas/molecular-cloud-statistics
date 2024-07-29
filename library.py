@@ -113,6 +113,21 @@ def find_insertion_point(index_pocket, p_r):
             return i  # Insert before index i
     return len(index_pocket)  # Insert at the end if p_r is greater than or equal to all elements
 
+def find_vector_in_array(radius_vector, x_init):
+    """
+    Finds the indices of the vector x_init in the multidimensional numpy array radius_vector.
+    
+    Parameters:
+    radius_vector (numpy.ndarray): A multidimensional array with vectors at its entries.
+    x_init (numpy.ndarray): The vector to find within radius_vector.
+    
+    Returns:
+    list: A list of tuples, each containing the indices where x_init is found in radius_vector.
+    """
+    x_init = np.array(x_init)
+    return np.argwhere(np.all(radius_vector == x_init, axis=-1))
+
+
 """ Integration Methods """
 
 def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 

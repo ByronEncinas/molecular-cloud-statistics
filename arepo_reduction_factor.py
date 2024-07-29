@@ -218,9 +218,9 @@ def get_along_lines(x_init):
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
+    
     for k in range(N):
-        
-        dx = 1.0
+        dx = 1.0    
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line[k+1,:,:] = x
@@ -228,9 +228,10 @@ def get_along_lines(x_init):
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
-
+    
     for k in range(N):
-        x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
+        dx = -1.0
+        x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
@@ -272,7 +273,7 @@ def get_along_lines(x_init):
 
         trajectory[0] *= 0.0
 
-    return radius_vector, trajectory, magnetic_fields, gas_densities
+    return line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -312,7 +313,8 @@ for i in range(max_cycles):
     tasks.append((initial_conditions))
     
 # Number of worker processes
-num_workers = 6
+import os
+num_workers = int(3*int(os.cpu_count())/4)
 
 # Record the start time
 start_time = time.time()
@@ -331,11 +333,11 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 for i, pack_dist_field_dens in enumerate(results):
     
-    radius_vector, distance, bfield, numb_density = pack_dist_field_dens
-     
+    x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
+    print(i, x_init, B_init) 
     x_init = np.array(tasks[i])
     
-    lmn = np.argwhere(np.all(radius_vector == x_init[i], axis=-1))
+    lmn     = find_vector_in_array(radius_vector, x_init)[0]
 
     print(i, x_init, lmn)
 
@@ -357,6 +359,7 @@ for i, pack_dist_field_dens in enumerate(results):
     B_r = bfield[lmn]
 
     print("random index: ", lmn, "peak's index: ", index_pocket)
+    exit()
     
     """How to find index of Bl?"""
 
