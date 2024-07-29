@@ -336,7 +336,7 @@ for i, pack_dist_field_dens in enumerate(results):
     x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
     print(i, x_init, B_init) 
     
-    lmn     = find_vector_in_array(radius_vector, x_init)[0]
+    lmn     = find_vector_in_array(bfield, B_init)[0]
 
     print(i, x_init, lmn)
 
