@@ -359,7 +359,8 @@ for i, pack_dist_field_dens in enumerate(results):
     B_r = bfield[lmn]
 
     print("random index: ", lmn, "peak's index: ", index_pocket)
-    exit()
+    
+    continue
     
     """How to find index of Bl?"""
 
