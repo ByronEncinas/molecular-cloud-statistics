@@ -11,25 +11,26 @@ index_pocket, field_pocket = pocket[0], pocket[1]
 
 
 import numpy as np
-
+import random
 
 # Example usage
 if __name__ == "__main__":
     
-    index_shape = radius_vector.shape[:-1]
-    print(index_shape)
-
-    random_index = tuple(np.random.randint(dim) for dim in index_shape)
+    index_shape = bfield.shape[:-1]
     
+    random_index = len(bfield)//2
+    
+    print(random_index)
     # Select and return the vector at the random index
-    x_init = radius_vector[random_index]
+    B_init = bfield[random_index]
     
+    print(index_shape, B_init)
     # Find x_init in radius_vector
-    indices = find_vector_in_array(radius_vector, x_init)
-
-    lmn     = find_vector_in_array(radius_vector, x_init)
     
-    print("Indices of x_init in radius_vector:", *indices[0], lmn)
+    lmn     = np.where(bfield == B_init)
+    
+    print("Indices of x_init in radius_vector:", lmn)
+    print("B at x_init:", bfield[lmn], "inserted between:", bfield[max(0, random_index-1): min(len(distance), random_index + 1)])
 
     print(find_insertion_point(distance, distance[random_index]), distance[find_insertion_point(distance, distance[random_index])])
-    print(distance[max(0, random_index[0]-1): min(len(distance), random_index[0] + 1)])
+    print(distance[max(0, random_index-1): min(len(distance), random_index + 1)])

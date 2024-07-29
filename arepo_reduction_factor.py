@@ -246,9 +246,9 @@ def get_along_lines(x_init):
 
     dens_diff = dens_max - dens_min
 
-    path           = np.append(line, line_rev, axis=0)
-    path_bfields   = np.append(bfields, bfields_rev, axis=0)
-    path_densities = np.append(densities, densities_rev, axis=0)
+    path           = np.append(line[1,:,:], line_rev, axis=0)
+    path_bfields   = np.append(bfields[1,:,:], bfields_rev, axis=0)
+    path_densities = np.append(densities[1,:,:], densities_rev, axis=0)
 
     for j, _ in enumerate(path[0,:,0]):
         # for trajectory 
@@ -334,11 +334,10 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 for i, pack_dist_field_dens in enumerate(results):
     
     x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
-    print(i, x_init, B_init) 
-    
-    lmn     = find_vector_in_array(bfield, B_init)[0]
 
-    print(i, x_init, lmn)
+    lmn     = np.where(bfield == B_init) 
+
+    print(i, x_init, B_init, lmn)
 
     """# Obtained position along the field lines, now we find the pocket"""
 
