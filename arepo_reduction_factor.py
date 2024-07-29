@@ -335,7 +335,6 @@ for i, pack_dist_field_dens in enumerate(results):
     
     x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
     print(i, x_init, B_init) 
-    x_init = np.array(tasks[i])
     
     lmn     = find_vector_in_array(radius_vector, x_init)[0]
 
