@@ -334,9 +334,10 @@ for i, pack_dist_field_dens in enumerate(results):
     radius_vector, distance, bfield, numb_density = pack_dist_field_dens
      
     x_init = np.array(tasks[i])
-    print(i, x_init)
     
-    lmn = np.argwhere(np.all(radius_vector == x_init, axis=-1))
+    lmn = np.argwhere(np.all(radius_vector == x_init[i], axis=-1))
+
+    print(i, x_init, lmn)
 
     """# Obtained position along the field lines, now we find the pocket"""
 

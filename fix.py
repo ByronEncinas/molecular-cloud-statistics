@@ -43,4 +43,4 @@ if __name__ == "__main__":
     print("Indices of x_init in radius_vector:", *indices[0])
 
     print(find_insertion_point(distance, distance[random_index]), distance[find_insertion_point(distance, distance[random_index])])
-    print(distance[max(0, random_index[0]): min(len(distance), random_index[0] + 2)])
+    print(distance[max(0, random_index[0]-1): min(len(distance), random_index[0] + 1)])
