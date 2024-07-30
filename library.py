@@ -51,53 +51,62 @@ def process_line(line):
 """ b_ionization_model Methods """
 """ c_reduction_factor Methods """
 
+
 def pocket_finder(bmag, cycle=0, plot=False):
-    """  
-    j = i+1 > i
+    """Find peaks in a magnetic field magnitude array.
+
+    Args:
+        bmag (array-like): Array or list of magnetic field magnitudes.
+        cycle (int, optional): Cycle number for saving the plot. Defaults to 0.
+        plot (bool, optional): Whether to plot the results. Defaults to False.
+
+    Returns:
+        tuple: Contains two tuples:
+            - (indexes, peaks): Lists of peak indexes and corresponding peak values.
+            - (index_global_max, upline): Index and value of the global maximum.
     """
-    Bj = bmag[0]
+    bmag = np.array(bmag)  # Ensure input is a numpy array
+    baseline = min(bmag)
+    upline = max(bmag)
+    index_global_max = np.argmax(bmag)
+
+    # Find left peaks
     Bi = 0.0
     lindex = []
     lpeaks = []
-    for B in bmag:
-        Bj = B
-        if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1] ): # if True, then we have a peak
-            index = np.where(bmag==Bi)[0][0]
-            lindex.append(index)
+    for i, Bj in enumerate(bmag[:index_global_max]):
+        if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
+            lindex.append(i - 1)
             lpeaks.append(Bi)
-        Bi = B
-    Bj = bmag[-1]
+        Bi = Bj
+
+    # Find right peaks
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for B in reversed(bmag):
-        Bj = B
-        if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]): # if True, then we have a peak
-            index = np.where(bmag==Bi)[0][0]
-            rindex.append(index)
+    for i, Bj in enumerate(reversed(bmag[index_global_max+1:])):
+        if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
+            rindex.append(len(bmag) - i)
             rpeaks.append(Bi)
-        Bi = B
-    peaks = lpeaks + list(reversed(rpeaks))[1:]
-    indexes = lindex+list(reversed(rindex))[1:] 
-    baseline = min(bmag)
-    upline = max(bmag)
-    index_global_max = np.where(bmag==upline)[0][0]
-    
+        Bi = Bj
+
+    peaks = lpeaks + list(reversed(rpeaks))
+    indexes = lindex + list(reversed(rindex))
+
     if plot:
         # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(1, 1, figsize=(8, 6))
 
         axs.plot(bmag)
-        axs.plot(indexes,peaks, "x", color="green")
-        axs.plot(indexes,peaks, ":", color="green")
+        axs.plot(indexes, peaks, "x", color="green")
+        axs.plot(indexes, peaks, ":", color="green")
         axs.plot(index_global_max, upline, "x", color="black")
-        axs.plot(np.ones_like(bmag)*baseline, "--", color="gray")
+        axs.plot(np.ones_like(bmag) * baseline, "--", color="gray")
         axs.set_xlabel("Index")
         axs.set_ylabel("Field")
         axs.set_title("Actual Field Shape")
         axs.legend(["bmag", "all peaks", "index_global_max", "baseline"])
         axs.grid(True)
-
 
         # Adjust layout to prevent overlap
         plt.tight_layout()

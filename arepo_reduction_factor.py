@@ -199,6 +199,8 @@ print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
 
+    m = x_init.shape[0] # = 1
+
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
@@ -215,7 +217,7 @@ def get_along_lines(x_init):
     print(x_init[0,:])
 
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+    #dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
     
@@ -246,9 +248,9 @@ def get_along_lines(x_init):
 
     dens_diff = dens_max - dens_min
 
-    path           = np.append(line[1,:,:], line_rev, axis=0)
-    path_bfields   = np.append(bfields[1,:,:], bfields_rev, axis=0)
-    path_densities = np.append(densities[1,:,:], densities_rev, axis=0)
+    path           = np.append(line, line_rev, axis=0)
+    path_bfields   = np.append(bfields, bfields_rev, axis=0)
+    path_densities = np.append(densities, densities_rev, axis=0)
 
     for j, _ in enumerate(path[0,:,0]):
         # for trajectory 
@@ -272,8 +274,10 @@ def get_along_lines(x_init):
             prev_radius_vector  = radius_vector[k] 
 
         trajectory[0] *= 0.0
+    
+    index = len(line_rev[:,0,0])
 
-    return line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
+    return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -284,7 +288,7 @@ if sys.argv[-1] == "-1":
         # Load the JSON data into a Python list
         reduction_factor = np.array(json.load(file))
 
-    cycle == int(max_cycles)
+    max_cycles = 0
 
 # Generate a list of tasks
 tasks = []
@@ -333,11 +337,7 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 for i, pack_dist_field_dens in enumerate(results):
     
-    x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
-
-    lmn     = np.where(bfield == B_init) 
-
-    print(i, x_init, B_init, lmn)
+    lmn, x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
 
     """# Obtained position along the field lines, now we find the pocket"""
 
@@ -354,27 +354,20 @@ for i, pack_dist_field_dens in enumerate(results):
 
     # we gotta find peaks in the interval   (B_l < random_element < B_h)
     # Generate a random index within the range
-    B_r = bfield[lmn]
+    B_r = B_init.copy()
 
-    print("random index: ", lmn, "peak's index: ", index_pocket)
-    
-    continue
-    
+    print("random index: ", lmn, "peak's index: ", index_pocket, field_pocket)
+
     """How to find index of Bl?"""
 
     # Bl it is definitely between two peaks, we need to verify is also inside a pocket
     # such that Bl < Bs < Bh (p_i < lmn < p_j)
-
-    # finds index at which to insert lmn and be kept sorted
-
-    #print()
 
     if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
         p_i = find_insertion_point(index_pocket, lmn)
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
         print("Random Index:", lmn, "assoc. B(s_r):",B_r)
         print("Maxima Values related to pockets: ",len(index_pocket), p_i)
-
     else:
         print("Random Index:", lmn, "assoc. B(s_r):",B_r)
         print("No Pockets, R = 1.")
@@ -391,7 +384,7 @@ for i, pack_dist_field_dens in enumerate(results):
         cycle += 1
         continue
 
-    if B_r/B_l < 1:
+    if B_r/B_l <= 1:
         R = 1 - np.sqrt(1-B_r/B_l)
         reduction_factor = np.append(reduction_factor, R)
         cycle += 1
@@ -474,7 +467,6 @@ for i, pack_dist_field_dens in enumerate(results):
         #plt.close()
         plt.show()
 
-        
 print(reduction_factor)
 
 # Specify the file path
