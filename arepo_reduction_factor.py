@@ -189,7 +189,7 @@ Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 print("Cores Available: ", os.cpu_count())
-print("Cores Used: ", os.cpu_count()*3/4)
+print("Cores Used: ", os.cpu_count())
 print("Steps in Simulation: ", N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
@@ -321,7 +321,7 @@ for i in range(max_cycles):
     
 # Number of worker processes
 import os
-num_workers = int(3*int(os.cpu_count())/4)
+num_workers = int(os.cpu_count())
 
 # Record the start time
 start_time = time.time()
