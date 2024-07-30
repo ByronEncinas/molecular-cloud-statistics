@@ -84,7 +84,7 @@ def pocket_finder(bmag, cycle=0, plot=False):
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for i, Bj in enumerate(reversed(bmag[index_global_max+1:])):
+    for i, Bj in enumerate(reversed(bmag[index_global_max:])):
         if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
             rindex.append(len(bmag) - i)
             rpeaks.append(Bi)

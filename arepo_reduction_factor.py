@@ -10,6 +10,7 @@ import time
 import h5py
 import json
 import sys
+import os
 
 from library import *
 
@@ -187,6 +188,8 @@ xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
+print("Cores Available: ", os.cpu_count())
+print("Cores Used: ", os.cpu_count()*3/4)
 print("Steps in Simulation: ", N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
@@ -403,7 +406,7 @@ for i, pack_dist_field_dens in enumerate(results):
     bl: magnetic at position s of the trajectory
     """
     
-    if False:
+    if True:
         # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(2, 1, figsize=(8, 6))
 
@@ -431,7 +434,8 @@ for i, pack_dist_field_dens in enumerate(results):
         # Show the plot
         #plt.show()
         plt.close(fig)
-
+    
+    if False:
         ax = plt.figure().add_subplot(projection='3d')
 
         for k in range(1):
@@ -452,7 +456,6 @@ for i, pack_dist_field_dens in enumerate(results):
             #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
             ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
             ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-            
 
         ax.set_xlim(-rloc_boundary,rloc_boundary)
         ax.set_ylim(-rloc_boundary,rloc_boundary)
@@ -461,9 +464,7 @@ for i, pack_dist_field_dens in enumerate(results):
         ax.set_ylabel('y [pc]')
         ax.set_zlabel('z [pc]')
         ax.set_title('From Core to Outside in +s, -s directions')
-
         #plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
-
         #plt.close()
         plt.show()
 
