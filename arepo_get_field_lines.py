@@ -319,11 +319,10 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
 
-np.save("arepo_output_data/ArePositions.npy", radius_vector)
-np.save("arepo_output_data/ArepoTrajectory.npy", trajectory)
-np.save("arepo_output_data/ArepoNumberDensities.npy", gas_densities)
-np.save("arepo_output_data/ArepoMagneticFields.npy", magnetic_fields)
-
+np.save(f"arepo_output_data/ArePositions{sys.argv[-1]}.npy", radius_vector)
+np.save(f"arepo_output_data/ArepoTrajectory{sys.argv[-1]}.npy", trajectory)
+np.save(f"arepo_output_data/ArepoNumberDensities{sys.argv[-1]}.npy", gas_densities)
+np.save(f"arepo_output_data/ArepoMagneticFields{sys.argv[-1]}.npy", magnetic_fields)
 
 if True:
 	# Create a figure and axes for the subplot layout
@@ -354,6 +353,7 @@ if True:
 	#plt.show()
 	plt.close(fig)
 
+if False:
 	ax = plt.figure().add_subplot(projection='3d')
 
 	for k in range(1):
@@ -387,4 +387,4 @@ if True:
 	#plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
 
 	#plt.close()
-	plt.show()
+	#plt.show()
