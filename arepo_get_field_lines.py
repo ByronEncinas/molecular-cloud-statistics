@@ -276,7 +276,7 @@ def get_along_lines(x_init):
 
 # Generate a list of tasks
 tasks = []
-for i in range(1):
+for i in range(int(sys.argv[-1])):
     
     rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
     
@@ -300,8 +300,9 @@ for i in range(1):
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
         
+import os
 # Number of worker processes
-num_workers = 4
+num_workers = os.cpu_count()
 
 # Record the start time
 start_time = time.time()
@@ -319,10 +320,15 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
 
-np.save(f"arepo_output_data/ArePositions{sys.argv[-1]}.npy", radius_vector)
-np.save(f"arepo_output_data/ArepoTrajectory{sys.argv[-1]}.npy", trajectory)
-np.save(f"arepo_output_data/ArepoNumberDensities{sys.argv[-1]}.npy", gas_densities)
-np.save(f"arepo_output_data/ArepoMagneticFields{sys.argv[-1]}.npy", magnetic_fields)
+
+for i, pack_dist_field_dens in enumerate(results):
+    
+    lmn, x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
+
+    np.save(f"arepo_output_data/ArePositions{i}.npy", radius_vector)
+    np.save(f"arepo_output_data/ArepoTrajectory{i}.npy", distance)
+    np.save(f"arepo_output_data/ArepoNumberDensities{i}.npy", numb_density)
+    np.save(f"arepo_output_data/ArepoMagneticFields{i}.npy", bfield)
 
 if True:
 	# Create a figure and axes for the subplot layout
