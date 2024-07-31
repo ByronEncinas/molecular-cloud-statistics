@@ -6,7 +6,7 @@ distance = np.array(np.load("arepo_output_data/ArepoTrajectory.npy", mmap_mode='
 bfield   = np.array(np.load("arepo_output_data/ArepoMagneticFields.npy", mmap_mode='r'))
 
 #index_peaks, global_info = pocket_finder(bfield) # this plots
-pocket, global_info = pocket_finder(bfield, 0.0, plot=False) # this plots
+pocket, global_info = pocket_finder(bfield, 0.0, plot=True) # this plots
 index_pocket, field_pocket = pocket[0], pocket[1]
 
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     
     index_shape = bfield.shape[:-1]
     
-    random_index = len(bfield)//2
+    random_index = len(bfield)//2 + 1
     
     print(random_index)
     # Select and return the vector at the random index
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     lmn     = np.where(bfield == B_init)
     
     print("Indices of x_init in radius_vector:", lmn)
-    print("B at x_init:", bfield[lmn], "inserted between:", bfield[max(0, random_index-1): min(len(distance), random_index + 1)])
+    print("B at x_init:", bfield[lmn], "inserted between:", bfield[max(0, random_index): min(len(distance), random_index + 2)])
 
     print(find_insertion_point(distance, distance[random_index]), distance[find_insertion_point(distance, distance[random_index])])
     print(distance[max(0, random_index-1): min(len(distance), random_index + 1)])

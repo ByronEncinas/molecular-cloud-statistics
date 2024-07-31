@@ -232,7 +232,6 @@ def get_along_lines(x_init):
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
-        print(x)
     # propagates from same inner region to the outside in -dx direction
     
     for k in range(N):
@@ -242,7 +241,7 @@ def get_along_lines(x_init):
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
-        print(x)
+        
 
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
@@ -370,7 +369,7 @@ for i, pack_dist_field_dens in enumerate(results):
 
     if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
         p_i = find_insertion_point(index_pocket, lmn)
-        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        closest_values = index_pocket[max(0, p_i): min(len(index_pocket), p_i +2)]
         print("Random Index:", lmn, "assoc. B(s_r):",B_r)
         print("Maxima Values related to pockets: ",len(index_pocket), p_i)
     else:
