@@ -93,7 +93,7 @@ def pocket_finder(bfield, cycle=0, plot=False):
     baseline = np.min(bfield)
     upline = np.max(bfield)
     index_global_max = np.where(bfield == upline)[0]  # Get all indices of the maximum value
-    idx = sum(index_global_max)//len(index_global_max)
+    idx = index_global_max[-1]#sum(index_global_max)//len(index_global_max)
     upline == bfield[idx]
     
     if plot:
