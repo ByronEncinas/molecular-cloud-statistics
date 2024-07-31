@@ -369,7 +369,7 @@ for i, pack_dist_field_dens in enumerate(results):
 
     if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
         p_i = find_insertion_point(index_pocket, lmn)
-        closest_values = index_pocket[max(0, p_i): min(len(index_pocket), p_i +2)]
+        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
         print("Random Index:", lmn, "assoc. B(s_r):",B_r)
         print("Maxima Values related to pockets: ",len(index_pocket), p_i)
     else:
