@@ -91,7 +91,8 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 	return local_densities
 
 def find_points_and_relative_positions(x, Pos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=12)
+	workers = os.cpu_count()
+	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1)
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 

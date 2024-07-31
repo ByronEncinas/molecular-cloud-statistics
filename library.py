@@ -123,10 +123,24 @@ def pocket_finder(bfield, cycle=0, plot=False):
 
             
 def find_insertion_point(index_pocket, p_r):
+    """
+    Finds the insertion point for p_r in a sorted list or numpy array index_pocket.
+
+    Args:
+        index_pocket (list or np.ndarray): Sorted list or numpy array of indices.
+        p_r (int or float): The value to find the insertion point for.
+
+    Returns:
+        int: The insertion index for p_r.
+    if isinstance(index_pocket, np.ndarray):
+        index_pocket = index_pocket.tolist()  # Convert to list if it's a numpy array
+    """
+
     for i in range(len(index_pocket)):
         if p_r < index_pocket[i]:
             return i  # Insert before index i
     return len(index_pocket)  # Insert at the end if p_r is greater than or equal to all elements
+
 
 def find_vector_in_array(radius_vector, x_init):
     """
