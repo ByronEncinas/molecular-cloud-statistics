@@ -53,50 +53,40 @@ def process_line(line):
 
 
 def pocket_finder(bmag, cycle=0, plot=False):
-    """Find peaks in a magnetic field magnitude array.
-
-    Args:
-        bmag (array-like): Array or list of magnetic field magnitudes.
-        cycle (int, optional): Cycle number for saving the plot. Defaults to 0.
-        plot (bool, optional): Whether to plot the results. Defaults to False.
-
-    Returns:
-        tuple: Contains two tuples:
-            - (indexes, peaks): Lists of peak indexes and corresponding peak values.
-            - (index_global_max, upline): Index and value of the global maximum.
+    """  
+    Finds peaks in a given magnetic field array.
     """
-    bmag = np.array(bmag)  # Ensure input is a numpy array
-    baseline = min(bmag)
-    upline = max(bmag)
-    index_global_max = np.argmax(bmag)
-
-    # Find left peaks
+    bmag = np.array(bmag)
     Bi = 0.0
     lindex = []
     lpeaks = []
-    for i, Bj in enumerate(bmag[:index_global_max]):
-        if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
+    
+    for i, B in enumerate(bmag):
+        if B < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
             lindex.append(i - 1)
             lpeaks.append(Bi)
-        Bi = Bj
+        Bi = B
 
-    # Find right peaks
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for i, Bj in enumerate(reversed(bmag[index_global_max:])):
-        if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
-            rindex.append(len(bmag) - i)
-            rpeaks.append(Bi)
-        Bi = Bj
 
-    peaks = lpeaks + list(reversed(rpeaks))
-    indexes = lindex + list(reversed(rindex))
+    for i in range(len(bmag)-1, -1, -1):
+        B = bmag[i]
+        if B < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
+            rindex.append(i + 1)
+            rpeaks.append(Bi)
+        Bi = B
+
+    peaks = lpeaks + list(reversed(rpeaks))[1:]
+    indexes = lindex + list(reversed(rindex))[1:] 
+
+    baseline = np.min(bmag)
+    upline = np.max(bmag)
+    index_global_max = np.argmax(bmag)
 
     if plot:
-        # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(1, 1, figsize=(8, 6))
-
         axs.plot(bmag)
         axs.plot(indexes, peaks, "x", color="green")
         axs.plot(indexes, peaks, ":", color="green")
@@ -107,14 +97,12 @@ def pocket_finder(bmag, cycle=0, plot=False):
         axs.set_title("Actual Field Shape")
         axs.legend(["bmag", "all peaks", "index_global_max", "baseline"])
         axs.grid(True)
-
-        # Adjust layout to prevent overlap
         plt.tight_layout()
-        # Save the figure
-        plt.savefig(f"./field_shapes/field_shape{cycle}.png")
-        plt.close(fig)
+        plt.savefig(f"arepo_output_data/output_field_shape{cycle}.png")
+        plt.show()
 
     return (indexes, peaks), (index_global_max, upline)
+
             
 def find_insertion_point(index_pocket, p_r):
     for i in range(len(index_pocket)):

@@ -220,18 +220,19 @@ def get_along_lines(x_init):
     print(x_init[0,:])
 
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-    #dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
     
     for k in range(N):
+
         dx = 1.0    
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
-
+        print(x)
     # propagates from same inner region to the outside in -dx direction
     
     for k in range(N):
@@ -241,6 +242,7 @@ def get_along_lines(x_init):
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
+        print(x)
 
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
@@ -321,7 +323,7 @@ for i in range(max_cycles):
     
 # Number of worker processes
 import os
-num_workers = int(os.cpu_count())
+num_workers = 6#int(os.cpu_count())
 
 # Record the start time
 start_time = time.time()
@@ -412,17 +414,17 @@ for i, pack_dist_field_dens in enumerate(results):
 
         axs[0].plot(distance, bfield, linestyle="--", color="m")
         axs[0].scatter(distance, bfield, marker="+", color="m")
-        axs[0].set_xlabel("trajectory (cgs units Au)")
+        axs[0].set_xlabel("trajectory (pc)")
         axs[0].set_ylabel("$B(s)$ (cgs units )")
         axs[0].set_title("Individual Magnetic Field Shape")
-        axs[0].legend()
+        #axs[0].legend()
         axs[0].grid(True)
 
         axs[1].plot(distance, numb_density, linestyle="--", color="m")
         axs[1].set_xlabel("trajectory (cgs units Au)")
-        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
+        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/pc^3$) ")
         axs[1].set_title("Gas Density along Magnetic Lines")
-        axs[1].legend()
+        #axs[1].legend()
         axs[1].grid(True)
 
         # Adjust layout to prevent overlap

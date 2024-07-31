@@ -49,7 +49,7 @@ if len(sys.argv)>2:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	rloc_center  =int(sys.argv[3])
-	max_cycles   =1
+	max_cycles   =int(sys.argv[4])
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
@@ -139,7 +139,6 @@ Bfield_grad  = np.zeros((len(Bfield),3))
 Density = np.array(data['PartType0']['Density'], dtype=FloatType)
 Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
-Volume = Mass/Density
 
 # printing relevant info about the data
 # 1 Parsec  = 3.086e+18 cm
@@ -195,7 +194,6 @@ print("Center             : ", Center) # 256
 print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
-print("Data Loaded        : ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
 
@@ -271,12 +269,14 @@ def get_along_lines(x_init):
             prev_radius_vector  = radius_vector[k] 
 
         trajectory[0] *= 0.0
+	
+    index = len(line_rev[:,0,0])
 
-    return radius_vector, trajectory, magnetic_fields, gas_densities
+    return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 # Generate a list of tasks
 tasks = []
-for i in range(int(sys.argv[-1])):
+for i in range(max_cycles):
     
     rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
     
@@ -318,17 +318,19 @@ elapsed_time = time.time() - start_time
 # Print elapsed time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
 
-radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
+#radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
 
 
 for i, pack_dist_field_dens in enumerate(results):
-    
-    lmn, x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
+
+    lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = pack_dist_field_dens
+
+    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=True) # this plots
 
     np.save(f"arepo_output_data/ArePositions{i}.npy", radius_vector)
-    np.save(f"arepo_output_data/ArepoTrajectory{i}.npy", distance)
-    np.save(f"arepo_output_data/ArepoNumberDensities{i}.npy", numb_density)
-    np.save(f"arepo_output_data/ArepoMagneticFields{i}.npy", bfield)
+    np.save(f"arepo_output_data/ArepoTrajectory{i}.npy", trajectory)
+    np.save(f"arepo_output_data/ArepoNumberDensities{i}.npy", gas_densities)
+    np.save(f"arepo_output_data/ArepoMagneticFields{i}.npy", magnetic_fields)
 
 if True:
 	# Create a figure and axes for the subplot layout
@@ -336,15 +338,15 @@ if True:
 
 	axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
 	axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
-	axs[0].set_xlabel("trajectory (cgs units Au)")
-	axs[0].set_ylabel("$B(s)$ (cgs units )")
+	axs[0].set_xlabel("trajectory (Pc)")
+	axs[0].set_ylabel("$B(s)$ (Gauss (M_{sun}/Pc)**(1/2))")
 	axs[0].set_title("Individual Magnetic Field Shape")
 	axs[0].legend()
 	axs[0].grid(True)
 
 	axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
-	axs[1].set_xlabel("trajectory (cgs units Au)")
-	axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/Au^3$) ")
+	axs[1].set_xlabel("trajectory (cgs units Pc)")
+	axs[1].set_ylabel("$n_g(s)$ Field ($M_{sun}/Pc^3$) ")
 	axs[1].set_title("Gas Density along Magnetic Lines")
 	axs[1].legend()
 	axs[1].grid(True)
