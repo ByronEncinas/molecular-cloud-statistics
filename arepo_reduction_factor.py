@@ -110,9 +110,9 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
 		
 	if dx > 0:
-		dx = 0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 	else:
-		dx = -0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 
 	x_tilde = x + dx * local_fields_1
 	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)

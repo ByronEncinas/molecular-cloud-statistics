@@ -67,11 +67,18 @@ def pocket_finder(bfield, cycle=0, plot=False):
     """
     bfield = np.array(bfield)  # Ensure input is a numpy array
 
+    baseline = np.min(bfield)
+    upline = np.max(bfield)
+    index_global_max = np.where(bfield == upline)[0]
+    idx = index_global_max[0]
+    upline == bfield[idx]
+    scope = index_global_max[-1] - index_global_max[0]
+
     # Find left peaks
     Bi = 0.0
     lindex = []
     lpeaks = []
-    for i, Bj in enumerate(bfield):
+    for i, Bj in enumerate(bfield[0:idx+scope]):
         if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
             lindex.append(i - 1)
             lpeaks.append(Bi)
@@ -81,20 +88,14 @@ def pocket_finder(bfield, cycle=0, plot=False):
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for i, Bj in enumerate(reversed(bfield)):
+    for i, Bj in enumerate(reversed(bfield[idx-scope:])):
         if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
             rindex.append(len(bfield) - i)
             rpeaks.append(Bi)
         Bi = Bj
 
-    peaks = lpeaks + list(reversed(rpeaks))[1:]
-    indexes = lindex + list(reversed(rindex))[1:]
-
-    baseline = np.min(bfield)
-    upline = np.max(bfield)
-    index_global_max = np.where(bfield == upline)[0]  # Get all indices of the maximum value
-    idx = index_global_max[-1]#sum(index_global_max)//len(index_global_max)
-    upline == bfield[idx]
+    peaks = lpeaks + list(reversed(rpeaks))
+    indexes = lindex + list(reversed(rindex))
     
     if plot:
         # Create a figure and axes for the subplot layout
