@@ -162,9 +162,9 @@ Name: PartType0/MagneticField
 
 """
 
-Bfield  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0# 6.771194847794873e-23
-Mass    *= 1.0# 1.9885e33
+Bfield  *= 1.0* (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0* 6.771194847794873e-23
+Mass    *= 1.0* 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -178,8 +178,8 @@ Center = Pos[np.argmax(Density),:] #430
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 1.0#1.496e13
-Pos        *= 1.0#1.496e13
+VoronoiPos *= 1.0*1.496e13
+Pos        *= 1.0*1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
