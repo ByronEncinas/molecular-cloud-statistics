@@ -320,17 +320,33 @@ print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 #radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
 
+import os
+import shutil
+
+# Define the directory names
+output_folder = 'arepo_output_data'
+new_folder = 'arepo_npys'
+
+# Check if the arepo_output_data folder exists
+if os.path.exists(output_folder):
+    # Delete the folder and its contents
+    shutil.rmtree(output_folder)
+    print(f"Deleted existing folder: {output_folder}")
+
+# Create the new arepo_npys directory
+os.makedirs(new_folder, exist_ok=True)
+print(f"Created new directory: {new_folder}")
 
 for i, pack_dist_field_dens in enumerate(results):
 
     lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = pack_dist_field_dens
 
-    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=True) # this plots
+    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=False) # this plots
 
-    np.save(f"arepo_output_data/ArePositions{i}.npy", radius_vector)
-    np.save(f"arepo_output_data/ArepoTrajectory{i}.npy", trajectory)
-    np.save(f"arepo_output_data/ArepoNumberDensities{i}.npy", gas_densities)
-    np.save(f"arepo_output_data/ArepoMagneticFields{i}.npy", magnetic_fields)
+    np.save(f"arepo_npys/ArePositions{i}.npy", radius_vector)
+    np.save(f"arepo_npys/ArepoTrajectory{i}.npy", trajectory)
+    np.save(f"arepo_npys/ArepoNumberDensities{i}.npy", gas_densities)
+    np.save(f"arepo_npys/ArepoMagneticFields{i}.npy", magnetic_fields)
 
     if True:
         # Create a figure and axes for the subplot layout

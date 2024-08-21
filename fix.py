@@ -13,7 +13,7 @@ index_global_max = np.where(bfield == max(bfield))[0]
 print(index_global_max[1:-2])
 print(index_global_max)
 
-bfield[index_global_max[1:-2]] = bfield[index_global_max[1:-2]]/2
+#bfield[index_global_max[1:-2]] = bfield[index_global_max[1:-2]]/2
 
 #index_peaks, global_info = pocket_finder(bfield) # this plots
 pocket, global_info = pocket_finder(bfield, 0.0, plot=True) # this plots

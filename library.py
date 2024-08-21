@@ -78,7 +78,7 @@ def pocket_finder(bfield, cycle=0, plot=False):
     Bi = 0.0
     lindex = []
     lpeaks = []
-    for i, Bj in enumerate(bfield[0:idx+scope]):
+    for i, Bj in enumerate(bfield[0:idx]):
         if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
             lindex.append(i - 1)
             lpeaks.append(Bi)
@@ -88,14 +88,14 @@ def pocket_finder(bfield, cycle=0, plot=False):
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for i, Bj in enumerate(reversed(bfield[idx-scope:])):
+    for i, Bj in enumerate(reversed(bfield[idx:])):
         if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
             rindex.append(len(bfield) - i)
             rpeaks.append(Bi)
         Bi = Bj
 
-    peaks = lpeaks + list(reversed(rpeaks))
-    indexes = lindex + list(reversed(rindex))
+    peaks = lpeaks + [upline] +  list(reversed(rpeaks))
+    indexes = lindex+ [idx]  + list(reversed(rindex))
     
     if plot:
         # Create a figure and axes for the subplot layout
@@ -117,7 +117,7 @@ def pocket_finder(bfield, cycle=0, plot=False):
         # Adjust layout to prevent overlap
         plt.tight_layout()
         # Save the figure
-        plt.savefig(f"./field_shapes/field_shape{cycle}.png")
+        plt.savefig(f"./arepo_pockets/field_shape{cycle}.png")
         plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
