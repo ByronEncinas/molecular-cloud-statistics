@@ -332,34 +332,34 @@ for i, pack_dist_field_dens in enumerate(results):
     np.save(f"arepo_output_data/ArepoNumberDensities{i}.npy", gas_densities)
     np.save(f"arepo_output_data/ArepoMagneticFields{i}.npy", magnetic_fields)
 
-if True:
-	# Create a figure and axes for the subplot layout
-	fig, axs = plt.subplots(2, 1, figsize=(8, 6))
+    if True:
+        # Create a figure and axes for the subplot layout
+        fig, axs = plt.subplots(2, 1, figsize=(8, 6))
 
-	axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
-	axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
-	axs[0].set_xlabel("trajectory (Pc)")
-	axs[0].set_ylabel("$B(s)$ (Gauss (M_{sun}/Pc)**(1/2))")
-	axs[0].set_title("Individual Magnetic Field Shape")
-	axs[0].legend()
-	axs[0].grid(True)
+        axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
+        axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
+        axs[0].set_xlabel("trajectory (Pc)")
+        axs[0].set_ylabel("$B(s)$ (Gauss (M_{sun}/Pc)**(1/2))")
+        axs[0].set_title("Individual Magnetic Field Shape")
+        axs[0].legend()
+        axs[0].grid(True)
 
-	axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
-	axs[1].set_xlabel("trajectory (cgs units Pc)")
-	axs[1].set_ylabel("$n_g(s)$ Field ($M_{sun}/Pc^3$) ")
-	axs[1].set_title("Gas Density along Magnetic Lines")
-	axs[1].legend()
-	axs[1].grid(True)
+        axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
+        axs[1].set_xlabel("trajectory (cgs units Pc)")
+        axs[1].set_ylabel("$n_g(s)$ Field ($M_{sun}/Pc^3$) ")
+        axs[1].set_title("Gas Density along Magnetic Lines")
+        axs[1].legend()
+        axs[1].grid(True)
 
-	# Adjust layout to prevent overlap
-	plt.tight_layout()
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
 
-	# Save the figure
-	plt.savefig("field_shapes/field-density_shape.png")
+        # Save the figure
+        plt.savefig(f"field_shapes/field-density_shape{i}.png")
 
-	# Show the plot
-	#plt.show()
-	plt.close(fig)
+        # Show the plot
+        #plt.show()
+        plt.close(fig)
 
 if False:
 	ax = plt.figure().add_subplot(projection='3d')
