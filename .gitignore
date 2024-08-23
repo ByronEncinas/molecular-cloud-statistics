@@ -10,3 +10,4 @@ random*
 __*
 .ipynb*
 multiprocessing_test.py
+cluster_outputs/
