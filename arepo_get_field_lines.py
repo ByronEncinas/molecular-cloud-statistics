@@ -192,16 +192,6 @@ print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
-if True:
-    nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-    npix  = 12 * nside ** 2 
-    ipix_center       = np.arange(npix)
-    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-    xx = np.array(random.sample(sorted(xx),1))
-    yy = np.array(random.sample(sorted(yy),1))
-    zz = np.array(random.sample(sorted(zz),1))
-
-
 def get_along_lines(x_init):
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
@@ -287,10 +277,7 @@ def get_along_lines(x_init):
 	
     return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
-# Generate a list of tasks
-tasks = []
 
-    
 """ python3 arepo_reduction_factor.py 120 50 1 10
 
 import os
@@ -330,12 +317,15 @@ if os.path.exists(output_folder):
 os.makedirs(new_folder, exist_ok=True)
 print(f"Created new directory: {new_folder}")
 
+# Generate a list of tasks
+tasks = []
+    
 for i in range(max_cycles):
 	    
     rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
     
     if True:
-        nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+        nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
         npix  = 12 * nside ** 2 
         ipix_center       = np.arange(npix)
         xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)

@@ -284,7 +284,7 @@ for i in range(max_cycles):
     rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
     
     if True:
-        nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+        nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
         npix  = 12 * nside ** 2 
         ipix_center       = np.arange(npix)
         xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
@@ -295,9 +295,9 @@ for i in range(max_cycles):
     m = len(zz) # amount of values that hold which_up_down
 
     x_init = np.zeros((m,3))
-    x_init[:,0]      = 1.0* xx[:]/xx[:]#rloc_center * xx[:]
-    x_init[:,1]      = 1.0* xx[:]/xx[:]#rloc_center * yy[:]
-    x_init[:,2]      = 1.0* xx[:]/xx[:]#rloc_center * zz[:]
+    x_init[:,0]      = rloc_center * xx[:]
+    x_init[:,1]      = rloc_center * yy[:]
+    x_init[:,2]      = rloc_center * zz[:]
 
     initial_conditions = (x_init)
     print("rloc_center:= ", rloc_center, list(x_init[0]))
