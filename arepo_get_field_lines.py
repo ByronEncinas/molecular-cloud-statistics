@@ -227,13 +227,13 @@ def get_along_lines(x_init):
     # propagates from same inner region to the outside in -dx direction
 
     for k in range(N):
+        print(k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
-        print(k, x, bfield, dens)
-        print((time.time()-start_time)/60)
+        
 
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
