@@ -289,32 +289,8 @@ def get_along_lines(x_init):
 
 # Generate a list of tasks
 tasks = []
-for i in range(max_cycles):
+
     
-    rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
-    
-    if True:
-        nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-        npix  = 12 * nside ** 2 
-        ipix_center       = np.arange(npix)
-        xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-        xx = np.array(random.sample(sorted(xx),1))
-        yy = np.array(random.sample(sorted(yy),1))
-        zz = np.array(random.sample(sorted(zz),1))
-
-    m = len(zz) # amount of values that hold which_up_down
-
-    x_init = np.zeros((m,3))
-    x_init[:,0]      = rloc_center * xx[:]
-    x_init[:,1]      = rloc_center * yy[:]
-    x_init[:,2]      = rloc_center * zz[:]
-
-    initial_conditions = (x_init)
-    print("rloc_center:= ", rloc_center, list(x_init[0]))
-    tasks.append((initial_conditions))
-    
-    results = np.append(np.array([]).get_along_lines(initial_conditions))
-
 """ python3 arepo_reduction_factor.py 120 50 1 10
 
 import os
@@ -354,9 +330,31 @@ if os.path.exists(output_folder):
 os.makedirs(new_folder, exist_ok=True)
 print(f"Created new directory: {new_folder}")
 
-for i, pack_dist_field_dens in enumerate(results):
+for i in range(max_cycles):
+	    
+    rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
+    
+    if True:
+        nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+        npix  = 12 * nside ** 2 
+        ipix_center       = np.arange(npix)
+        xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
+        xx = np.array(random.sample(sorted(xx),1))
+        yy = np.array(random.sample(sorted(yy),1))
+        zz = np.array(random.sample(sorted(zz),1))
 
-    lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = pack_dist_field_dens
+    m = len(zz) # amount of values that hold which_up_down
+
+    x_init = np.zeros((m,3))
+    x_init[:,0]      = rloc_center * xx[:]
+    x_init[:,1]      = rloc_center * yy[:]
+    x_init[:,2]      = rloc_center * zz[:]
+
+    initial_conditions = (x_init)
+    print("rloc_center:= ", rloc_center, list(x_init[0]))
+    tasks.append((initial_conditions))
+
+    lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(initial_conditions)
 
     pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=False) # this plots
 

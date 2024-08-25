@@ -214,7 +214,7 @@ def get_along_lines(x_init):
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
-    start_time = time.time()
+
     for k in range(N):
         print(k, (time.time()-start_time)/60.)
         
