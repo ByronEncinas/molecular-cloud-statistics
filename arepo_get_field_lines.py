@@ -346,12 +346,13 @@ for i in range(max_cycles):
 
     lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(initial_conditions)
 
-    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=False) # this plots
+    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=True) # this plots
 
     np.save(f"arepo_npys/ArePositions{i}.npy", radius_vector)
     np.save(f"arepo_npys/ArepoTrajectory{i}.npy", trajectory)
     np.save(f"arepo_npys/ArepoNumberDensities{i}.npy", gas_densities)
     np.save(f"arepo_npys/ArepoMagneticFields{i}.npy", magnetic_fields)
+    print(f"finished line {i+1}/{max_cycles}",(time.time()-start_time)/60)
 
     if True:
         # Create a figure and axes for the subplot layout
@@ -362,14 +363,12 @@ for i in range(max_cycles):
         axs[0].set_xlabel("trajectory (Pc)")
         axs[0].set_ylabel("$B(s)$ (Gauss (M_{sun}/Pc)**(1/2))")
         axs[0].set_title("Individual Magnetic Field Shape")
-        axs[0].legend()
         axs[0].grid(True)
 
         axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
         axs[1].set_xlabel("trajectory (cgs units Pc)")
         axs[1].set_ylabel("$n_g(s)$ Field ($M_{sun}/Pc^3$) ")
         axs[1].set_title("Gas Density along Magnetic Lines")
-        axs[1].legend()
         axs[1].grid(True)
 
         # Adjust layout to prevent overlap
@@ -381,6 +380,8 @@ for i in range(max_cycles):
         # Show the plot
         #plt.show()
         plt.close(fig)
+
+print(f"finished: ",(time.time()-start_time)/60)
 
 if False:
 	ax = plt.figure().add_subplot(projection='3d')
@@ -417,3 +418,4 @@ if False:
 
 	#plt.close()
 	#plt.show()
+

@@ -228,7 +228,7 @@ def get_along_lines(x_init):
     # propagates from same inner region to the outside in -dx direction
 
     for k in range(N):
-        print(k, (time.time()-start_time)/60.)
+        print(-k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line_rev[k+1,:,:] = x
@@ -322,7 +322,7 @@ elapsed_time = time.time() - start_time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 #radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
-
+ 
 import os
 import shutil
 
@@ -360,14 +360,12 @@ for i, pack_dist_field_dens in enumerate(results):
         axs[0].set_xlabel("trajectory (Pc)")
         axs[0].set_ylabel("$B(s)$ (Gauss (M_{sun}/Pc)**(1/2))")
         axs[0].set_title("Individual Magnetic Field Shape")
-        axs[0].legend()
         axs[0].grid(True)
 
         axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
         axs[1].set_xlabel("trajectory (cgs units Pc)")
         axs[1].set_ylabel("$n_g(s)$ Field ($M_{sun}/Pc^3$) ")
         axs[1].set_title("Gas Density along Magnetic Lines")
-        axs[1].legend()
         axs[1].grid(True)
 
         # Adjust layout to prevent overlap
@@ -380,7 +378,7 @@ for i, pack_dist_field_dens in enumerate(results):
         #plt.show()
         plt.close(fig)
 
-if False:
+if True:
 	ax = plt.figure().add_subplot(projection='3d')
 
 	for k in range(1):

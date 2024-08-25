@@ -226,7 +226,7 @@ def get_along_lines(x_init):
     # propagates from same inner region to the outside in -dx direction
     
     for k in range(N):
-
+        print(k, (time.time()-start_time)/60.)
         dx = 1.0    
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
         
@@ -236,6 +236,7 @@ def get_along_lines(x_init):
     # propagates from same inner region to the outside in -dx direction
     
     for k in range(N):
+        print(-k, (time.time()-start_time)/60.)
         dx = -1.0
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
         
@@ -302,7 +303,7 @@ for i in range(max_cycles):
     rloc_center      = float(random.uniform(0,rloc_center))
     
     if True:
-        nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+        nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
         npix  = 12 * nside ** 2 
         ipix_center       = np.arange(npix)
         xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
