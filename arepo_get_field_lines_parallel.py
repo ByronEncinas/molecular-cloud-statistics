@@ -192,15 +192,6 @@ print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
-if True:
-    nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-    npix  = 12 * nside ** 2 
-    ipix_center       = np.arange(npix)
-    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-    xx = np.array(random.sample(sorted(xx),1))
-    yy = np.array(random.sample(sorted(yy),1))
-    zz = np.array(random.sample(sorted(zz),1))
-
 
 def get_along_lines(x_init):
 
@@ -237,14 +228,13 @@ def get_along_lines(x_init):
     # propagates from same inner region to the outside in -dx direction
 
     for k in range(N):
+        print(k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
         
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
-        print(k, x, bfield, dens)
-        print((time.time()-start_time)/60)
-
+        
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
     densities_rev = densities_rev[1:,:]
@@ -284,7 +274,7 @@ def get_along_lines(x_init):
     trajectory[0] *= 0.0
 	
     index = len(line_rev[:,0,0])
-	
+
     return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 # Generate a list of tasks
@@ -305,18 +295,14 @@ for i in range(max_cycles):
     m = len(zz) # amount of values that hold which_up_down
 
     x_init = np.zeros((m,3))
-    x_init[:,0]      = rloc_center * xx[:]
-    x_init[:,1]      = rloc_center * yy[:]
-    x_init[:,2]      = rloc_center * zz[:]
+    x_init[:,0]      = 1.0* xx[:]/xx[:]#rloc_center * xx[:]
+    x_init[:,1]      = 1.0* xx[:]/xx[:]#rloc_center * yy[:]
+    x_init[:,2]      = 1.0* xx[:]/xx[:]#rloc_center * zz[:]
 
     initial_conditions = (x_init)
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
-    
-    results = np.append(np.array([]).get_along_lines(initial_conditions))
-
-""" python3 arepo_reduction_factor.py 120 50 1 10
-
+        
 import os
 # Number of worker processes
 num_workers = os.cpu_count()
@@ -336,7 +322,7 @@ elapsed_time = time.time() - start_time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 #radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
- """
+
 import os
 import shutil
 
