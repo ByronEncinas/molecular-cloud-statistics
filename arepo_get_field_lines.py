@@ -159,9 +159,9 @@ Name: PartType0/MagneticField
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Bfield  *= 1.0* (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0* 6.771194847794873e-23
-Mass    *= 1.0* 1.9885e33
+Bfield  *= 1.0 #* (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0 #* 6.771194847794873e-23
+Mass    *= 1.0 #* 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -175,8 +175,8 @@ Center = Pos[np.argmax(Density),:] #430
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 1.0*1.496e13
-Pos        *= 1.0*1.496e13
+VoronoiPos *= 1.0#*1.496e13
+Pos        *= 1.0#*1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
@@ -194,6 +194,8 @@ print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
 
+    m = len(x_init[:,0])
+
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
@@ -207,29 +209,29 @@ def get_along_lines(x_init):
 
     x = x_init
 
-    print(x_init[0,:])
-
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
     start_time = time.time()
     for k in range(N):
-        print(k, (time.time()-start_time)/60.)
+        #print(k, (time.time()-start_time)/60.)
         
         dx = 1.0
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
-        
+        print(k, x, bfield, dens)
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
 
+    x = x_init
+	
     for k in range(N):
-        print(k, (time.time()-start_time)/60.)
+        #print(-k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
-        
+        print(-k, x, bfield, dens)
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
@@ -278,7 +280,8 @@ def get_along_lines(x_init):
     return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 
-""" python3 arepo_reduction_factor.py 120 50 1 10
+""" 
+python3 arepo_reduction_factor.py 120 50 1 10
 
 import os
 # Number of worker processes
@@ -341,8 +344,9 @@ for i in range(max_cycles):
     x_init[:,2]      = rloc_center * zz[:]
 
     initial_conditions = (x_init)
-    print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
+	
+    print("rloc_center:= ", rloc_center, list(x_init[0]))
 
     lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(initial_conditions)
 
@@ -352,6 +356,7 @@ for i in range(max_cycles):
     np.save(f"arepo_npys/ArepoTrajectory{i}.npy", trajectory)
     np.save(f"arepo_npys/ArepoNumberDensities{i}.npy", gas_densities)
     np.save(f"arepo_npys/ArepoMagneticFields{i}.npy", magnetic_fields)
+	
     print(f"finished line {i+1}/{max_cycles}",(time.time()-start_time)/60)
 
     if True:

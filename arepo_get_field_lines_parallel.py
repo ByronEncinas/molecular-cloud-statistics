@@ -194,6 +194,8 @@ print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
 
 def get_along_lines(x_init):
+	
+    m = len(x_init[:,0])
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
@@ -207,8 +209,6 @@ def get_along_lines(x_init):
     line_rev[0,:,:] =x_init
 
     x = x_init
-
-    print(x_init[0,:])
 
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
@@ -226,6 +226,8 @@ def get_along_lines(x_init):
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
+
+    x = x_init	
 
     for k in range(N):
         print(-k, (time.time()-start_time)/60.)
@@ -377,39 +379,3 @@ for i, pack_dist_field_dens in enumerate(results):
         # Show the plot
         #plt.show()
         plt.close(fig)
-
-if True:
-	ax = plt.figure().add_subplot(projection='3d')
-
-	for k in range(1):
-		print(k)
-		x=trajectory[:,0] # 1D array
-		y=trajectory[:,1]
-		z=trajectory[:,2]
-		
-		#which = x**2 + y**2 + z**2 <= rloc_boundary**2
-		
-		#x=x[which]
-		#y=y[which]
-		#z=z[which]
-		
-		for l in range(len(z)):
-			ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
-
-		#ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-		ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-		ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-		
-
-	ax.set_xlim(-rloc_boundary,rloc_boundary)
-	ax.set_ylim(-rloc_boundary,rloc_boundary)
-	ax.set_zlim(-rloc_boundary,rloc_boundary)
-	ax.set_xlabel('x [AU]')
-	ax.set_ylabel('y [AU]')
-	ax.set_zlabel('z [AU]')
-	ax.set_title('From Core to Outside in +s, -s directions')
-
-	plt.savefig(f'field_shapes/MagneticFieldTopology.png',bbox_inches='tight')
-
-	#plt.close()
-	#plt.show()
