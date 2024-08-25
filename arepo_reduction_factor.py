@@ -137,7 +137,7 @@ Boxsize = data['Header'].attrs['BoxSize'] #
 VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
 Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
 Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
-Bfield_grad  = np.zeros((len(Bfield),3))
+Bfield_grad = np.zeros((len(Pos), 9))
 Density = np.array(data['PartType0']['Density'], dtype=FloatType)
 Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)

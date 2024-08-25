@@ -78,7 +78,7 @@ def pocket_finder(bfield, cycle=0, plot=False):
     Bi = 0.0
     lindex = []
     lpeaks = []
-    for i, Bj in enumerate(bfield[0:idx]):
+    for i, Bj in enumerate(bfield):
         if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
             lindex.append(i - 1)
             lpeaks.append(Bi)
@@ -88,14 +88,14 @@ def pocket_finder(bfield, cycle=0, plot=False):
     Bi = 0.0
     rindex = []
     rpeaks = []
-    for i, Bj in enumerate(reversed(bfield[idx:])):
+    for i, Bj in enumerate(reversed(bfield)):
         if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
             rindex.append(len(bfield) - i)
             rpeaks.append(Bi)
         Bi = Bj
 
-    peaks = lpeaks + [upline] +  list(reversed(rpeaks))
-    indexes = lindex+ [idx]  + list(reversed(rindex))
+    peaks = lpeaks +  list(reversed(rpeaks))
+    indexes = lindex + list(reversed(rindex))
     
     if plot:
         # Create a figure and axes for the subplot layout

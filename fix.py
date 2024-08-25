@@ -2,11 +2,10 @@ from library import *
 import numpy as np
 import scipy
 
-radius_vector = np.array(np.load("arepo_output_data/ArePositions.npy", mmap_mode='r'))
-distance = np.array(np.load("arepo_output_data/ArepoTrajectory.npy", mmap_mode='r'))
-bfield   = np.array(np.load("arepo_output_data/ArepoMagneticFields.npy", mmap_mode='r'))
-numb_density   = np.array(np.load("arepo_output_data/ArepoNumberDensities.npy", mmap_mode='r'))
-
+radius_vector = np.array(np.load("cluster_outputs/npysJAKAR/ArePositions.npy", mmap_mode='r'))
+distance = np.array(np.load("cluster_outputs/npysJAKAR/ArepoTrajectory.npy", mmap_mode='r'))
+bfield   = np.array(np.load("cluster_outputs/npysJAKAR/ArepoMagneticFields.npy", mmap_mode='r'))
+numb_density   = np.array(np.load("cluster_outputs/npysJAKAR/ArepoNumberDensities.npy", mmap_mode='r'))
 
 
 index_global_max = np.where(bfield == max(bfield))[0]
@@ -68,7 +67,7 @@ if __name__ == "__main__":
         plt.tight_layout()
 
         # Save the figure
-        plt.savefig("field_shapes/field-density_shape.png")
+        plt.savefig("_field-density_shape.png")
 
         # Show the plot
         #plt.show()

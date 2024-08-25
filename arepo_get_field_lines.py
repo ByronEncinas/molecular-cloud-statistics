@@ -10,8 +10,9 @@ import time
 import h5py
 import json
 import sys
-
 from library import *
+
+start_time = time.time()
 
 """  
 Using Margo Data
@@ -64,7 +65,7 @@ reduction_factor_at_gas_density = defaultdict()
 
 reduction_factor = np.array([])
 
-filename = 'arepo_data/snap_430.hdf5'
+
 
 """
 Functions/Methods
@@ -99,14 +100,11 @@ def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
 	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
 	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
-	
 	return local_fields, abs_local_fields, local_densities, cells
 	
 def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
-
 	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
-		
 	if dx > 0:
 		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 	else:
@@ -125,17 +123,14 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 	return x_final, abs_local_fields_1, local_densities
 
 """  B. Jesus Velazquez One Dimensional """
-
+filename = 'arepo_data/snap_430.hdf5'
 data = h5py.File(filename, 'r')
-
-print(filename, "Loaded")
-
 Boxsize = data['Header'].attrs['BoxSize'] #
 
 VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
 Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
 Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
-Bfield_grad  = np.zeros((len(Bfield),3))
+Bfield_grad = np.zeros((len(Pos), 9))
 Density = np.array(data['PartType0']['Density'], dtype=FloatType)
 Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
@@ -161,6 +156,8 @@ Name: PartType0/Velocities
 Name: PartType0/MagneticField
 
 """
+
+print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
 Bfield  *= 1.0* (3.086e+18/1.9885e33)**(-1/2) # in cgs
 Density *= 1.0* 6.771194847794873e-23
@@ -195,6 +192,16 @@ print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
+if True:
+    nside = 8     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+    npix  = 12 * nside ** 2 
+    ipix_center       = np.arange(npix)
+    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
+    xx = np.array(random.sample(sorted(xx),1))
+    yy = np.array(random.sample(sorted(yy),1))
+    zz = np.array(random.sample(sorted(zz),1))
+
+
 def get_along_lines(x_init):
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
@@ -216,7 +223,9 @@ def get_along_lines(x_init):
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
+    start_time = time.time()
     for k in range(N):
+        print(k, (time.time()-start_time)/60.)
         
         dx = 1.0
         x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
@@ -233,6 +242,8 @@ def get_along_lines(x_init):
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
+        print(k, x, bfield, dens)
+        print((time.time()-start_time)/60)
 
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
@@ -299,7 +310,11 @@ for i in range(max_cycles):
     initial_conditions = (x_init)
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
-        
+    
+    get_along_lines(initial_conditions)
+
+""" python3 arepo_reduction_factor.py 120 50 1 10
+
 import os
 # Number of worker processes
 num_workers = os.cpu_count()
@@ -319,7 +334,7 @@ elapsed_time = time.time() - start_time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 #radius_vector, trajectory, magnetic_fields, gas_densities = results[0]
-
+ """
 import os
 import shutil
 
@@ -408,7 +423,7 @@ if False:
 	ax.set_zlabel('z [AU]')
 	ax.set_title('From Core to Outside in +s, -s directions')
 
-	#plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
+	plt.savefig(f'field_shapes/MagneticFieldTopology.png',bbox_inches='tight')
 
 	#plt.close()
 	#plt.show()
