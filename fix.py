@@ -17,6 +17,8 @@ print(index_global_max)
 #index_peaks, global_info = pocket_finder(bfield) # this plots
 pocket, global_info = pocket_finder(bfield, 0.0, plot=True) # this plots
 index_pocket, field_pocket = pocket[0], pocket[1]
+print(index_pocket)
+print(field_pocket)
 
 import numpy as np
 import random
@@ -30,6 +32,8 @@ if __name__ == "__main__":
     
     print(random_index)
     # Select and return the vector at the random index
+    ijk = np.argmax(bfield)
+    print("argmax",ijk)
     B_init = bfield[random_index]
     
     print(index_shape, B_init)
@@ -48,6 +52,7 @@ if __name__ == "__main__":
         fig, axs = plt.subplots(2, 1, figsize=(8, 6))
 
         axs[0].plot(distance, bfield, linestyle="--", color="m")
+        axs[0].scatter(distance[ijk], bfield[ijk], marker="x", color="g")
         axs[0].scatter(distance, bfield, marker="+", color="m")
         axs[0].set_xlabel("trajectory (pc)")
         axs[0].set_ylabel("$B(s)$ (cgs units )")

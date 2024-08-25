@@ -72,7 +72,9 @@ def pocket_finder(bfield, cycle=0, plot=False):
     index_global_max = np.where(bfield == upline)[0]
     idx = index_global_max[0]
     upline == bfield[idx]
-    scope = index_global_max[-1] - index_global_max[0]
+    ijk = np.argmax(bfield)
+    bfield[ijk] = bfield[ijk]*1.001 # if global_max is found in flat region, choose one and scale it 0.001
+
 
     # Find left peaks
     Bi = 0.0
@@ -94,8 +96,8 @@ def pocket_finder(bfield, cycle=0, plot=False):
             rpeaks.append(Bi)
         Bi = Bj
 
-    peaks = lpeaks +  list(reversed(rpeaks))
-    indexes = lindex + list(reversed(rindex))
+    peaks = lpeaks +  list(reversed(rpeaks))[1:]
+    indexes = lindex + list(reversed(rindex))[1:]
     
     if plot:
         # Create a figure and axes for the subplot layout
