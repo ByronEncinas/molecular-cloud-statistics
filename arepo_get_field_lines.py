@@ -6,12 +6,13 @@ from scipy import spatial
 import healpy as hp
 import numpy as np
 import random
-import time
+
 import h5py
 import json
 import sys
 from library import *
 
+import time
 start_time = time.time()
 
 """  
@@ -209,7 +210,7 @@ def get_along_lines(x_init):
 
     x = x_init
 
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
     start_time = time.time()
@@ -223,6 +224,7 @@ def get_along_lines(x_init):
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
+    x = x_init
 
     dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
 	
@@ -242,40 +244,45 @@ def get_along_lines(x_init):
     dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
 
     dens_diff = dens_max - dens_min
+	
+    # Concatenating the arrays correctly as 3D arrays
+    # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path = np.concatenate((line[:, 0, :], line_rev[::-1, 0, :]), axis=0)
+    path = line[:, 0, :]
 
-    path           = np.append(line[:,0], line_rev[::-1,0])
-    path_bfields   = np.append(bfields[:,0], bfields_rev[::-1,0])
-    path_densities = np.append(densities[:,0], densities_rev[::-1,0])
+    # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_bfields = np.concatenate((bfields[:, 0], bfields_rev[::-1, 0]), axis=0)
+    path_bfields = bfields[:, 0]
 
- #   for j, _ in enumerate(path[0,:,0]):
-    j = 0
-    # for trajectory 
-    radius_vector      = np.zeros_like(path[:,:])
-    magnetic_fields    = np.zeros_like(path_bfields[:])
-    gas_densities      = np.zeros_like(path_densities[:])
-    trajectory         = np.zeros_like(path[:,0])
+    # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_densities = np.concatenate((densities[:, 0], densities_rev[::-1, 0]), axis=0)
+    path_densities = densities[:, 0]
 
-    prev_radius_vector = path[0,:]
+    # Initialize arrays to store results
+    radius_vector      = np.zeros_like(path[:, :])   # 2D array
+    magnetic_fields    = np.zeros_like(path_bfields[:]) # 1D array
+    gas_densities      = np.zeros_like(path_densities[:]) # 1D array
+    trajectory         = np.zeros(path.shape[0])        # 1D array for the trajectory
+
+    prev_radius_vector = path[0, :]
     diff_rj_ri = 0.0
 
-    for k, pk in enumerate(path[:,j,0]):
-        print(j,k)
+    for k in range(path.shape[0]):  # Iterate over the first dimension
         
-        radius_vector[k]    = path[k,:]
-        magnetic_fields[k]  = path_bfields[k]
-        gas_densities[k]    = path_densities[k]
-        diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+        radius_vector[k, :]   = path[k, :]
+        magnetic_fields[k]    = path_bfields[k]
+        gas_densities[k]      = path_densities[k]
+        diff_rj_ri = magnitude(radius_vector[k, :], prev_radius_vector)
         trajectory[k] = trajectory[k-1] + diff_rj_ri
-        #print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+        print(trajectory[k],radius_vector[k, :],magnetic_fields[k])
         
-        prev_radius_vector  = radius_vector[k] 
+        prev_radius_vector = radius_vector[k, :]
 
     trajectory[0] *= 0.0
-	
-    index = len(line_rev[:,0,0])
-	
-    return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
 
+    index = len(line_rev[:, 0, 0])
+
+    return index, line[0, 0, :], bfields[0, 0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 """ 
 python3 arepo_reduction_factor.py 120 50 1 10

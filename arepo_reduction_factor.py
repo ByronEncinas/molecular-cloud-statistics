@@ -6,13 +6,15 @@ from scipy import spatial
 import healpy as hp
 import numpy as np
 import random
-import time
 import h5py
 import json
 import sys
 import os
 
 from library import *
+
+import time
+start_time = time.time()
 
 """  
 Using Margo Data
@@ -136,8 +138,8 @@ Boxsize = data['Header'].attrs['BoxSize'] #
 
 VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
 Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
-magnetic_fields = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
-magnetic_fields_grad = np.zeros((len(Pos), 9))
+Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
+Bfield_grad = np.zeros((len(Pos), 9))
 Density = np.array(data['PartType0']['Density'], dtype=FloatType)
 Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
@@ -165,7 +167,7 @@ Name: PartType0/MagneticField
 
 """
 
-magnetic_fields  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Bfield  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
 Density *= 1.0# 6.771194847794873e-23          # in cgs
 Mass    *= 1.0# 1.9885e33                      # in cgs
 Volume   = Mass/Density
@@ -202,15 +204,14 @@ print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
-
     m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    magnetic_fieldss   = np.zeros((N+1,m))
+    bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    magnetic_fieldss_rev = np.zeros((N+1,m))
+    bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
 
     line[0,:,:]     =x_init
@@ -218,72 +219,80 @@ def get_along_lines(x_init):
 
     x = x_init
 
-    dummy, magnetic_fieldss[0,:], densities[0,:], cells = find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos)
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
     start_time = time.time()
     for k in range(N):
         #print(k, (time.time()-start_time)/60.)
         
-        x, magnetic_fields, dens = Heun_step(x, 1, magnetic_fields, Density, Density_grad, VoronoiPos)
-        print(k, x, magnetic_fields, dens)
+        x, bfield, dens = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
+        print(k, x, bfield, dens)
         line[k+1,:,:] = x
-        magnetic_fieldss[k+1,:] = magnetic_fields
+        bfields[k+1,:] = bfield
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
+    x = x_init
 
-    dummy, magnetic_fieldss_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, magnetic_fields, Density, Density_grad, Pos)
+    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
 	
     for k in range(N):
         #print(-k, (time.time()-start_time)/60.)
-        x, magnetic_fields, dens = Heun_step(x, -1, magnetic_fields, Density, Density_grad, VoronoiPos)
-        print(-k, x, magnetic_fields, dens)
+        x, bfield, dens = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
+        print(-k, x, bfield, dens)
         line_rev[k+1,:,:] = x
-        magnetic_fieldss_rev[k+1,:] = magnetic_fields
+        bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
 
     line_rev = line_rev[1:,:,:]
-    magnetic_fieldss_rev = magnetic_fieldss_rev[1:,:] 
+    bfields_rev = bfields_rev[1:,:] 
     densities_rev = densities_rev[1:,:]
 
     dens_min = np.log10(min(np.min(densities),np.min(densities_rev)))
     dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
 
     dens_diff = dens_max - dens_min
+	
+    # Concatenating the arrays correctly as 3D arrays
+    # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path = np.concatenate((line[:, 0, :], line_rev[::-1, 0, :]), axis=0)
+    path = line[:, 0, :]
 
-    path           = np.append(line, line_rev[::-1,0])
-    path_magnetic_fieldss   = np.append(magnetic_fieldss, magnetic_fieldss_rev[::-1,0])
-    path_densities = np.append(densities, densities_rev[::-1,0])
+    # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_bfields = np.concatenate((bfields[:, 0], bfields_rev[::-1, 0]), axis=0)
+    path_bfields = bfields[:, 0]
 
- #   for j, _ in enumerate(path[0,:,0]):
-    j = 0
-    # for trajectory 
-    radius_vector      = np.zeros_like(path[:,j,:])
-    magnetic_fields    = np.zeros_like(path_magnetic_fieldss[:,j])
-    gas_densities      = np.zeros_like(path_densities[:,j])
-    trajectory         = np.zeros_like(path[:,j,0])
+    # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_densities = np.concatenate((densities[:, 0], densities_rev[::-1, 0]), axis=0)
+    path_densities = densities[:, 0]
 
-    prev_radius_vector = path[0,j,:]
+    # Initialize arrays to store results
+    radius_vector      = np.zeros_like(path[:, :])   # 2D array
+    magnetic_fields    = np.zeros_like(path_bfields[:]) # 1D array
+    gas_densities      = np.zeros_like(path_densities[:]) # 1D array
+    trajectory         = np.zeros(path.shape[0])        # 1D array for the trajectory
+
+    prev_radius_vector = path[0, :]
     diff_rj_ri = 0.0
 
-    for k, pk in enumerate(path[:,j,0]):
-        print(j,k)
+    for k in range(path.shape[0]):  # Iterate over the first dimension
         
-        radius_vector[k]    = path[k,j,:]
-        magnetic_fields[k]  = path_magnetic_fieldss[k,j]
-        gas_densities[k]    = path_densities[k,j]
-        diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+        radius_vector[k, :]   = path[k, :]
+        magnetic_fields[k]    = path_bfields[k]
+        gas_densities[k]      = path_densities[k]
+        diff_rj_ri = magnitude(radius_vector[k, :], prev_radius_vector)
         trajectory[k] = trajectory[k-1] + diff_rj_ri
-        #print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+        print( trajectory[k],radius_vector[k, :],magnetic_fields[k])
         
-        prev_radius_vector  = radius_vector[k] 
+        prev_radius_vector = radius_vector[k, :]
 
     trajectory[0] *= 0.0
-	
+
+    index = len(line_rev[:, 0, 0])
     lmn = len(line_rev[:,0,0]) - 1
 
-    x_init, B_init = line[0,0,:], magnetic_fieldss[0,0]
+    x_init, B_init = line[0,0,:], magnetic_fields[0,0]
 
     """# Obtained position along the field lines, now we find the pocket"""
 
@@ -432,14 +441,13 @@ with Pool(num_workers) as pool:
 # Record the end time
 elapsed_time = time.time() - start_time
 
+#for i, pack_dist_field_dens in enumerate(results):
+reduction_factor = results.copy()
+
+print(reduction_factor, "Elapsed Time: ", elapsed_time)
+
 # Print elapsed time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
-
-
-#for i, pack_dist_field_dens in enumerate(results):
-
-
-print(reduction_factor)
 
 # Specify the file path
 file_path = f'random_distributed_reduction_factor{sys.argv[-1]}.json'

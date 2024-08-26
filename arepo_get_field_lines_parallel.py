@@ -194,8 +194,8 @@ print("Biggest  Volume    : ", Volume[np.argmax(Volume)],"\n") # 256
 
 
 def get_along_lines(x_init):
-	
-    m = len(x_init[:,0])
+
+    m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
@@ -210,33 +210,32 @@ def get_along_lines(x_init):
 
     x = x_init
 
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
-
+    start_time = time.time()
     for k in range(N):
-        print(k, (time.time()-start_time)/60.)
+        #print(k, (time.time()-start_time)/60.)
         
-        dx = 1.0
-        x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
-        
+        x, bfield, dens = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
+        print(k, x, bfield, dens)
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
 
     # propagates from same inner region to the outside in -dx direction
+    x = x_init
 
-    x = x_init	
-
+    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
+	
     for k in range(N):
-        print(-k, (time.time()-start_time)/60.)
-        x, bfield, dens = Heun_step(x, -dx, Bfield, Density, Density_grad, VoronoiPos)
-        
+        #print(-k, (time.time()-start_time)/60.)
+        x, bfield, dens = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
+        print(-k, x, bfield, dens)
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
-        
+
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
     densities_rev = densities_rev[1:,:]
@@ -245,39 +244,48 @@ def get_along_lines(x_init):
     dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
 
     dens_diff = dens_max - dens_min
+	
+    # Concatenating the arrays correctly as 3D arrays
+    # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path = np.concatenate((line[:, 0, :], line_rev[::-1, 0, :]), axis=0)
+    path = line[:, 0, :]
 
-    path           = np.append(line, line_rev, axis=0)
-    path_bfields   = np.append(bfields, bfields_rev, axis=0)
-    path_densities = np.append(densities, densities_rev, axis=0)
+    # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_bfields = np.concatenate((bfields[:, 0], bfields_rev[::-1, 0]), axis=0)
+    path_bfields = bfields[:, 0]
 
- #   for j, _ in enumerate(path[0,:,0]):
-    j = 0
-    # for trajectory 
-    radius_vector      = np.zeros_like(path[:,j,:])
-    magnetic_fields    = np.zeros_like(path_bfields[:,j])
-    gas_densities      = np.zeros_like(path_densities[:,j])
-    trajectory         = np.zeros_like(path[:,j,0])
+    # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
+    path_densities = np.concatenate((densities[:, 0], densities_rev[::-1, 0]), axis=0)
+    path_densities = densities[:, 0]
 
-    prev_radius_vector = path[0,j,:]
+    # Initialize arrays to store results
+    radius_vector      = np.zeros_like(path[:, :])   # 2D array
+    magnetic_fields    = np.zeros_like(path_bfields[:]) # 1D array
+    gas_densities      = np.zeros_like(path_densities[:]) # 1D array
+    trajectory         = np.zeros(path.shape[0])        # 1D array for the trajectory
+
+    prev_radius_vector = path[0, :]
     diff_rj_ri = 0.0
 
-    for k, pk in enumerate(path[:,j,0]):
-        print(j,k)
+    for k in range(path.shape[0]):  # Iterate over the first dimension
         
-        radius_vector[k]    = path[k,j,:]
-        magnetic_fields[k]  = path_bfields[k,j]
-        gas_densities[k]    = path_densities[k,j]
-        diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+        radius_vector[k, :]   = path[k, :]
+        magnetic_fields[k]    = path_bfields[k]
+        gas_densities[k]      = path_densities[k]
+        diff_rj_ri = magnitude(radius_vector[k, :], prev_radius_vector)
         trajectory[k] = trajectory[k-1] + diff_rj_ri
-        #print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+        print( trajectory[k],radius_vector[k, :],magnetic_fields[k])
         
-        prev_radius_vector  = radius_vector[k] 
+        prev_radius_vector = radius_vector[k, :]
 
     trajectory[0] *= 0.0
-	
-    index = len(line_rev[:,0,0])
 
-    return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
+    index = len(line_rev[:, 0, 0])
+
+    lmn = len(line_rev[:,0,0]) - 1
+
+    return lmn, line[0, 0, :], magnetic_fields[0, 0], radius_vector, trajectory, magnetic_fields, gas_densities
+
 
 # Generate a list of tasks
 tasks = []
