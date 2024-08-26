@@ -76,11 +76,11 @@ Functions/Methods
 def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 
     return np.sqrt(sum([(new_vector[i]-prev_vector[i])*(new_vector[i]-prev_vector[i]) for i in range(len(new_vector))]))
 
-def get_magnetic_field_at_points(x, Bfield, rel_pos):
+def get_magnetic_field_at_points(x, magnetic_fields, rel_pos):
 	n = len(rel_pos[:,0])
 	local_fields = np.zeros((n,3))
 	for  i in range(n):
-		local_fields[i,:] = Bfield[i,:]
+		local_fields[i,:] = magnetic_fields[i,:]
 	return local_fields
 
 def get_density_at_points(x, Density, Density_grad, rel_pos):
@@ -96,17 +96,17 @@ def find_points_and_relative_positions(x, Pos):
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 
-def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
+def find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos):
 	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos)
-	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
+	local_fields = get_magnetic_field_at_points(x, magnetic_fields[cells], rel_pos)
 	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
 	
 	return local_fields, abs_local_fields, local_densities, cells
 	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
+def Heun_step(x, dx, magnetic_fields, Density, Density_grad, Pos):
 
-	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos)
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
 		
 	if dx > 0:
@@ -115,7 +115,7 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 
 	x_tilde = x + dx * local_fields_1
-	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
+	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, magnetic_fields, Density, Density_grad, Pos)
 	local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
 	abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
 
@@ -136,8 +136,8 @@ Boxsize = data['Header'].attrs['BoxSize'] #
 
 VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
 Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
-Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
-Bfield_grad = np.zeros((len(Pos), 9))
+magnetic_fields = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
+magnetic_fields_grad = np.zeros((len(Pos), 9))
 Density = np.array(data['PartType0']['Density'], dtype=FloatType)
 Density_grad = np.zeros((len(Density),3))
 Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
@@ -165,7 +165,7 @@ Name: PartType0/MagneticField
 
 """
 
-Bfield  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
+magnetic_fields  *= 1.0#  (3.086e+18/1.9885e33)**(-1/2) # in cgs
 Density *= 1.0# 6.771194847794873e-23          # in cgs
 Mass    *= 1.0# 1.9885e33                      # in cgs
 Volume   = Mass/Density
@@ -203,14 +203,14 @@ print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 
 def get_along_lines(x_init):
 
-    m = x_init.shape[0] # = 1
+    m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields   = np.zeros((N+1,m))
+    magnetic_fieldss   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields_rev = np.zeros((N+1,m))
+    magnetic_fieldss_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
 
     line[0,:,:]     =x_init
@@ -218,35 +218,33 @@ def get_along_lines(x_init):
 
     x = x_init
 
-    print(x_init[0,:])
-
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+    dummy, magnetic_fieldss[0,:], densities[0,:], cells = find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos)
 
     # propagates from same inner region to the outside in -dx direction
-    
+    start_time = time.time()
     for k in range(N):
-        print(k, (time.time()-start_time)/60.)
-        dx = 1.0    
-        x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
+        #print(k, (time.time()-start_time)/60.)
         
+        x, magnetic_fields, dens = Heun_step(x, 1, magnetic_fields, Density, Density_grad, VoronoiPos)
+        print(k, x, magnetic_fields, dens)
         line[k+1,:,:] = x
-        bfields[k+1,:] = bfield
+        magnetic_fieldss[k+1,:] = magnetic_fields
         densities[k+1,:] = dens
+
     # propagates from same inner region to the outside in -dx direction
-    
+
+    dummy, magnetic_fieldss_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, magnetic_fields, Density, Density_grad, Pos)
+	
     for k in range(N):
-        print(-k, (time.time()-start_time)/60.)
-        dx = -1.0
-        x, bfield, dens = Heun_step(x, dx, Bfield, Density, Density_grad, VoronoiPos)
-        
+        #print(-k, (time.time()-start_time)/60.)
+        x, magnetic_fields, dens = Heun_step(x, -1, magnetic_fields, Density, Density_grad, VoronoiPos)
+        print(-k, x, magnetic_fields, dens)
         line_rev[k+1,:,:] = x
-        bfields_rev[k+1,:] = bfield
+        magnetic_fieldss_rev[k+1,:] = magnetic_fields
         densities_rev[k+1,:] = dens
-        
 
     line_rev = line_rev[1:,:,:]
-    bfields_rev = bfields_rev[1:,:] 
+    magnetic_fieldss_rev = magnetic_fieldss_rev[1:,:] 
     densities_rev = densities_rev[1:,:]
 
     dens_min = np.log10(min(np.min(densities),np.min(densities_rev)))
@@ -254,36 +252,133 @@ def get_along_lines(x_init):
 
     dens_diff = dens_max - dens_min
 
-    path           = np.append(line, line_rev, axis=0)
-    path_bfields   = np.append(bfields, bfields_rev, axis=0)
-    path_densities = np.append(densities, densities_rev, axis=0)
+    path           = np.append(line, line_rev[::-1,0])
+    path_magnetic_fieldss   = np.append(magnetic_fieldss, magnetic_fieldss_rev[::-1,0])
+    path_densities = np.append(densities, densities_rev[::-1,0])
 
-    for j, _ in enumerate(path[0,:,0]):
-        # for trajectory 
-        radius_vector      = np.zeros_like(path[:,j,:])
-        magnetic_fields    = np.zeros_like(path_bfields[:,j])
-        gas_densities      = np.zeros_like(path_densities[:,j])
-        trajectory         = np.zeros_like(path[:,j,0])
+ #   for j, _ in enumerate(path[0,:,0]):
+    j = 0
+    # for trajectory 
+    radius_vector      = np.zeros_like(path[:,j,:])
+    magnetic_fields    = np.zeros_like(path_magnetic_fieldss[:,j])
+    gas_densities      = np.zeros_like(path_densities[:,j])
+    trajectory         = np.zeros_like(path[:,j,0])
 
-        prev_radius_vector = path[0,j,:]
-        diff_rj_ri = 0.0
+    prev_radius_vector = path[0,j,:]
+    diff_rj_ri = 0.0
 
-        for k, pk in enumerate(path[:,j,0]):
-            
-            radius_vector[k]    = path[k,j,:]
-            magnetic_fields[k]  = path_bfields[k,j]
-            gas_densities[k]    = path_densities[k,j]
-            diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
-            trajectory[k] = trajectory[k-1] + diff_rj_ri
-            #print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
-            
-            prev_radius_vector  = radius_vector[k] 
+    for k, pk in enumerate(path[:,j,0]):
+        print(j,k)
+        
+        radius_vector[k]    = path[k,j,:]
+        magnetic_fields[k]  = path_magnetic_fieldss[k,j]
+        gas_densities[k]    = path_densities[k,j]
+        diff_rj_ri = magnitude(radius_vector[k], prev_radius_vector)
+        trajectory[k] = trajectory[k-1] + diff_rj_ri
+        #print(radius_vector[k], magnetic_fields[k], gas_densities[k], diff_rj_ri)
+        
+        prev_radius_vector  = radius_vector[k] 
 
-        trajectory[0] *= 0.0
+    trajectory[0] *= 0.0
+	
+    lmn = len(line_rev[:,0,0]) - 1
+
+    x_init, B_init = line[0,0,:], magnetic_fieldss[0,0]
+
+    """# Obtained position along the field lines, now we find the pocket"""
+
+    #index_peaks, global_info = pocket_finder(magnetic_fields) # this plots
+    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=True) # this plots
+    index_pocket, field_pocket = pocket[0], pocket[1]
+
+    globalmax_index = global_info[0]
+    globalmax_field = global_info[1]
+
+    # Calculate the range within the 80th percentile
+    start_index = len(magnetic_fields) // 10  # Skip the first 10% of indices
+    end_index = len(magnetic_fields) - start_index  # Skip the last 10% of indices
+
+    # we gotta find peaks in the interval   (B_l < random_element < B_h)
+    # Generate a random index within the range
+    B_r = B_init.copy()
+
+    print("random index: ", lmn, "peak's index: ", index_pocket, field_pocket)
+
+    """How to find index of Bl?"""
+
+    # Bl it is definitely between two peaks, we need to verify is also inside a pocket
+    # such that Bl < Bs < Bh (p_i < lmn < p_j)
+
+    if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
+        p_i = find_insertion_point(index_pocket, lmn)
+        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
+        print("Maxima Values related to pockets: ",len(index_pocket), p_i)
+    else:
+        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
+        print("No Pockets, R = 1.")
+
+        reduction_factor = np.append(reduction_factor, 1.)
+        cycle += 1
+
+    if len(closest_values) == 2:
+        B_l = min([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
+        B_h = max([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
+    else:
+        reduction_factor = np.append(reduction_factor, 1.)
+        cycle += 1
+
+    if B_r/B_l <= 1:
+        R = 1 - np.sqrt(1-B_r/B_l)
+        reduction_factor = np.append(reduction_factor, R)
+        cycle += 1
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
+    else:
+        R = 1
+        reduction_factor = np.append(reduction_factor, 1.)
+        cycle += 1
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
     
-    index = len(line_rev[:,0,0])
+    print("Closest local maxima 'p':", closest_values)
+    print("Bs: ", magnetic_fields[lmn], "Bi: ", magnetic_fields[closest_values[0]], "Bj: ", magnetic_fields[closest_values[1]])
+    
+    """
+    bs: where bs is the field magnitude at the random point chosen 
+    bl: magnetic at position s of the trajectory
+    """
+    
+    if True:
+        # Create a figure and axes for the subplot layout
+        fig, axs = plt.subplots(2, 1, figsize=(8, 6))
 
-    return index, line[0,0,:], bfields[0,0], radius_vector, trajectory, magnetic_fields, gas_densities
+        axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
+        axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
+        axs[0].set_xlabel("trajectory (pc)")
+        axs[0].set_ylabel("$B(s)$ (cgs units )")
+        axs[0].set_title("Individual Magnetic Field Shape")
+        #axs[0].legend()
+        axs[0].grid(True)
+
+        axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
+        axs[1].set_xlabel("trajectory (cgs units Au)")
+        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/pc^3$) ")
+        axs[1].set_title("Gas Density along Magnetic Lines")
+        #axs[1].legend()
+        axs[1].grid(True)
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+
+        # Save the figure
+        plt.savefig(f"field_shapes/field-density_shape.png")
+
+        # Show the plot
+        #plt.show()
+        plt.close(fig)
+
+	
+    return reduction_factor #lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities
+
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -341,135 +436,8 @@ elapsed_time = time.time() - start_time
 print(f"Elapsed time: {elapsed_time/60} Minutes")
 
 
-for i, pack_dist_field_dens in enumerate(results):
-    
-    lmn, x_init, B_init, radius_vector, distance, bfield, numb_density = pack_dist_field_dens
+#for i, pack_dist_field_dens in enumerate(results):
 
-    """# Obtained position along the field lines, now we find the pocket"""
-
-    #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
-    index_pocket, field_pocket = pocket[0], pocket[1]
-
-    globalmax_index = global_info[0]
-    globalmax_field = global_info[1]
-
-    # Calculate the range within the 80th percentile
-    start_index = len(bfield) // 10  # Skip the first 10% of indices
-    end_index = len(bfield) - start_index  # Skip the last 10% of indices
-
-    # we gotta find peaks in the interval   (B_l < random_element < B_h)
-    # Generate a random index within the range
-    B_r = B_init.copy()
-
-    print("random index: ", lmn, "peak's index: ", index_pocket, field_pocket)
-
-    """How to find index of Bl?"""
-
-    # Bl it is definitely between two peaks, we need to verify is also inside a pocket
-    # such that Bl < Bs < Bh (p_i < lmn < p_j)
-
-    if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
-        p_i = find_insertion_point(index_pocket, lmn)
-        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
-        print("Maxima Values related to pockets: ",len(index_pocket), p_i)
-    else:
-        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
-        print("No Pockets, R = 1.")
-
-        reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
-        continue
-
-    if len(closest_values) == 2:
-        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
-        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-    else:
-        reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
-        continue
-
-    if B_r/B_l <= 1:
-        R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor = np.append(reduction_factor, R)
-        cycle += 1
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
-    else:
-        R = 1
-        reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
-    
-    print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", bfield[lmn], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
-    
-    """
-    bs: where bs is the field magnitude at the random point chosen 
-    bl: magnetic at position s of the trajectory
-    """
-    
-    if True:
-        # Create a figure and axes for the subplot layout
-        fig, axs = plt.subplots(2, 1, figsize=(8, 6))
-
-        axs[0].plot(distance, bfield, linestyle="--", color="m")
-        axs[0].scatter(distance, bfield, marker="+", color="m")
-        axs[0].set_xlabel("trajectory (pc)")
-        axs[0].set_ylabel("$B(s)$ (cgs units )")
-        axs[0].set_title("Individual Magnetic Field Shape")
-        #axs[0].legend()
-        axs[0].grid(True)
-
-        axs[1].plot(distance, numb_density, linestyle="--", color="m")
-        axs[1].set_xlabel("trajectory (cgs units Au)")
-        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/pc^3$) ")
-        axs[1].set_title("Gas Density along Magnetic Lines")
-        #axs[1].legend()
-        axs[1].grid(True)
-
-        # Adjust layout to prevent overlap
-        plt.tight_layout()
-
-        # Save the figure
-        plt.savefig("field_shapes/field-density_shape.png")
-
-        # Show the plot
-        #plt.show()
-        plt.close(fig)
-    
-    if False:
-        ax = plt.figure().add_subplot(projection='3d')
-
-        for k in range(1):
-            print(k)
-            x=distance[:,k,0] # 1D array
-            y=distance[:,k,1]
-            z=distance[:,k,2]
-            
-            which = x**2 + y**2 + z**2 <= rloc_boundary**2
-            
-            x=x[which]
-            y=y[which]
-            z=z[which]
-            
-            for l in range(len(z)):
-                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
-
-            #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-
-        ax.set_xlim(-rloc_boundary,rloc_boundary)
-        ax.set_ylim(-rloc_boundary,rloc_boundary)
-        ax.set_zlim(-rloc_boundary,rloc_boundary)
-        ax.set_xlabel('x [pc]')
-        ax.set_ylabel('y [pc]')
-        ax.set_zlabel('z [pc]')
-        ax.set_title('From Core to Outside in +s, -s directions')
-        #plt.savefig(f'field_shapes/MagneticFieldThreading.png',bbox_inches='tight')
-        #plt.close()
-        plt.show()
 
 print(reduction_factor)
 
@@ -482,7 +450,7 @@ with open(file_path, 'w') as json_file:
 
 """# Graphs"""
 
-#plot_trajectory_versus_magnitude(distance, bfield, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
+#plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
 
 bins=len(reduction_factor)//10 
 
