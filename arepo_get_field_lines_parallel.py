@@ -292,16 +292,15 @@ tasks = []
 for i in range(max_cycles):
     
     rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
+    nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+    npix  = 12 * nside ** 2 
+    ipix_center       = np.arange(npix)
+    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
     
-    if True:
-        nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-        npix  = 12 * nside ** 2 
-        ipix_center       = np.arange(npix)
-        xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-        xx = np.array(random.sample(sorted(xx),1))
-        yy = np.array(random.sample(sorted(yy),1))
-        zz = np.array(random.sample(sorted(zz),1))
-
+    xx = np.array(random.sample(list(xx), 1))
+    yy = np.array(random.sample(list(yy), 1))
+    zz = np.array(random.sample(list(zz), 1))
+    
     m = len(zz) # amount of values that hold which_up_down
 
     x_init = np.zeros((m,3))
