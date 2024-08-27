@@ -193,7 +193,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 print("Cores Available: ", os.cpu_count())
 print("Cores Used: ", os.cpu_count())
-print("Steps in Simulation: ", N)
+print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
 print("max_cycles         : ", max_cycles)
