@@ -127,13 +127,17 @@ filename = 'arepo_data/snap_430.hdf5'
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
 
-VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
-Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
-Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
+# Directly convert and cast to desired dtype
+VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
+Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
+Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
+Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
+
+# Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
-Density = np.array(data['PartType0']['Density'], dtype=FloatType)
-Density_grad = np.zeros((len(Density),3))
-Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
+Density_grad = np.zeros((len(Density), 3))
+
 
 # printing relevant info about the data
 # 1 Parsec  = 3.086e+18 cm
@@ -300,7 +304,7 @@ for i in range(max_cycles):
     xx = np.array(random.sample(list(xx), 1))
     yy = np.array(random.sample(list(yy), 1))
     zz = np.array(random.sample(list(zz), 1))
-    
+
     m = len(zz) # amount of values that hold which_up_down
 
     x_init = np.zeros((m,3))

@@ -6,7 +6,9 @@ colors.py
 rs_output
 random*
 *.gif
-.venv
+localvenv
+*generated
+histograms
 __*
 .ipynb*
 multiprocessing_test.py

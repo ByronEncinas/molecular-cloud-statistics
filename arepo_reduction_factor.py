@@ -17,7 +17,7 @@ import time
 start_time = time.time()
 
 """  
-Using Margo Data
+Using Alex Data
 
 Analysis of reduction factor
 
@@ -136,13 +136,16 @@ print(filename, "Loaded")
 
 Boxsize = data['Header'].attrs['BoxSize'] #
 
-VoronoiPos = np.array(data['PartType0']['Coordinates'], dtype=FloatType) # Voronoi Point in Cell
-Pos = np.array(data['PartType0']['CenterOfMass'], dtype=FloatType)  # CenterOfMass in Cell
-Bfield = np.array(data['PartType0']['MagneticField'], dtype=FloatType)
+# Directly convert and cast to desired dtype
+VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
+Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
+Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
+Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
+
+# Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
-Density = np.array(data['PartType0']['Density'], dtype=FloatType)
-Density_grad = np.zeros((len(Density),3))
-Mass = np.array(data['PartType0']['Masses'], dtype=FloatType)
+Density_grad = np.zeros((len(Density), 3))
 Volume = Mass/Density
 
 # printing relevant info about the data
@@ -191,7 +194,6 @@ xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
-print("Cores Available: ", os.cpu_count())
 print("Cores Used: ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
@@ -292,12 +294,12 @@ def get_along_lines(x_init):
     index = len(line_rev[:, 0, 0])
     lmn = len(line_rev[:,0,0]) - 1
 
-    x_init, B_init = line[0,0,:], magnetic_fields[0,0]
+    x_init, B_init = line[0,:], magnetic_fields[0]
 
     """# Obtained position along the field lines, now we find the pocket"""
 
     #index_peaks, global_info = pocket_finder(magnetic_fields) # this plots
-    pocket, global_info = pocket_finder(magnetic_fields, cycle, plot=True) # this plots
+    pocket, global_info = pocket_finder(magnetic_fields, "redfac", plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
     globalmax_index = global_info[0]
@@ -328,24 +330,21 @@ def get_along_lines(x_init):
         print("No Pockets, R = 1.")
 
         reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
+
 
     if len(closest_values) == 2:
         B_l = min([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
         B_h = max([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
     else:
         reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
 
     if B_r/B_l <= 1:
         R = 1 - np.sqrt(1-B_r/B_l)
         reduction_factor = np.append(reduction_factor, R)
-        cycle += 1
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
     else:
         R = 1
         reduction_factor = np.append(reduction_factor, 1.)
-        cycle += 1
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
     
     print("Closest local maxima 'p':", closest_values)
