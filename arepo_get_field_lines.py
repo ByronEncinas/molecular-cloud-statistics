@@ -285,7 +285,7 @@ def get_along_lines(x_init):
 
     index = len(line_rev[:, 0, 0])
 
-    return index, line[0, 0, :], bfields[0, 0], radius_vector, trajectory, magnetic_fields, gas_densities
+    return index, line[0, :], bfields[0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 """ 
 python3 arepo_reduction_factor.py 120 50 1 10

@@ -288,7 +288,7 @@ def get_along_lines(x_init):
 
     lmn = len(line_rev[:,0,0]) - 1
 
-    return lmn, line[0, 0, :], magnetic_fields[0, 0], radius_vector, trajectory, magnetic_fields, gas_densities
+    return lmn, line[0, :], magnetic_fields[0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 
 # Generate a list of tasks
