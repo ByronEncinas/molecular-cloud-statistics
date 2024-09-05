@@ -94,7 +94,7 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 
 def find_points_and_relative_positions(x, Pos):
 	workers = os.cpu_count()
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1)
+	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 
@@ -278,11 +278,12 @@ def get_along_lines(x_init):
     prev_radius_vector = path[0, :]
     diff_rj_ri = 0.0
 
+    radius_vector[k, :]   = path[k, :]
+    magnetic_fields[k]    = path_bfields[k]
+    gas_densities[k]      = path_densities[k]
+
     for k in range(path.shape[0]):  # Iterate over the first dimension
         
-        radius_vector[k, :]   = path[k, :]
-        magnetic_fields[k]    = path_bfields[k]
-        gas_densities[k]      = path_densities[k]
         diff_rj_ri = magnitude(radius_vector[k, :], prev_radius_vector)
         trajectory[k] = trajectory[k-1] + diff_rj_ri
         print( trajectory[k],radius_vector[k, :],magnetic_fields[k])
@@ -424,9 +425,9 @@ for i in range(max_cycles):
     print("rloc_center:= ", rloc_center, list(x_init[0]))
     tasks.append((initial_conditions))
 
-# Number of worker processes
 import os
-num_workers = 6#int(os.cpu_count())
+# Number of worker processes
+num_workers = os.cpu_count()
 
 # Record the start time
 start_time = time.time()

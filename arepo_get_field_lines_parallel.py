@@ -91,7 +91,7 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 	return local_densities
 
 def find_points_and_relative_positions(x, Pos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=12)
+	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 
@@ -163,9 +163,9 @@ Name: PartType0/MagneticField
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Bfield  *= 1.0* (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0* 6.771194847794873e-23
-Mass    *= 1.0* 1.9885e33
+Bfield  *= 1.0#* (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0#* 6.771194847794873e-23
+Mass    *= 1.0#* 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -186,6 +186,7 @@ xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
+print("Cores Used: ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
