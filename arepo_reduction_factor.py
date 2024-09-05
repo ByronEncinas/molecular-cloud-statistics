@@ -93,7 +93,6 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 	return local_densities
 
 def find_points_and_relative_positions(x, Pos):
-	workers = os.cpu_count()
 	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
@@ -205,7 +204,9 @@ print("Position of Max Density: ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume: ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume: ", Volume[np.argmax(Volume)],"\n") # 256
 
+
 def get_along_lines(x_init):
+
     m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
@@ -250,144 +251,170 @@ def get_along_lines(x_init):
     line_rev = line_rev[1:,:,:]
     bfields_rev = bfields_rev[1:,:] 
     densities_rev = densities_rev[1:,:]
-
-    dens_min = np.log10(min(np.min(densities),np.min(densities_rev)))
-    dens_max = np.log10(max(np.max(densities),np.max(densities_rev)))
-
-    dens_diff = dens_max - dens_min
 	
     # Concatenating the arrays correctly as 3D arrays
     # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    path = np.concatenate((line[:, 0, :], line_rev[::-1, 0, :]), axis=0)
-    path = line[:, 0, :]
+    radius_vector = np.concatenate((line[:, :, :], line_rev[::-1, :, :]), axis=0)
+    radius_vector = line[:, :, :]
 
     # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    path_bfields = np.concatenate((bfields[:, 0], bfields_rev[::-1, 0]), axis=0)
-    path_bfields = bfields[:, 0]
+    magnetic_fields = np.concatenate((bfields[:, :], bfields_rev[::-1, :]), axis=0)
+    magnetic_fields = bfields[:, :]
 
     # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    path_densities = np.concatenate((densities[:, 0], densities_rev[::-1, 0]), axis=0)
-    path_densities = densities[:, 0]
+    gas_densities = np.concatenate((densities[:, :], densities_rev[::-1, :]), axis=0)
+    gas_densities = densities[:, :]
 
-    # Initialize arrays to store results
-    radius_vector      = np.zeros_like(path[:, :])   # 2D array
-    magnetic_fields    = np.zeros_like(path_bfields[:]) # 1D array
-    gas_densities      = np.zeros_like(path_densities[:]) # 1D array
-    trajectory         = np.zeros(path.shape[0])        # 1D array for the trajectory
-
-    prev_radius_vector = path[0, :]
-    diff_rj_ri = 0.0
-
-    radius_vector[k, :]   = path[k, :]
-    magnetic_fields[k]    = path_bfields[k]
-    gas_densities[k]      = path_densities[k]
-
-    for k in range(path.shape[0]):  # Iterate over the first dimension
+    trajectory         = np.zeros(bfields.shape)        # 1D array for the trajectory
         
-        diff_rj_ri = magnitude(radius_vector[k, :], prev_radius_vector)
-        trajectory[k] = trajectory[k-1] + diff_rj_ri
-        print( trajectory[k],radius_vector[k, :],magnetic_fields[k])
-        
-        prev_radius_vector = radius_vector[k, :]
+    for _n in range(m):  # Iterate over the first dimension
+        prev = radius_vector[0, _n, :]
+        for k in range(N):  # Iterate over the first dimension    
+            cur = radius_vector[k, _n, :]
+            
+            diff_rj_ri = magnitude(cur, prev)
+            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
+            prev = radius_vector[k, _n,:]
 
-    trajectory[0] *= 0.0
+    #index = len(line_rev[:, 0, 0])
 
-    index = len(line_rev[:, 0, 0])
-    lmn = len(line_rev[:,0,0]) - 1
+    return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities
 
-    x_init, B_init = line[0,:], magnetic_fields[0]
+import os
+import shutil
 
-    """# Obtained position along the field lines, now we find the pocket"""
+# Define the directory names
+output_folder = 'arepo_output_data'
+new_folder = 'arepo_npys'
 
-    #index_peaks, global_info = pocket_finder(magnetic_fields) # this plots
-    pocket, global_info = pocket_finder(magnetic_fields, "redfac", plot=True) # this plots
+# Check if the arepo_output_data folder exists
+if os.path.exists(output_folder):
+    # Delete the folder and its contents
+    shutil.rmtree(output_folder)
+
+# Create the new arepo_npys directory
+os.makedirs(new_folder, exist_ok=True)
+
+#rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
+rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
+nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+npix  = 12 * nside ** 2 
+ipix_center       = np.arange(npix)
+xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
+
+xx = np.array(random.sample(list(xx), max_cycles))
+yy = np.array(random.sample(list(yy), max_cycles))
+zz = np.array(random.sample(list(zz), max_cycles))
+
+m = len(zz) # amount of values that hold which_up_down
+
+x_init = np.zeros((m,3))
+
+x_init[:,0]      = rloc_center * xx[:]
+x_init[:,1]      = rloc_center * yy[:]
+x_init[:,2]      = rloc_center * zz[:]
+
+lmn = N - 1
+
+_, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
+
+print("Elapsed Time: ", (time.time() - start_time)/60.)
+
+with open('output', 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Steps in Simulation: {2 * N}\n")
+    file.write(f"rloc_boundary      : {rloc_boundary}\n")
+    file.write(f"rloc_center        : {rloc_center}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Boxsize            : {Boxsize}\n")
+    file.write(f"Center             : {Center}\n")
+    file.write(f"Posit Max Density  : {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume    : {Volume[np.argmin(Volume)]}\n")
+    file.write(f"Biggest  Volume    : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
+
+for i in range(m):
+
+    pocket, global_info = pocket_finder(magnetic_fields[:,i], i, plot=True) # this plots
+
+    B_init = magnetic_fields[lmn,i]
+
+    #index_peaks, global_info = pocket_finder(magnetic_fields[:,i]) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
+
+    # we can evaluate reduction factor if there are no pockets
+    if len(index_pocket) < 2:
+        # it there a minimum value of peaks we can work with? yes, two
+        continue
 
     globalmax_index = global_info[0]
     globalmax_field = global_info[1]
 
     # Calculate the range within the 80th percentile
-    start_index = len(magnetic_fields) // 10  # Skip the first 10% of indices
-    end_index = len(magnetic_fields) - start_index  # Skip the last 10% of indices
+    start_index = len(magnetic_fields[:,i]) // 10  # Skip the first 10% of indices
+    end_index = len(magnetic_fields[:,i]) - start_index  # Skip the last 10% of indices
 
-    # we gotta find peaks in the interval   (B_l < random_element < B_h)
-    # Generate a random index within the range
-    B_r = B_init.copy()
+    B_init = magnetic_fields[lmn,i]
 
-    print("random index: ", lmn, "peak's index: ", index_pocket, field_pocket)
-
+    print("random index: ", lmn, "peak's index: ", index_pocket)
+    
     """How to find index of Bl?"""
 
     # Bl it is definitely between two peaks, we need to verify is also inside a pocket
-    # such that Bl < Bs < Bh (p_i < lmn < p_j)
+    # such that Bl < Bs < Bh (p_i < p_r < p_j)
 
-    if len(index_pocket) > 1: # if there is more than 2 peaks then this is obtainable
-        p_i = find_insertion_point(index_pocket, lmn)
+    # finds index at which to insert p_r and be kept sorted
+    p_i = find_insertion_point(index_pocket, lmn)
+
+    #print()
+    print("Random Index:", lmn, "assoc. B(s_r):", lmn)
+    print("Maxima Values related to pockets: ",len(index_pocket), p_i)
+
+    if p_i is not None:
+        # If p_i is not None, select the values at indices p_i-1 and p_i
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
-        print("Maxima Values related to pockets: ",len(index_pocket), p_i)
     else:
-        print("Random Index:", lmn, "assoc. B(s_r):",B_r)
-        print("No Pockets, R = 1.")
-
-        reduction_factor = np.append(reduction_factor, 1.)
-
+        # If p_i is None, select the two closest values based on some other criteria
+        continue
 
     if len(closest_values) == 2:
-        B_l = min([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
-        B_h = max([magnetic_fields[closest_values[0]], magnetic_fields[closest_values[1]]])
-    else:
-        reduction_factor = np.append(reduction_factor, 1.)
-
-    if B_r/B_l <= 1:
-        R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor = np.append(reduction_factor, R)
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
+        B_l = min([magnetic_fields[:,i][closest_values[0]], magnetic_fields[:,i][closest_values[1]]])
+        B_h = max([magnetic_fields[:,i][closest_values[0]], magnetic_fields[:,i][closest_values[1]]])
     else:
         R = 1
-        reduction_factor = np.append(reduction_factor, 1.)
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+        reduction_factor.append(1)
+        cycle += 1
+        continue
+
+    if B_r/B_l < 1:
+        R = 1 - np.sqrt(1-B_r/B_l)
+        reduction_factor.append(R)
+        cycle += 1
+    else:
+        R = 1
+        reduction_factor.append(1)
+        cycle += 1
+        continue
     
     print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", magnetic_fields[lmn], "Bi: ", magnetic_fields[closest_values[0]], "Bj: ", magnetic_fields[closest_values[1]])
-    
+    print("Bs: ", magnetic_fields[:,i][p_r], "Bi: ", magnetic_fields[:,i][closest_values[0]], "Bj: ", magnetic_fields[:,i][closest_values[1]])
+    try:
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
+    except:
+        # this statement won't reach cycle += 1 so the cycle will continue again.
+        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+
+    # Now we pair reduction factors at one position with the gas density there.
+    gas_density_at_random = gas_densities[lmn,i]
+    reduction_factor_at_gas_density[R] = gas_density_at_random # Key: 1/R => Value: Ng (gas density)
+ 
     """
     bs: where bs is the field magnitude at the random point chosen 
     bl: magnetic at position s of the trajectory
     """
-    
-    if True:
-        # Create a figure and axes for the subplot layout
-        fig, axs = plt.subplots(2, 1, figsize=(8, 6))
-
-        axs[0].plot(trajectory, magnetic_fields, linestyle="--", color="m")
-        axs[0].scatter(trajectory, magnetic_fields, marker="+", color="m")
-        axs[0].set_xlabel("trajectory (pc)")
-        axs[0].set_ylabel("$B(s)$ (cgs units )")
-        axs[0].set_title("Individual Magnetic Field Shape")
-        #axs[0].legend()
-        axs[0].grid(True)
-
-        axs[1].plot(trajectory, gas_densities, linestyle="--", color="m")
-        axs[1].set_xlabel("trajectory (cgs units Au)")
-        axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/pc^3$) ")
-        axs[1].set_title("Gas Density along Magnetic Lines")
-        #axs[1].legend()
-        axs[1].grid(True)
-
-        # Adjust layout to prevent overlap
-        plt.tight_layout()
-
-        # Save the figure
-        plt.savefig(f"field_shapes/field-density_shape.png")
-
-        # Show the plot
-        #plt.show()
-        plt.close(fig)
-
-	
-    return reduction_factor #lmn, x_init, B_init, radius_vector, trajectory, magnetic_fields, gas_densities
-
+    print("\n",len(reduction_factor),"\n")
 
 if sys.argv[-1] == "-1":
     # Assuming your JSON file is named 'data.json'
@@ -400,48 +427,16 @@ if sys.argv[-1] == "-1":
 
     max_cycles = 0
 
-# Generate a list of tasks
-tasks = []
-for i in range(max_cycles):
-    
-    rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
-    nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-    npix  = 12 * nside ** 2 
-    ipix_center       = np.arange(npix)
-    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-    
-    xx = np.array(random.sample(list(xx), 1))
-    yy = np.array(random.sample(list(yy), 1))
-    zz = np.array(random.sample(list(zz), 1))
-
-    m = len(zz) # amount of values that hold which_up_down
-
-    x_init = np.zeros((m,3))
-    x_init[:,0]      = rloc_center * xx[:]
-    x_init[:,1]      = rloc_center * yy[:]
-    x_init[:,2]      = rloc_center * zz[:]
-
-    initial_conditions = (x_init)
-    print("rloc_center:= ", rloc_center, list(x_init[0]))
-    tasks.append((initial_conditions))
-
 import os
-# Number of worker processes
-num_workers = os.cpu_count()
 
 # Record the start time
 start_time = time.time()
 
-# Create a Pool of worker processes
-with Pool(num_workers) as pool:
-    # Map the euler_integration function to the list of tasks
-    results = pool.map(get_along_lines, tasks)
-
 # Record the end time
 elapsed_time = time.time() - start_time
 
-#for i, pack_dist_field_dens in enumerate(results):
-reduction_factor = results.copy()
+
+
 
 print(reduction_factor, "Elapsed Time: ", elapsed_time)
 
