@@ -332,6 +332,7 @@ with open('output', 'w') as file:
     file.write(f"Biggest  Volume    : {Volume[np.argmax(Volume)]}\n")
     file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
     file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
+    file.write(f"Elapsed Time       : {(time.time() - start_time)/60.}\n")
 
 for i in range(m):
 
@@ -372,7 +373,6 @@ for i in range(m):
         #plt.show()
         plt.close(fig)
 
-print(f"finished: ",(time.time()-start_time)/60)
 
 if False:
 	ax = plt.figure().add_subplot(projection='3d')
