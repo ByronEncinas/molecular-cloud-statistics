@@ -52,7 +52,7 @@ if len(sys.argv)>2:
 	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
-	rloc_center  =int(sys.argv[3])
+	rloc_center  =float(sys.argv[3])
 	max_cycles   =int(sys.argv[4])
 else:
     N            =100
@@ -60,15 +60,12 @@ else:
     rloc_center  =1     # rloc_boundary for inner region of the cloud
     max_cycles   =1
 
-
 # flow control to repeat calculations in no peak situations
 cycle = 0 
 
 reduction_factor_at_gas_density = defaultdict()
 
 reduction_factor = np.array([])
-
-
 
 """
 Functions/Methods
@@ -273,7 +270,7 @@ def get_along_lines(x_init):
             prev = radius_vector[k, _n,:]
 
     #index = len(line_rev[:, 0, 0])
-
+    trajectory[-1,:] = 2*trajectory[-2,:] - trajectory[-3,:] 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities
     #return index, line[0, :], bfields[0], radius_vector, trajectory, magnetic_fields, gas_densities
 

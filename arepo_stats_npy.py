@@ -20,7 +20,8 @@ start_time = time.time()
 
 cluster = ("JAKAR", "CAS")
 
-max_cycles = int(sys.argv[-1])
+max_cycles = int(sys.argv[1])
+rounds = int(sys.argv[2])
 
 import os
 
@@ -35,135 +36,114 @@ def list_npy_files(directory):
 directory_path = './arepo_npys/'
 npy_files = list_npy_files(directory_path)
 
-print(npy_files)
 reduction_factor = []
 numb_density_at  = []
 reduction_factor_at_gas_density = defaultdict()
 
 for cycle in range(max_cycles):
+        
+    for round in range(rounds):
 
-    radius_vector  = np.array(np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r'))
-    distance       = np.array(np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r'))
-    bfield         = np.array(np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r'))
-    numb_density   = np.array(np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r'))
+        radius_vector  = np.array(np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r'))
+        distance       = np.array(np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r'))
+        bfield         = np.array(np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r'))
+        numb_density   = np.array(np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r'))
 
-    p_r = random.randint(0, len(distance) - 1)
+        p_r = random.randint(0, len(distance) - 1)
 
-    x_init = distance[p_r]
-    B_init   = bfield[p_r]
-    n_init = numb_density[p_r]
+        x_init = distance[p_r]
+        B_init   = bfield[p_r]
+        n_init = numb_density[p_r]
 
-    #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
-    index_pocket, field_pocket = pocket[0], pocket[1]
+        #index_peaks, global_info = pocket_finder(bfield) # this plots
+        pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+        index_pocket, field_pocket = pocket[0], pocket[1]
 
-    # we can evaluate reduction factor if there are no pockets
-    if len(index_pocket) < 2:
-        # it there a minimum value of peaks we can work with? yes, two
-        continue
+        # we can evaluate reduction factor if there are no pockets
+        if len(index_pocket) < 2:
+            # it there a minimum value of peaks we can work with? yes, two
+            continue
 
-    globalmax_index = global_info[0]
-    globalmax_field = global_info[1]
+        globalmax_index = global_info[0]
+        globalmax_field = global_info[1]
 
-    # Calculate the range within the 80th percentile
-    start_index = len(bfield) // 10  # Skip the first 10% of indices
-    end_index = len(bfield) - start_index  # Skip the last 10% of indices
+        # Calculate the range within the 80th percentile
+        start_index = len(bfield) // 10  # Skip the first 10% of indices
+        end_index = len(bfield) - start_index  # Skip the last 10% of indices
 
-    # we gotta find peaks in the interval   (B_l < random_element < B_h)
-    # Generate a random index within the range
-    #s_r = distance[p_r]
-    B_r = bfield[p_r]
+        # we gotta find peaks in the interval   (B_l < random_element < B_h)
+        # Generate a random index within the range
+        #s_r = distance[p_r]
+        B_r = bfield[p_r]
 
-    print("random index: ", p_r, "peak's index: ", index_pocket)
-    
-    """How to find index of Bl?"""
+        print("random index: ", p_r, "peak's index: ", index_pocket)
+        
+        """How to find index of Bl?"""
 
-    # Bl it is definitely between two peaks, we need to verify is also inside a pocket
-    # such that Bl < Bs < Bh (p_i < p_r < p_j)
+        # Bl it is definitely between two peaks, we need to verify is also inside a pocket
+        # such that Bl < Bs < Bh (p_i < p_r < p_j)
 
-    # finds index at which to insert p_r and be kept sorted
-    p_i = find_insertion_point(index_pocket, p_r)
+        # finds index at which to insert p_r and be kept sorted
+        p_i = find_insertion_point(index_pocket, p_r)
 
-    #print()
-    print("Random Index:", p_r, "assoc. B(s_r):",B_r)
-    print("Maxima Values related to pockets: ",len(index_pocket), p_i)
+        #print()
+        print("Random Index:", p_r, "assoc. B(s_r):",B_r)
+        print("Maxima Values related to pockets: ",len(index_pocket), p_i)
 
-    if p_i is not None:
-        # If p_i is not None, select the values at indices p_i-1 and p_i
-        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-    else:
-        # If p_i is None, select the two closest values based on some other criteria
-        continue
+        if p_i is not None:
+            # If p_i is not None, select the values at indices p_i-1 and p_i
+            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        else:
+            # If p_i is None, select the two closest values based on some other criteria
+            continue
 
-    if len(closest_values) == 2:
-        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
-        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-    else:
-        R = 1
-        reduction_factor.append(1)
-        numb_density_at.append(n_init) 
-        cycle += 1
-        continue
+        if len(closest_values) == 2:
+            B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
+            B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+        else:
+            R = 1
+            reduction_factor.append(1)
+            numb_density_at.append(n_init) 
+            cycle += 1
+            continue
 
-    if B_r/B_l < 1:
-        R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor.append(R)
-        numb_density_at.append(n_init)
-        cycle += 1
-    else:
-        R = 1
-        reduction_factor.append(1)
-        numb_density_at.append(n_init)
-        cycle += 1
-        continue
-    
-    print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
-    try:
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
-    except:
-        # this statement won't reach cycle += 1 so the cycle will continue again.
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+        if B_r/B_l < 1:
+            R = 1 - np.sqrt(1-B_r/B_l)
+            reduction_factor.append(R)
+            numb_density_at.append(n_init)
+            cycle += 1
+        else:
+            R = 1
+            reduction_factor.append(1)
+            numb_density_at.append(n_init)
+            cycle += 1
+            continue
+        
+        print("Closest local maxima 'p':", closest_values)
+        print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+        try:
+            print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
+        except:
+            # this statement won't reach cycle += 1 so the cycle will continue again.
+            print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
-    # Now we pair reduction factors at one position with the gas density there.
-    #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
-    #reduction_factor_at_gas_density[R] = gas_density_at_random # Key: 1/R => Value: Ng (gas density)
- 
-    """
-    bs: where bs is the field magnitude at the random point chosen 
-    bl: magnetic at position s of the trajectory
-    """
-    #print("\n",len(reduction_factor),"\n")
+        # Now we pair reduction factors at one position with the gas density there.
+        #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
+        reduction_factor_at_gas_density[R] = numb_density_at # Key: 1/R => Value: Ng (gas density)
 
+# Specify the file path
+file_path = f'arepo_bias/random_distributed_reduction_factor{sys.argv[-1]}.json'
 
-if True:
-    # Create a figure and axes for the subplot layout
-    fig, axs = plt.subplots(2, 1, figsize=(8, 6))
+# Write the list data to a JSON file
+with open(file_path, 'w') as json_file:
+    json.dump(reduction_factor, json_file)
 
-    axs[0].plot(distance, bfield, linestyle="--", color="m")
-    axs[0].scatter(distance, bfield, marker="+", color="m")
-    axs[0].set_xlabel("distance (pc)")
-    axs[0].set_ylabel("$B(s)$ (cgs units )")
-    axs[0].set_title("Individual Magnetic Field Shape")
-    #axs[0].legend()
-    axs[0].grid(True)
+# Specify the file path
+file_path = f'arepo_bias/random_distributed_gas_density{sys.argv[-1]}.json'
 
-    axs[1].plot(distance, numb_density, linestyle="--", color="m")
-    axs[1].set_xlabel("distance (cgs units Au)")
-    axs[1].set_ylabel("$n_g(s)$ Field (cgs units $M_{sun}/pc^3$) ")
-    axs[1].set_title("Gas Density along Magnetic Lines")
-    #axs[1].legend()
-    axs[1].grid(True)
-
-    # Adjust layout to prevent overlap
-    plt.tight_layout()
-
-    # Save the figure
-    plt.savefig(f"arepo_bias/field-density_shape.png")
-
-    # Show the plot
-    #plt.show()
-    plt.close(fig)
+# Write the list data to a JSON file
+with open(file_path, 'w') as json_file:
+    json.dump(numb_density_at, json_file)
 
 print(len(reduction_factor))
 
@@ -171,7 +151,6 @@ bins = len(reduction_factor)//10
 
 # Assuming you have defined reduction_factor and bins already
 counter = Counter(reduction_factor)
-print(counter[1])
 
 inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 print(len(inverse_reduction_factor))
@@ -202,20 +181,17 @@ plt.savefig(f"arepo_bias/hist={len(reduction_factor)}bins={bins}.png")
 plt.show()
 
 dic_gas_r = {}
-for gas, R in zip(gas_density, reduction_factor):
+for gas, R in zip(numb_density_at, reduction_factor):
     dic_gas_r[gas] = R
 
 ordered_dict_gas_r = OrderedDict(sorted(dic_gas_r.items()))
-del gas_density, dic_gas_r
-
-gas_density = list(ordered_dict_gas_r.keys())
-reduction_f = list(ordered_dict_gas_r.values() )
+del dic_gas_r
 
 if True:
 
     # Extract data from the dictionary
-    x = np.log10(np.array(gas_density))   # log10(gas number density)
-    y = np.array(reduction_f)              # reduction factor R
+    x = np.log10(np.array(numb_density_at))   # log10(gas number density)
+    y = np.array(reduction_factor)              # reduction factor R
 
     # Plot original scatter plot
     fig, axs = plt.subplots(1, 1, figsize=(8, 5))
