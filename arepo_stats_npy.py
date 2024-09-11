@@ -1,13 +1,14 @@
 from collections import Counter, OrderedDict, defaultdict
-from multiprocessing import Pool
 import matplotlib.pyplot as plt
 from scipy import stats
+import seaborn as sns
 import numpy as np
 import random
 import time
 import json
 import sys
 import os
+
 # Assuming your JSON file is named 'data.json'
 import glob
 
@@ -31,13 +32,12 @@ def list_npy_files(directory):
     return npy_files
 
 # Example usage
-directory_path = '/arepo_npys'
+directory_path = './arepo_npys/'
 npy_files = list_npy_files(directory_path)
 
 print(npy_files)
-
-
-reduction_factor = np.array([])
+reduction_factor = []
+numb_density_at  = []
 reduction_factor_at_gas_density = defaultdict()
 
 for cycle in range(max_cycles):
@@ -52,7 +52,6 @@ for cycle in range(max_cycles):
     x_init = distance[p_r]
     B_init   = bfield[p_r]
     n_init = numb_density[p_r]
-
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
@@ -102,16 +101,19 @@ for cycle in range(max_cycles):
     else:
         R = 1
         reduction_factor.append(1)
+        numb_density_at.append(n_init) 
         cycle += 1
         continue
 
     if B_r/B_l < 1:
         R = 1 - np.sqrt(1-B_r/B_l)
         reduction_factor.append(R)
+        numb_density_at.append(n_init)
         cycle += 1
     else:
         R = 1
         reduction_factor.append(1)
+        numb_density_at.append(n_init)
         cycle += 1
         continue
     
@@ -131,7 +133,7 @@ for cycle in range(max_cycles):
     bs: where bs is the field magnitude at the random point chosen 
     bl: magnetic at position s of the trajectory
     """
-    print("\n",len(reduction_factor),"\n")
+    #print("\n",len(reduction_factor),"\n")
 
 
 if True:
@@ -157,27 +159,11 @@ if True:
     plt.tight_layout()
 
     # Save the figure
-    plt.savefig(f"field_shapes/field-density_shape.png")
+    plt.savefig(f"arepo_bias/field-density_shape.png")
 
     # Show the plot
     #plt.show()
     plt.close(fig)
-
-
-
-
-
-# Get a list of all files that match the pattern
-file_list = glob.glob('random_distributed_reduction_factor*.json')
-
-print(file_list)
-
-for file_path in file_list:
-    # Open the file in read mode
-    with open(file_path, 'r') as file:
-        file_path = 'random_distributed_gas_density.json'
-        # Load the JSON data into a Python list
-        reduction_factor = json.load(file)
 
 print(len(reduction_factor))
 
@@ -211,14 +197,9 @@ axs[1].set_xlabel('$log_{10}(1/R)$')
 plt.tight_layout()
 
 # Save the figure
-plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig(f"arepo_bias/hist={len(reduction_factor)}bins={bins}.png")
 
 plt.show()
-
-# Open the file in read mode
-with open(file_path, 'r') as file:
-    # Load the JSON data into a Python list
-    gas_density = json.load(file)
 
 dic_gas_r = {}
 for gas, R in zip(gas_density, reduction_factor):
@@ -269,7 +250,7 @@ if True:
     # Add legend
     axs.legend()
 
-    plt.savefig(f"histograms/mean_median.png")
+    plt.savefig(f"arepo_bias/mean_median.png")
     plt.close(fig)
     #plt.show()
 
@@ -299,7 +280,7 @@ if True:
     axs.legend(loc='center')
 
     # save figure
-    plt.savefig(f"histograms/mirrored_histograms.png")
+    plt.savefig(f"arepo_bias/mirrored_histograms.png")
 
     # Show the plot
     plt.close(fig)

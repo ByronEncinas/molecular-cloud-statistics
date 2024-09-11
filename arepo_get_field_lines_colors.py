@@ -109,9 +109,9 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
 	if dx > 0:
-		dx = 0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 	else:
-		dx = -0.3*((4/3)*Volume[cells][0]/np.pi)**(1/3)
+		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 
 	x_tilde = x + dx * local_fields_1
 	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
@@ -244,9 +244,9 @@ def get_along_lines(x_init):
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
 
-    line_rev = line_rev[1:,:,:]
-    bfields_rev = bfields_rev[1:,:] 
-    densities_rev = densities_rev[1:,:]
+    line_rev = line_rev[:,:,:]
+    bfields_rev = bfields_rev[:,:] 
+    densities_rev = densities_rev[:,:]
 	
     # Concatenating the arrays correctly as 3D arrays
     # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
