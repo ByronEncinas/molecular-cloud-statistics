@@ -100,22 +100,21 @@ for cycle in range(max_cycles):
         if len(closest_values) == 2:
             B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
             B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+            if B_r/B_l < 1:
+                R = 1 - np.sqrt(1-B_r/B_l)
+                reduction_factor.append(R)
+                numb_density_at.append(n_init)
+            else:
+                R = 1
+                reduction_factor.append(1)
+                numb_density_at.append(n_init)
         else:
             R = 1
             reduction_factor.append(1)
             numb_density_at.append(n_init) 
             continue
 
-        if B_r/B_l < 1:
-            R = 1 - np.sqrt(1-B_r/B_l)
-            reduction_factor.append(R)
-            numb_density_at.append(n_init)
-            continue
-        else:
-            R = 1
-            reduction_factor.append(1)
-            numb_density_at.append(n_init)
-            continue
+
         
         print("Closest local maxima 'p':", closest_values)
         print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
