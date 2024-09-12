@@ -68,10 +68,7 @@ reduction_factor_at_gas_density = defaultdict()
 reduction_factor = np.array([])
 
 """
-Functions/Methods
-
-- Data files provided do not contain  
-- 
+(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
 """
 def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 
     return np.sqrt(sum([(new_vector[i]-prev_vector[i])*(new_vector[i]-prev_vector[i]) for i in range(len(new_vector))]))
@@ -122,8 +119,11 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 	
 	return x_final, abs_local_fields_1, local_densities
 
-"""  B. Jesus Velazquez One Dimensional """
-filename = 'arepo_data/snap_430.hdf5'
+"""  B. Jesus Velazquez """
+
+snap = 'snap_430'
+filename = 'arepo_data/'+snap + '.hdf5'
+
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
 
@@ -288,12 +288,9 @@ if os.path.exists(output_folder):
 
 # Create the new arepo_npys directory
 os.makedirs(new_folder, exist_ok=True)
-
-
-#rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
 rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
 nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-npix  = 12 * nside ** 2 
+npix  = 12 * nside ** 2
 ipix_center       = np.arange(npix)
 xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 
@@ -371,11 +368,10 @@ for i in range(m):
         plt.close(fig)
 
 
-if False:
+if True:
 	ax = plt.figure().add_subplot(projection='3d')
 
 	for k in range(1):
-		print(k)
 		x=trajectory[:,0] # 1D array
 		y=trajectory[:,1]
 		z=trajectory[:,2]

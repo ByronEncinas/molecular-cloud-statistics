@@ -51,7 +51,7 @@ if len(sys.argv)>2:
 	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
-	rloc_center  =int(sys.argv[3])
+	rloc_center  =float(sys.argv[3])
 	max_cycles   =int(sys.argv[4])
 else:
     N            =200
@@ -244,9 +244,9 @@ def get_along_lines(x_init):
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
 
-    line_rev = line_rev[1:,:,:]
-    bfields_rev = bfields_rev[1:,:] 
-    densities_rev = densities_rev[1:,:]
+    line_rev = line_rev[:,:,:]
+    bfields_rev = bfields_rev[:,:] 
+    densities_rev = densities_rev[:,:]
 	
     # Concatenating the arrays correctly as 3D arrays
     # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
@@ -273,8 +273,7 @@ def get_along_lines(x_init):
             prev = radius_vector[k, _n,:]
 
     #index = len(line_rev[:, 0, 0])
-    
-    #radius_vector[-1,:], trajectory[-1,:], magnetic_fields[-1,:], gas_densities[-1,:] = radius_vector[-2,:], trajectory[-2,:], magnetic_fields[-2,:], gas_densities[-2,:]
+    trajectory[-1,:] = 2*trajectory[-2,:] - trajectory[-3,:] 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities
 
 import os
@@ -332,9 +331,20 @@ with open('output', 'w') as file:
     file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
     file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
 
-for i in range(m):
+##################################################################################33
 
-    pocket, global_info = pocket_finder(magnetic_fields[:,i], i, plot=True) # this plots
+for cycle in range(max_cycles):
+
+    distance, bfield, numb_density = trajectory[:,cycle], magnetic_fields[:,cycle], gas_densities[:,cycle]
+
+    p_r = random.randint(0, len(distance) - 1)
+
+    x_init = distance[p_r]
+    B_init = bfield[p_r]
+    n_init = numb_density[p_r]
+
+    #index_peaks, global_info = pocket_finder(bfield) # this plots
+    pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
     # we can evaluate reduction factor if there are no pockets
@@ -346,13 +356,15 @@ for i in range(m):
     globalmax_field = global_info[1]
 
     # Calculate the range within the 80th percentile
-    start_index = len(magnetic_fields[:,i]) // 10  # Skip the first 10% of indices
-    end_index = len(magnetic_fields[:,i]) - start_index  # Skip the last 10% of indices
+    start_index = len(bfield) // 10  # Skip the first 10% of indices
+    end_index = len(bfield) - start_index  # Skip the last 10% of indices
 
-    B_r = magnetic_fields[lmn,i]
-    N_r = gas_densities[lmn,i]
+    # we gotta find peaks in the interval   (B_l < random_element < B_h)
+    # Generate a random index within the range
+    #s_r = distance[p_r]
+    B_r = bfield[p_r]
 
-    print("random index: ", lmn, "peak's index: ", index_pocket)
+    print("random index: ", p_r, "peak's index: ", index_pocket)
     
     """How to find index of Bl?"""
 
@@ -360,10 +372,10 @@ for i in range(m):
     # such that Bl < Bs < Bh (p_i < p_r < p_j)
 
     # finds index at which to insert p_r and be kept sorted
-    p_i = find_insertion_point(index_pocket, lmn)
+    p_i = find_insertion_point(index_pocket, p_r)
 
     #print()
-    print("Random Index:", lmn, "assoc. B(s_r):", lmn)
+    print("Random Index:", p_r, "assoc. B(s_r):",B_r)
     print("Maxima Values related to pockets: ",len(index_pocket), p_i)
 
     if p_i is not None:
@@ -374,29 +386,26 @@ for i in range(m):
         continue
 
     if len(closest_values) == 2:
-        B_l = min([magnetic_fields[:,i][closest_values[0]], magnetic_fields[:,i][closest_values[1]]])
-        B_h = max([magnetic_fields[:,i][closest_values[0]], magnetic_fields[:,i][closest_values[1]]])
+        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
+        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+
+        if B_r/B_l < 1:
+            R = 1 - np.sqrt(1-B_r/B_l)
+            reduction_factor.append(R)
+            numb_density_at.append(n_init)
+        else:
+            R = 1
+            reduction_factor.append(1)
+            numb_density_at.append(n_init)
+
     else:
         R = 1
         reduction_factor.append(1)
-        numb_density_at.append(gas_densities[lmn,i])
-        cycle += 1
+        numb_density_at.append(n_init) 
         continue
 
-    if B_r/B_l < 1:
-        R = 1 - np.sqrt(1-B_r/B_l)
-        reduction_factor.append(R)
-        numb_density_at.append(gas_densities[lmn,i])
-        cycle += 1
-    else:
-        R = 1
-        reduction_factor.append(1)
-        numb_density_at.append(gas_densities[lmn,i])
-        cycle += 1
-        continue
-    
     print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", magnetic_fields[:,i][lmn], "Bi: ", magnetic_fields[:,i][closest_values[0]], "Bj: ", magnetic_fields[:,i][closest_values[1]])
+    print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
     try:
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
     except:
@@ -404,13 +413,10 @@ for i in range(m):
         print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
     # Now we pair reduction factors at one position with the gas density there.
-    reduction_factor_at_gas_density[R] = gas_densities[lmn,i] # Key: 1/R => Value: Ng (gas density)
-    
-    """
-    bs: where bs is the field magnitude at the random point chosen 
-    bl: magnetic at position s of the trajectory
-    """
-    print("\n",len(reduction_factor),"\n")
+    #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
+    reduction_factor_at_gas_density[R] = numb_density_at # Key: 1/R => Value: Ng (gas density)
+
+##################################################################################33
 
 print(reduction_factor)
 print(numb_density_at)
@@ -470,3 +476,81 @@ plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 # Show the plot
 #plt.show()
+
+from scipy import stats
+import seaborn as sns
+
+if True:
+
+    # Extract data from the dictionary
+    x = np.log10(np.array(numb_density_at))   # log10(gas number density)
+    y = np.array(reduction_factor)              # reduction factor R
+
+    # Plot original scatter plot
+    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
+
+    axs.scatter(x, y, marker="|", s=5, color='red', label='Data points')
+    axs.set_title('Histogram of Reduction Factor (R)')
+    axs.set_ylabel('$(R)$')
+    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
+
+    # Compute binned statistics
+    num_bins = 100
+
+    # Median binned statistics
+    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    axs.plot(bin_centers, bin_medians, marker="+", color='#17becf', linestyle='-', label='Binned medians')
+
+    # Mean binned statistics
+    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
+    axs.plot(bin_centers, bin_means, marker="x", color='pink', linestyle='-', label='Binned means')
+
+    # Overall mean and median
+    overall_mean = np.average(y)
+    overall_median = np.median(y)
+
+    mean = np.ones_like(y) * overall_mean
+    median = np.ones_like(y) * overall_median
+
+    axs.plot(x, mean, color='dimgrey', linestyle='--', label=f'Overall mean ({overall_mean:.2f})')
+    axs.plot(x, median, color='dimgray', linestyle='--', label=f'Overall median ({overall_median:.2f})')
+
+    # Add legend
+    axs.legend()
+
+    plt.savefig(f"arepo_bias/mean_median.png")
+    plt.close(fig)
+    #plt.show()
+
+    # Define the number of bins
+    num_bins = 100
+
+    # Compute binned statistics
+    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
+    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
+
+    # Set Seaborn style
+    sns.set(style="whitegrid")
+
+    # Create the figure and axis
+    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
+
+    # Plot the histograms using Matplotlib
+    axs.hist(bin_edges[:-1], bins=bin_edges, weights=bin_medians, alpha=0.5, label='medians', color='c', edgecolor='darkcyan')
+    axs.hist(bin_edges[:-1], bins=bin_edges, weights=-bin_means, alpha=0.5, label='means', color='m', edgecolor='darkmagenta')
+
+    # Set the labels and title
+    axs.set_title('Histograms of Binned Medians and Means (Inverted)')
+    axs.set_ylabel('$(R)$')
+    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
+
+    # Add legend
+    axs.legend(loc='center')
+
+    # save figure
+    plt.savefig(f"arepo_bias/mirrored_histograms.png")
+
+    # Show the plot
+    plt.close(fig)
+    #plt.show()

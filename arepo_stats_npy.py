@@ -176,14 +176,6 @@ plt.tight_layout()
 plt.savefig(f"arepo_bias/hist={len(reduction_factor)}bins={bins}.png")
 
 #plt.show()
-
-dic_gas_r = {}
-for gas, R in zip(numb_density_at, reduction_factor):
-    dic_gas_r[gas] = R
-
-ordered_dict_gas_r = OrderedDict(sorted(dic_gas_r.items()))
-del dic_gas_r
-
 if True:
 
     # Extract data from the dictionary
