@@ -104,19 +104,17 @@ for cycle in range(max_cycles):
             R = 1
             reduction_factor.append(1)
             numb_density_at.append(n_init) 
-            cycle += 1
             continue
 
         if B_r/B_l < 1:
             R = 1 - np.sqrt(1-B_r/B_l)
             reduction_factor.append(R)
             numb_density_at.append(n_init)
-            cycle += 1
+            continue
         else:
             R = 1
             reduction_factor.append(1)
             numb_density_at.append(n_init)
-            cycle += 1
             continue
         
         print("Closest local maxima 'p':", closest_values)
