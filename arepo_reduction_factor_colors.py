@@ -226,7 +226,8 @@ def get_along_lines(x_init):
         #print(k, (time.time()-start_time)/60.)
         
         x, bfield, dens = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
-        print(k, x, bfield, dens)
+        print(k)
+        #print(k, x, bfield, dens)
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
@@ -239,7 +240,8 @@ def get_along_lines(x_init):
     for k in range(N):
         #print(-k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
-        print(-k, x, bfield, dens)
+        print(-k)
+        #print(-k, x, bfield, dens)
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
@@ -312,8 +314,6 @@ x_init[:,2]      = rloc_center * zz[:]
 
 lmn = N - 1
 
-_, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
-
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
 with open('output', 'w') as file:
@@ -331,20 +331,22 @@ with open('output', 'w') as file:
     file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
     file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
 
-##################################################################################33
+B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
 
 for cycle in range(max_cycles):
 
-    distance, bfield, numb_density = trajectory[:,cycle], magnetic_fields[:,cycle], gas_densities[:,cycle]
+    distance       = trajectory[:,cycle]
+    bfield         = magnetic_fields[:,cycle]
+    numb_density   = gas_densities[:,cycle]
 
     p_r = random.randint(0, len(distance) - 1)
 
     x_init = distance[p_r]
-    B_init = bfield[p_r]
+    B_init   = bfield[p_r]
     n_init = numb_density[p_r]
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+    pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
     # we can evaluate reduction factor if there are no pockets
@@ -415,8 +417,6 @@ for cycle in range(max_cycles):
     # Now we pair reduction factors at one position with the gas density there.
     #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
     reduction_factor_at_gas_density[R] = numb_density_at # Key: 1/R => Value: Ng (gas density)
-
-##################################################################################33
 
 print(reduction_factor)
 print(numb_density_at)
