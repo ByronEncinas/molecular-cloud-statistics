@@ -126,7 +126,6 @@ for cycle in range(max_cycles):
 
         # Now we pair reduction factors at one position with the gas density there.
         #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
-        reduction_factor_at_gas_density[R] = numb_density_at # Key: 1/R => Value: Ng (gas density)
 
 # Specify the file path
 file_path = f'arepo_bias/random_distributed_reduction_factor{sys.argv[-1]}.json'
@@ -155,7 +154,7 @@ print(len(inverse_reduction_factor))
 # Create a figure and axes objects
 fig, axs = plt.subplots(1, 2, figsize=(9, 3))
 
-axs[0].hist(reduction_factor, bins=bins, color='skyblue')
+axs[0].hist(reduction_factor, bins=bins, color='black')
 axs[0].set_yscale('log')
 axs[0].set_title('Histogram of Reduction Factor (R)')
 axs[0].set_ylabel('Bins')
@@ -163,7 +162,7 @@ axs[0].set_xlabel('$R$')
 
 control = np.ones_like(reduction_factor)
 
-axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue')
+axs[1].hist(inverse_reduction_factor, bins=bins, color='black')
 axs[1].set_yscale('log')
 axs[1].set_title('Histogram of Reduction Factor ($1/R$)')
 axs[1].set_ylabel('Bins')

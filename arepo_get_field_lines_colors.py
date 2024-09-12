@@ -60,9 +60,6 @@ else:
     rloc_center  =1     # rloc_boundary for inner region of the cloud
     max_cycles   =1
 
-# flow control to repeat calculations in no peak situations
-cycle = 0 
-
 reduction_factor_at_gas_density = defaultdict()
 
 reduction_factor = np.array([])

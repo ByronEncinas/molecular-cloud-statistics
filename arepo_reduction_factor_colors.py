@@ -6,18 +6,19 @@ from scipy import spatial
 import healpy as hp
 import numpy as np
 import random
+import os
 import h5py
 import json
 import sys
-import os
-
 from library import *
 
 import time
+
 start_time = time.time()
 
+
 """  
-Using Alex Data
+Using Margo Data
 
 Analysis of reduction factor
 
@@ -54,36 +55,29 @@ if len(sys.argv)>2:
 	rloc_center  =float(sys.argv[3])
 	max_cycles   =int(sys.argv[4])
 else:
-    N            =200
-    rloc_boundary=2   # rloc_boundary for boundary region of the cloud
+    N            =100
+    rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     rloc_center  =1     # rloc_boundary for inner region of the cloud
-    max_cycles   =100
-
+    max_cycles   =1
 
 # flow control to repeat calculations in no peak situations
 cycle = 0 
 
 reduction_factor_at_gas_density = defaultdict()
 
-reduction_factor = []
-numb_density_at  = []
-
-filename = 'arepo_data/snap_430.hdf5'
+reduction_factor = np.array([])
 
 """
-Functions/Methods
-
-- Data files provided do not contain  
-- 
+(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
 """
 def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 
     return np.sqrt(sum([(new_vector[i]-prev_vector[i])*(new_vector[i]-prev_vector[i]) for i in range(len(new_vector))]))
 
-def get_magnetic_field_at_points(x, magnetic_fields, rel_pos):
+def get_magnetic_field_at_points(x, Bfield, rel_pos):
 	n = len(rel_pos[:,0])
 	local_fields = np.zeros((n,3))
 	for  i in range(n):
-		local_fields[i,:] = magnetic_fields[i,:]
+		local_fields[i,:] = Bfield[i,:]
 	return local_fields
 
 def get_density_at_points(x, Density, Density_grad, rel_pos):
@@ -98,26 +92,23 @@ def find_points_and_relative_positions(x, Pos):
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 
-def find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos):
+def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
 	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos)
-	local_fields = get_magnetic_field_at_points(x, magnetic_fields[cells], rel_pos)
+	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
 	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
-	
 	return local_fields, abs_local_fields, local_densities, cells
 	
-def Heun_step(x, dx, magnetic_fields, Density, Density_grad, Pos):
-
-	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, magnetic_fields, Density, Density_grad, Pos)
+def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
+	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
 	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
-		
 	if dx > 0:
 		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 	else:
 		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
 
 	x_tilde = x + dx * local_fields_1
-	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, magnetic_fields, Density, Density_grad, Pos)
+	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
 	local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
 	abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
 
@@ -128,12 +119,12 @@ def Heun_step(x, dx, magnetic_fields, Density, Density_grad, Pos):
 	
 	return x_final, abs_local_fields_1, local_densities
 
-"""  B. Jesus Velazquez One Dimensional """
+"""  B. Jesus Velazquez """
+
+snap = 'snap_430'
+filename = 'arepo_data/'+snap + '.hdf5'
 
 data = h5py.File(filename, 'r')
-
-print(filename, "Loaded")
-
 Boxsize = data['Header'].attrs['BoxSize'] #
 
 # Directly convert and cast to desired dtype
@@ -146,7 +137,6 @@ Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
 # Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
-Volume = Mass/Density
 
 # printing relevant info about the data
 # 1 Parsec  = 3.086e+18 cm
@@ -170,13 +160,14 @@ Name: PartType0/MagneticField
 
 """
 
-Bfield  *= (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 6.771194847794873e-23          # in cgs
-Mass    *= 1.9885e33                      # in cgs
+print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
+
+Bfield  *= 1.0 * (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0 * 6.771194847794873e-23
+Mass    *= 1.0 * 1.9885e33
 Volume   = Mass/Density
 
-#Center= 0.5 * Boxsize * np.ones(3) # Center # Default
-
+#Center= 0.5 * Boxsize * np.ones(3) # Center
 #Center = np.array( [91,       -110,          -64.5]) #117
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
@@ -187,19 +178,25 @@ Center = Pos[np.argmax(Density),:] #430
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 3.086e+18                  # in cgs
-Pos        *= 3.086e+18                  # in cgs
+VoronoiPos *= 1.0*1.496e13
+Pos        *= 1.0*1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
-print("SLURM_JOB_ID: ", sys.argv[-1])
 print("Cores Used: ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        : ", rloc_center)
 print("max_cycles         : ", max_cycles)
+print("Boxsize            : ", Boxsize) # 256
+print("Center             : ", Center) # 256
+print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
+print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
+print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
 
 def get_along_lines(x_init):
 
@@ -226,8 +223,7 @@ def get_along_lines(x_init):
         #print(k, (time.time()-start_time)/60.)
         
         x, bfield, dens = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
-        print(k)
-        #print(k, x, bfield, dens)
+        print(k, x, bfield, dens)
         line[k+1,:,:] = x
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
@@ -240,8 +236,7 @@ def get_along_lines(x_init):
     for k in range(N):
         #print(-k, (time.time()-start_time)/60.)
         x, bfield, dens = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
-        print(-k)
-        #print(-k, x, bfield, dens)
+        print(-k, x, bfield, dens)
         line_rev[k+1,:,:] = x
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
@@ -277,6 +272,7 @@ def get_along_lines(x_init):
     #index = len(line_rev[:, 0, 0])
     trajectory[-1,:] = 2*trajectory[-2,:] - trajectory[-3,:] 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities
+    #return index, line[0, :], bfields[0], radius_vector, trajectory, magnetic_fields, gas_densities
 
 import os
 import shutil
@@ -292,11 +288,9 @@ if os.path.exists(output_folder):
 
 # Create the new arepo_npys directory
 os.makedirs(new_folder, exist_ok=True)
-
-#rloc_center      = float(random.uniform(0,1)*float(rloc_boundary)/4)
 rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
 nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-npix  = 12 * nside ** 2 
+npix  = 12 * nside ** 2
 ipix_center       = np.arange(npix)
 xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 
@@ -312,7 +306,7 @@ x_init[:,0]      = rloc_center * xx[:]
 x_init[:,1]      = rloc_center * yy[:]
 x_init[:,2]      = rloc_center * zz[:]
 
-lmn = N - 1
+B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
@@ -330,8 +324,13 @@ with open('output', 'w') as file:
     file.write(f"Biggest  Volume    : {Volume[np.argmax(Volume)]}\n")
     file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
     file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
+    file.write(f"Elapsed Time       : {(time.time() - start_time)/60.}\n")
+# flow control to repeat calculations in no peak situations
 
-B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
+reduction_factor_at_gas_density = defaultdict()
+
+reduction_factor = []
+numb_density_at  = []
 
 for cycle in range(max_cycles):
 
@@ -339,10 +338,10 @@ for cycle in range(max_cycles):
     bfield         = magnetic_fields[:,cycle]
     numb_density   = gas_densities[:,cycle]
 
-    p_r = random.randint(0, len(distance) - 1)
+    p_r = N - 1
 
     x_init = distance[p_r]
-    B_init   = bfield[p_r]
+    B_init = bfield[p_r]
     n_init = numb_density[p_r]
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
@@ -416,7 +415,6 @@ for cycle in range(max_cycles):
 
     # Now we pair reduction factors at one position with the gas density there.
     #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
-    reduction_factor_at_gas_density[R] = numb_density_at # Key: 1/R => Value: Ng (gas density)
 
 print(reduction_factor)
 print(numb_density_at)
