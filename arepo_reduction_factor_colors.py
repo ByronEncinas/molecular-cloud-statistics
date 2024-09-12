@@ -487,7 +487,7 @@ if True:
     # Plot original scatter plot
     fig, axs = plt.subplots(1, 1, figsize=(8, 5))
 
-    axs.scatter(x, y, marker="|", s=5, color='red', label='Data points')
+    axs.scatter(x, y, marker="x", s=5, color='red', label='Data points')
     axs.set_title('Histogram of Reduction Factor (R)')
     axs.set_ylabel('$(R)$')
     axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
@@ -517,7 +517,7 @@ if True:
     # Add legend
     axs.legend()
 
-    plt.savefig(f"arepo_bias/mean_median.png")
+    plt.savefig(f"histograms/mean_median.png")
     plt.close(fig)
     #plt.show()
 
@@ -547,7 +547,7 @@ if True:
     axs.legend(loc='center')
 
     # save figure
-    plt.savefig(f"arepo_bias/mirrored_histograms.png")
+    plt.savefig(f"histograms/mirrored_histograms.png")
 
     # Show the plot
     plt.close(fig)
