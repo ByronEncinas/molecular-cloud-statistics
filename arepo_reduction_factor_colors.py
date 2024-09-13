@@ -52,12 +52,10 @@ if len(sys.argv)>2:
 	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
-	rloc_center  =float(sys.argv[3])
-	max_cycles   =int(sys.argv[4])
+	max_cycles   =int(sys.argv[3])
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
-    rloc_center  =1     # rloc_boundary for inner region of the cloud
     max_cycles   =1
 
 # flow control to repeat calculations in no peak situations
@@ -172,6 +170,7 @@ Volume   = Mass/Density
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
 
+
 # Make Box Centered at the Point of Interest or High Density Region
 
 # all positions are relative to the 'Center'
@@ -185,18 +184,6 @@ xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
-print("Cores Used: ", os.cpu_count())
-print("Steps in Simulation: ", 2*N)
-print("rloc_boundary      : ", rloc_boundary)
-print("rloc_center        : ", rloc_center)
-print("max_cycles         : ", max_cycles)
-print("Boxsize            : ", Boxsize) # 256
-print("Center             : ", Center) # 256
-print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
-print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
-print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
 
 def get_along_lines(x_init):
 
@@ -306,6 +293,19 @@ x_init[:,0]      = rloc_center * xx[:]
 x_init[:,1]      = rloc_center * yy[:]
 x_init[:,2]      = rloc_center * zz[:]
 
+print("Cores Used          : ", os.cpu_count())
+print("Steps in Simulation : ", 2*N)
+print("rloc_boundary       : ", rloc_boundary)
+print("rloc_center         : ", rloc_center)
+print("max_cycles          : ", max_cycles)
+print("Boxsize             : ", Boxsize) # 256
+print("Center              : ", Center) # 256
+print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
+print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
+print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
+
 B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
@@ -332,11 +332,15 @@ reduction_factor_at_gas_density = defaultdict()
 reduction_factor = []
 numb_density_at  = []
 
+min_den_cycle = []
+
 for cycle in range(max_cycles):
 
     distance       = trajectory[:,cycle]
     bfield         = magnetic_fields[:,cycle]
     numb_density   = gas_densities[:,cycle]
+
+    min_den_cycle.append(min(numb_density))
 
     p_r = N - 1
 

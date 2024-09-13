@@ -52,12 +52,10 @@ if len(sys.argv)>2:
 	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
-	rloc_center  =float(sys.argv[3])
-	max_cycles   =int(sys.argv[4])
+	max_cycles   =int(sys.argv[3])
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
-    rloc_center  =1     # rloc_boundary for inner region of the cloud
     max_cycles   =1
 
 reduction_factor_at_gas_density = defaultdict()
@@ -118,8 +116,8 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
 
 """  B. Jesus Velazquez """
 
-snap = 'snap_430'
-filename = 'arepo_data/'+snap + '.hdf5'
+snap = '430'
+filename = 'arepo_data/snap_'+ snap + '.hdf5'
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -155,45 +153,34 @@ Name: PartType0/Velocities
     Attribute: to_cgs = 100_000.0
 Name: PartType0/MagneticField
 
+
+grams to nucleus/cm^3
 """
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Bfield  *= 1.0 #* (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0 #* 6.771194847794873e-23
-Mass    *= 1.0 #* 1.9885e33
+Bfield  *= 1.0 * (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0 * 6.771194847794873e-23
+Mass    *= 1.0 * 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
 #Center = np.array( [91,       -110,          -64.5]) #117
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
-
+print("Center before Centering", Center)
 # Make Box Centered at the Point of Interest or High Density Region
 
 # all positions are relative to the 'Center'
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 1.0#*1.496e13
-Pos        *= 1.0#*1.496e13
+VoronoiPos *= 1.0*1.496e13
+Pos        *= 1.0*1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
-
-print("Cores Used: ", os.cpu_count())
-print("Steps in Simulation: ", 2*N)
-print("rloc_boundary      : ", rloc_boundary)
-print("rloc_center        : ", rloc_center)
-print("max_cycles         : ", max_cycles)
-print("Boxsize            : ", Boxsize) # 256
-print("Center             : ", Center) # 256
-print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
-print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
-print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
 
 def get_along_lines(x_init):
 
@@ -305,6 +292,19 @@ x_init[:,2]      = rloc_center * zz[:]
 
 lmn = N - 1
 
+print("Cores Used: ", os.cpu_count())
+print("Steps in Simulation: ", 2*N)
+print("rloc_boundary      : ", rloc_boundary)
+print("rloc_center        : ", rloc_center)
+print("max_cycles         : ", max_cycles)
+print("Boxsize            : ", Boxsize) # 256
+print("Center             : ", Center) # 256
+print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
+print(f"Smallest Density   : {Density[np.argmin(Density)]}")
+print(f"Biggest  Density   : {Density[np.argmax(Density)]}")
+
 B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
@@ -321,8 +321,8 @@ with open('output', 'w') as file:
     file.write(f"Posit Max Density  : {Pos[np.argmax(Density), :]}\n")
     file.write(f"Smallest Volume    : {Volume[np.argmin(Volume)]}\n")
     file.write(f"Biggest  Volume    : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
-    file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density   : {Density[np.argmin(Density)]}\n")
+    file.write(f"Biggest  Density   : {Density[np.argmax(Density)]}\n")
     file.write(f"Elapsed Time       : {(time.time() - start_time)/60.}\n")
 
 for i in range(m):
