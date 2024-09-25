@@ -125,24 +125,12 @@ def pocket_finder(bfield, cycle=0, plot=False):
     return (indexes, peaks), (index_global_max, upline)
 
             
-def find_insertion_point(index_pocket, p_r):
-    """
-    Finds the insertion point for p_r in a sorted list or numpy array index_pocket.
+def find_insertion_point(array, val):
 
-    Args:
-        index_pocket (list or np.ndarray): Sorted list or numpy array of indices.
-        p_r (int or float): The value to find the insertion point for.
-
-    Returns:
-        int: The insertion index for p_r.
-    if isinstance(index_pocket, np.ndarray):
-        index_pocket = index_pocket.tolist()  # Convert to list if it's a numpy array
-    """
-
-    for i in range(len(index_pocket)):
-        if p_r < index_pocket[i]:
+    for i in range(len(array)):
+        if val < array[i]:
             return i  # Insert before index i
-    return len(index_pocket)  # Insert at the end if p_r is greater than or equal to all elements
+    return len(array)  # Insert at the end if p_r is greater than or equal to all elements
 
 
 def find_vector_in_array(radius_vector, x_init):
@@ -162,8 +150,11 @@ def find_vector_in_array(radius_vector, x_init):
 
 """ Integration Methods """
 
-def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 
-    return np.sqrt(sum([(new_vector[i]-prev_vector[i])*(new_vector[i]-prev_vector[i]) for i in range(len(new_vector))]))
+def magnitude(v1, v2=None):
+    if v2 is None:
+        return np.linalg.norm(v1)  # Magnitude of a single vector
+    else:
+        return np.linalg.norm(v1 - v2)  # Distance between two vectors
 
 def Ind(i):
   '''

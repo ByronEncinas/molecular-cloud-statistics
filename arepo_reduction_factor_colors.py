@@ -160,9 +160,9 @@ Name: PartType0/MagneticField
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Bfield  *= 1.0 * (3.086e+18/1.9885e33)**(-1/2) # in cgs
-Density *= 1.0 * 6.771194847794873e-23
-Mass    *= 1.0 * 1.9885e33
+Bfield  *= 1.0# * (3.086e+18/1.9885e33)**(-1/2) # in cgs
+Density *= 1.0# * 6.771194847794873e-23
+Mass    *= 1.0# * 1.9885e33
 Volume   = Mass/Density
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
@@ -177,8 +177,8 @@ Center = Pos[np.argmax(Density),:] #430
 VoronoiPos-=Center
 Pos-=Center
 
-VoronoiPos *= 1.0*1.496e13
-Pos        *= 1.0*1.496e13
+VoronoiPos *= 1.0#*1.496e13
+Pos        *= 1.0#*1.496e13
 
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
@@ -235,15 +235,12 @@ def get_along_lines(x_init):
     # Concatenating the arrays correctly as 3D arrays
     # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
     radius_vector = np.concatenate((line[:, :, :], line_rev[::-1, :, :]), axis=0)
-    radius_vector = line[:, :, :]
 
     # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
     magnetic_fields = np.concatenate((bfields[:, :], bfields_rev[::-1, :]), axis=0)
-    magnetic_fields = bfields[:, :]
 
     # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
     gas_densities = np.concatenate((densities[:, :], densities_rev[::-1, :]), axis=0)
-    gas_densities = densities[:, :]
 
     trajectory         = np.zeros(bfields.shape)        # 1D array for the trajectory
         
@@ -275,6 +272,7 @@ if os.path.exists(output_folder):
 
 # Create the new arepo_npys directory
 os.makedirs(new_folder, exist_ok=True)
+
 rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
 nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
 npix  = 12 * nside ** 2
@@ -306,7 +304,15 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
 print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
 
-B_init, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
+__, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(x_init)
+
+code_to_gauss_units = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
+
+radius_vector   *= 1.0* 1.496e13                            # from Parsec to cm
+trajectory      *= 1.0* 1.496e13                            # from Parsec to cm
+magnetic_fields *= 1.0* code_to_gauss_units                 # in Gauss (cgs)
+gas_densities   *= 1.0* 6.771194847794873e-23               # M_sol/pc^3 to gram/cm^3
+numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
@@ -314,23 +320,24 @@ with open('output', 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Steps in Simulation: {2 * N}\n")
-    file.write(f"rloc_boundary      : {rloc_boundary}\n")
-    file.write(f"rloc_center        : {rloc_center}\n")
+    file.write(f"rloc_boundary (Pc) : {rloc_boundary} Pc\n")
+    file.write(f"rloc_center (Pc)   : {rloc_center} Pc\n")
     file.write(f"max_cycles         : {max_cycles}\n")
-    file.write(f"Boxsize            : {Boxsize}\n")
-    file.write(f"Center             : {Center}\n")
-    file.write(f"Posit Max Density  : {Pos[np.argmax(Density), :]}\n")
-    file.write(f"Smallest Volume    : {Volume[np.argmin(Volume)]}\n")
-    file.write(f"Biggest  Volume    : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density   : {Density[np.argmin(Volume)]}\n")
-    file.write(f"Biggest  Density   : {Density[np.argmax(Volume)]}\n")
-    file.write(f"Elapsed Time       : {(time.time() - start_time)/60.}\n")
+    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+    file.write(f"Center (Pc, Pc, Pc): {Center[0]} Pc, {Center[1]} Pc, {Center[2]} Pc\n")
+    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Density M☉/Pc^3  : {Density[np.argmax(Volume)]} M☉/Pc^3\n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+
 # flow control to repeat calculations in no peak situations
 
 reduction_factor_at_gas_density = defaultdict()
 
 reduction_factor = []
-numb_density_at  = []
+gas_density_at  = []
 
 min_den_cycle = []
 
@@ -338,15 +345,15 @@ for cycle in range(max_cycles):
 
     distance       = trajectory[:,cycle]
     bfield         = magnetic_fields[:,cycle]
-    numb_density   = gas_densities[:,cycle]
+    gas_density   = gas_densities[:,cycle]
 
-    min_den_cycle.append(min(numb_density))
+    min_den_cycle.append(min(gas_density))
 
     p_r = N - 1
 
     x_init = distance[p_r]
     B_init = bfield[p_r]
-    n_init = numb_density[p_r]
+    n_init = gas_density[p_r]
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
@@ -397,16 +404,16 @@ for cycle in range(max_cycles):
         if B_r/B_l < 1:
             R = 1 - np.sqrt(1-B_r/B_l)
             reduction_factor.append(R)
-            numb_density_at.append(n_init)
+            gas_density_at.append(n_init)
         else:
             R = 1
             reduction_factor.append(1)
-            numb_density_at.append(n_init)
+            gas_density_at.append(n_init)
 
     else:
         R = 1
         reduction_factor.append(1)
-        numb_density_at.append(n_init) 
+        gas_density_at.append(n_init) 
         continue
 
     print("Closest local maxima 'p':", closest_values)
@@ -421,7 +428,8 @@ for cycle in range(max_cycles):
     #gas_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, gas_den)
 
 print(reduction_factor)
-print(numb_density_at)
+print(gas_density_at)
+numb_density_at = gas_density_at/(1.672621898e-24)
 
 # Print elapsed time
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
@@ -438,7 +446,7 @@ file_path = f'random_distributed_gas_density{sys.argv[-1]}.json'
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
-    json.dump(numb_density_at, json_file)
+    json.dump(gas_density_at, json_file)
 
 """# Graphs"""
 
@@ -485,7 +493,7 @@ import seaborn as sns
 if True:
 
     # Extract data from the dictionary
-    x = np.log10(np.array(numb_density_at))   # log10(gas number density)
+    x = np.log10(np.array(gas_density_at))   # log10(gas number density)
     y = np.array(reduction_factor)              # reduction factor R
 
     # Plot original scatter plot

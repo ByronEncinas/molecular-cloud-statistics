@@ -25,16 +25,17 @@ rounds = int(sys.argv[2])
 
 import os
 
-def list_npy_files(directory):
+def list_files(directory, ext):
+    import os
     # List all files in the specified directory
     all_files = os.listdir(directory)
     # Filter out only .npy files
-    npy_files = [f for f in all_files if f.endswith('.npy')]
-    return npy_files
+    files = [f for f in all_files if f.endswith(f'.{ext}')]
+    return files
 
 # Example usage
 directory_path = './arepo_npys/'
-npy_files = list_npy_files(directory_path)
+npy_files = list_files(directory_path)
 
 reduction_factor = []
 numb_density_at  = []
@@ -49,7 +50,9 @@ for cycle in range(max_cycles):
         bfield         = np.array(np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r'))
         numb_density   = np.array(np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r'))
 
-        p_r = random.randint(0, len(distance) - 1)
+        s_r = random.random()*(distance[-1])
+        p_r = find_insertion_point(distance, s_r)
+        #p_r = random.randint(0, len(distance) - 1)
 
         x_init = distance[p_r]
         B_init   = bfield[p_r]
@@ -186,11 +189,11 @@ if True:
 
     axs.scatter(x, y, marker="|", s=5, color='red', label='Data points')
     axs.set_title('Histogram of Reduction Factor (R)')
-    axs.set_ylabel('$(R)$')
+    axs.set_ylabel('$R$')
     axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
 
     # Compute binned statistics
-    num_bins = 100
+    num_bins = rounds*max_cycles//10
 
     # Median binned statistics
     bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
@@ -199,7 +202,7 @@ if True:
 
     # Mean binned statistics
     bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-    axs.plot(bin_centers, bin_means, marker="x", color='pink', linestyle='-', label='Binned means')
+    axs.scatter(bin_centers, bin_means, marker="x", color='blue', label='Binned means')
 
     # Overall mean and median
     overall_mean = np.average(y)
@@ -237,7 +240,7 @@ if True:
 
     # Set the labels and title
     axs.set_title('Histograms of Binned Medians and Means (Inverted)')
-    axs.set_ylabel('$(R)$')
+    axs.set_ylabel('$R$')
     axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
 
     # Add legend

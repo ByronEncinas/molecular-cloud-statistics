@@ -14,3 +14,5 @@ __*
 .ipynb*
 multiprocessing_test.py
 cluster_outputs/
+discontinuities/
+density_profiles/
