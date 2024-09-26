@@ -53,7 +53,8 @@ if len(sys.argv)>=2:
 else:
     N            = 100
 
-"""
+""" Arepo Process Methods (written by A. Mayer at MPA July 2024)
+
 (Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
 """
 def get_magnetic_field_at_points(x, Bfield, rel_pos):
@@ -70,29 +71,29 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
 	return local_densities
 
-def find_points_and_relative_positions(x, Pos):
+def find_points_and_relative_positions(x, Pos, VoronoiPos):
 	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
 	rel_pos = VoronoiPos[cells] - x
 	return dist, cells, rel_pos
 
-def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
-	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos)
+def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
+	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
 	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
 	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
 	return local_fields, abs_local_fields, local_densities, cells
 	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
-    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
+    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
     CellVol = Volume[cells]
     dx *= 0.3*((4/3)*Volume[cells]/np.pi)**(1/3)  
     x_tilde = x + dx[:, np.newaxis] * local_fields_1
-    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
+    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
     abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
     unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
-    x_final = x + 0.5 * dx[:, np.newaxis] * unito
+    x_final = x + 0.5 * dx[:, np.newaxis] * unito  
     return x_final, abs_local_fields_1, local_densities, CellVol
 
 def list_files(directory, ext):
@@ -102,6 +103,7 @@ def list_files(directory, ext):
     # Filter out only .npy files
     files = [directory + f for f in all_files if f.endswith(f'{ext}')]
     return files
+
 
 """  B. Jesus Velazquez """
 
@@ -197,20 +199,21 @@ for filename in files[::-1]:
         line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
         bfields   = np.zeros((N+1,m))
         densities = np.zeros((N+1,m))
-        volumes   = np.zeros((N+1,m))	
+        volumes   = np.zeros((N+1,m))
+        mass_at   = np.zeros((N+1,m))	
         
         line[0,:,:]     = x_init
 
         x = x_init
 
-        dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
+        dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
         vol = Volume[cells]
 
         # propagates from same inner region to the outside in -dx direction
         for k in range(N):
 
-            _, bfield, dens, vol = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
+            _, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
             dx_vec = 0.3*((4/3)*vol/np.pi)**(1/3)
             
@@ -243,6 +246,7 @@ for filename in files[::-1]:
         print("Magnetic fields shape:", magnetic_fields.shape)
         print("Radius vector shape:", radius_vector.shape)
         print("Numb densities shape:", numb_densities.shape)
+        
         trajectory[0,:]  = 0.0
         
         for _n in range(m):  # Iterate over the first dimension
@@ -270,8 +274,8 @@ for filename in files[::-1]:
 
     radius_vector, trajectory, magnetic_fields, gas_densities, volumes, radius_to_origin = get_along_lines(x_init)
 
-    radius_vector   *= 1.0* 1.496e13                                  # from Parsec to cm
-    trajectory      *= 1.0* 1.496e13                                  # from Parsec to cm
+    radius_vector   *= 1.0* 3.086e+18                                   # from Parsec to cm
+    trajectory      *= 1.0* 3.086e+18                                  # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2)  # in Gauss (cgs)
     gas_densities   *= 1.0* 6.771194847794873e-23                     # M_sol/pc^3 to gram/cm^3
     numb_densities   = gas_densities * 6.02214076e+23 / 1.00794       # from gram/cm^3 to Nucleus/cm^3
@@ -350,5 +354,3 @@ for filename in files[::-1]:
         ax.set_title('Magnetic field morphology')
         
         plt.savefig(f"{directory_path}/MagneticFieldTopology.png", bbox_inches='tight')
-
-        plt.show()

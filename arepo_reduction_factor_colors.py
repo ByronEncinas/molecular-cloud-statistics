@@ -65,58 +65,6 @@ reduction_factor_at_gas_density = defaultdict()
 
 reduction_factor = np.array([])
 
-"""
-(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
-"""
-def magnitude(new_vector, prev_vector=[0.0,0.0,0.0]): 
-    return np.sqrt(sum([(new_vector[i]-prev_vector[i])*(new_vector[i]-prev_vector[i]) for i in range(len(new_vector))]))
-
-def get_magnetic_field_at_points(x, Bfield, rel_pos):
-	n = len(rel_pos[:,0])
-	local_fields = np.zeros((n,3))
-	for  i in range(n):
-		local_fields[i,:] = Bfield[i,:]
-	return local_fields
-
-def get_density_at_points(x, Density, Density_grad, rel_pos):
-	n = len(rel_pos[:,0])	
-	local_densities = np.zeros(n)
-	for  i in range(n):
-		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
-	return local_densities
-
-def find_points_and_relative_positions(x, Pos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
-	rel_pos = VoronoiPos[cells] - x
-	return dist, cells, rel_pos
-
-def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
-	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos)
-	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
-	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
-	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
-	return local_fields, abs_local_fields, local_densities, cells
-	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
-	local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-	local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
-	if dx > 0:
-		dx = 0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
-	else:
-		dx = -0.4*((4/3)*Volume[cells][0]/np.pi)**(1/3)
-
-	x_tilde = x + dx * local_fields_1
-	local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
-	local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
-	abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
-
-	unitary_local_field = (local_fields_1 + local_fields_2) / np.tile(abs_sum_local_fields, (3,1)).T
-	x_final = x + 0.5 * dx * unitary_local_field[0]
-	
-	x_final = x + 0.5 * dx * (local_fields_1 + local_fields_2)
-	
-	return x_final, abs_local_fields_1, local_densities
-
 """  B. Jesus Velazquez """
 
 snap = 'snap_430'
@@ -184,7 +132,6 @@ xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
-
 def get_along_lines(x_init):
 
     m = x_init.shape[0]
@@ -192,71 +139,83 @@ def get_along_lines(x_init):
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
+    volumes   = np.zeros((N+1,m))
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
+    volumes_rev   = np.zeros((N+1,m))
 
-    line[0,:,:]     =x_init
-    line_rev[0,:,:] =x_init
+    line[0,:,:]     = x_init
+    line_rev[0,:,:] = x_init
 
-    x = x_init
+    x = x_init.copy()
 
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+
+    print(line.shape)
 
     # propagates from same inner region to the outside in -dx direction
-    start_time = time.time()
     for k in range(N):
-        #print(k, (time.time()-start_time)/60.)
-        
-        x, bfield, dens = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
-        print(k, x, bfield, dens)
+        print(k,x)
+
+        x, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+
         line[k+1,:,:] = x
+        volumes[k+1,:] = vol
         bfields[k+1,:] = bfield
         densities[k+1,:] = dens
+    
+    x = x_init.copy()
 
-    # propagates from same inner region to the outside in -dx direction
-    x = x_init
+    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
-    dummy, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
-	
+    vol = Volume[cells]
+    
+    print(line_rev.shape)
+
     for k in range(N):
-        #print(-k, (time.time()-start_time)/60.)
-        x, bfield, dens = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
-        print(-k, x, bfield, dens)
+        print(-k, x)
+        x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+
         line_rev[k+1,:,:] = x
+        volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
-
-    line_rev = line_rev[:,:,:]
-    bfields_rev = bfields_rev[:,:] 
-    densities_rev = densities_rev[:,:]
 	
-    # Concatenating the arrays correctly as 3D arrays
-    # Concatenate the `line` and `line_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    radius_vector = np.concatenate((line[:, :, :], line_rev[::-1, :, :]), axis=0)
+    radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
+    gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
+    numb_densities  = gas_densities * 6.02214076e+23 / 1.00794       # from gram/cm^3 to Nucleus/cm^3
 
-    # Concatenate the `bfields` and `bfields_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    magnetic_fields = np.concatenate((bfields[:, :], bfields_rev[::-1, :]), axis=0)
+    lower_bound = numb_densities > 100
+    
+    # Use np.where to preserve the shape while replacing values where condition is False
+    radius_vector   = np.where(lower_bound[:, :, np.newaxis], radius_vector, 0.0)
+    magnetic_fields = np.where(lower_bound, magnetic_fields, 0.0)
+    gas_densities   = np.where(lower_bound, gas_densities, 0.0)
+    numb_densities  = np.where(lower_bound, numb_densities, 0.0)
+    volumes         = np.where(lower_bound, volumes_all, 0.0)
 
-    # Concatenate the `densities` and `densities_rev` arrays along the first axis, but only take the first element in the `m` dimension
-    gas_densities = np.concatenate((densities[:, :], densities_rev[::-1, :]), axis=0)
-
-    trajectory         = np.zeros(bfields.shape)        # 1D array for the trajectory
-        
-    for _n in range(m):  # Iterate over the first dimension
+    # Initialize trajectory and radius_to_origin with the same shape
+    trajectory      = np.zeros_like(magnetic_fields)
+    radius_to_origin= np.zeros_like(magnetic_fields)
+	
+    trajectory[0,:] = 0.0
+	
+    for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
-        for k in range(N):  # Iterate over the first dimension    
+        for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
+            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            
             diff_rj_ri = magnitude(cur, prev)
             trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
-            prev = radius_vector[k, _n,:]
+            prev = radius_vector[k, _n, :]
 
-    #index = len(line_rev[:, 0, 0])
-    trajectory[-1,:] = 2*trajectory[-2,:] - trajectory[-3,:] 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities
-    #return index, line[0, :], bfields[0], radius_vector, trajectory, magnetic_fields, gas_densities
+    return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities, volumes, radius_to_origin
 
 import os
 import shutil
@@ -308,8 +267,8 @@ __, radius_vector, trajectory, magnetic_fields, gas_densities = get_along_lines(
 
 code_to_gauss_units = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 
-radius_vector   *= 1.0* 1.496e13                            # from Parsec to cm
-trajectory      *= 1.0* 1.496e13                            # from Parsec to cm
+radius_vector   *= 1.0* 3.086e+18                             # from Parsec to cm
+trajectory      *= 1.0* 3.086e+18                            # from Parsec to cm
 magnetic_fields *= 1.0* code_to_gauss_units                 # in Gauss (cgs)
 gas_densities   *= 1.0* 6.771194847794873e-23               # M_sol/pc^3 to gram/cm^3
 numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3

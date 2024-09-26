@@ -58,48 +58,6 @@ else:
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     max_cycles   =1
 
-"""
-(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
-"""
-def get_magnetic_field_at_points(x, Bfield, rel_pos):
-	n = len(rel_pos[:,0])
-	local_fields = np.zeros((n,3))
-	for  i in range(n):
-		local_fields[i,:] = Bfield[i,:]
-	return local_fields
-
-def get_density_at_points(x, Density, Density_grad, rel_pos):
-	n = len(rel_pos[:,0])	
-	local_densities = np.zeros(n)
-	for  i in range(n):
-		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
-	return local_densities
-
-def find_points_and_relative_positions(x, Pos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
-	rel_pos = VoronoiPos[cells] - x
-	return dist, cells, rel_pos
-
-def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos):
-	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos)
-	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
-	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
-	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
-	return local_fields, abs_local_fields, local_densities, cells
-	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos):
-    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos)
-    local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
-    CellVol = Volume[cells]
-    dx *= 0.3*((4/3)*Volume[cells]/np.pi)**(1/3)  
-    x_tilde = x + dx[:, np.newaxis] * local_fields_1
-    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos)
-    local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
-    abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
-    unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
-    x_final = x + 0.5 * dx[:, np.newaxis] * unito  
-    return x_final, abs_local_fields_1, local_densities, CellVol
-
 """  B. Jesus Velazquez """
 
 snap = '430'
@@ -145,70 +103,76 @@ def get_along_lines(x_init):
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
 
-    line[0,:,:]     = x_init
-
-    x = x_init
-
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
-    volumes[0,:] = Volume[cells]
-
-    for k in range(N):
-        print(k, x)
-        
-        x, bfield, dens, vol = Heun_step(x, 1, Bfield, Density, Density_grad, VoronoiPos)
-        
-        line[k+1,:,:] = x
-        volumes[k+1,:] = vol
-        bfields[k+1,:] = bfield
-        densities[k+1,:] = dens
-
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
-    
+
+    line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init
 
-    x = x_init
+    x = x_init.copy()
 
-    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos)
-    volumes_rev[0,:] = Volume[cells]
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+
+    print(line.shape)
+
+    # propagates from same inner region to the outside in -dx direction
+    for k in range(N):
+        print(k,x)
+
+        x, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+
+        line[k+1,:,:] = x
+        volumes[k+1,:] = vol
+        bfields[k+1,:] = bfield
+        densities[k+1,:] = dens
+    
+    x = x_init.copy()
+
+    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+    
+    print(line_rev.shape)
 
     for k in range(N):
         print(-k, x)
-        x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, VoronoiPos)
+        x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens
 	
-    radius_vector = np.append(line, line_rev[::-1, :, :], axis=0)
-    #radius_vector = line_rev[:, :, :]
+    radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
+    gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
+    numb_densities  = gas_densities * 6.02214076e+23 / 1.00794       # from gram/cm^3 to Nucleus/cm^3
 
-    magnetic_fields = np.append(bfields, bfields_rev[::-1, :], axis=0)
-    #magnetic_fields = bfields_rev[:, :]
+    lower_bound = numb_densities > 100
+    
+    # Use np.where to preserve the shape while replacing values where condition is False
+    radius_vector   = np.where(lower_bound[:, :, np.newaxis], radius_vector, 0.0)
+    magnetic_fields = np.where(lower_bound, magnetic_fields, 0.0)
+    gas_densities   = np.where(lower_bound, gas_densities, 0.0)
+    numb_densities  = np.where(lower_bound, numb_densities, 0.0)
+    volumes         = np.where(lower_bound, volumes_all, 0.0)
 
-    gas_densities = np.append(densities, densities_rev[::-1, :], axis=0)
-    #gas_densities = densities[:, :]
-
-    volumes_all = np.append(volumes, volumes_rev[::-1, :], axis=0)
-    #volumes_all = volumes[:, :]
-
-    trajectory         = np.zeros_like(magnetic_fields)        # 1D array for the trajectory
-	
-    radius_to_origin = np.zeros_like(magnetic_fields)
+    # Initialize trajectory and radius_to_origin with the same shape
+    trajectory      = np.zeros_like(magnetic_fields)
+    radius_to_origin= np.zeros_like(magnetic_fields)
 	
     trajectory[0,:] = 0.0
 	
-    for _n in range(m):  # Iterate over the first dimension
+    for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
-            #if numb_densities[k, _n] < 10^2:	
-            #    continue
             radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            print(k, cur)
             diff_rj_ri = magnitude(cur, prev)
             trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
             prev = radius_vector[k, _n, :]
@@ -340,15 +304,13 @@ if True:
 		
 		for l in range(len(radius_vector[:,0,0])):
 			ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
-		
-		mid = radius_vector.shape[0]//2
 
 		#ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
 		ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
 		ax.scatter(x[lmn], y[lmn], z[lmn], marker="x", color="black",s=6)
 		ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
 		
-	zoom = np.max(radius_to_origin)*1.5
+	zoom = 256#np.max(radius_to_origin)
 	ax.set_xlim(-zoom,zoom)
 	ax.set_ylim(-zoom,zoom)
 	ax.set_zlim(-zoom,zoom)

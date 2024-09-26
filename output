@@ -1,10 +1,10 @@
 arepo_data/snap_430.hdf5
 Cores Used: 8
-Steps in Simulation: 200
-rloc_boundary (Pc) : 0.001
+Steps in Simulation: 40
+rloc_boundary (Pc) : 0.0
 rloc_center (Pc)   :
- [7.17449022e-05 1.14953792e-04]
-max_cycles         : 2
+ [0.]
+max_cycles         : 1
 Boxsize (Pc)       : 256.0 Pc
 Center (Pc, Pc, Pc): 0.0, 0.0, 0.0 
 Posit Max Density (Pc, Pc, Pc): [0. 0. 0.]
@@ -12,4 +12,4 @@ Smallest Volume (Pc^3)   : 2.2528754373306493e-17
 Biggest  Volume (Pc^3)   : 1799.5947371715042
 Smallest Density (M☉/Pc^3)  : 29636208712.852654 
 Biggest  Density (M☉/Pc^3) : 0.00014424121944113272
-Elapsed Time (Minutes)     : 28.56816286643346
+Elapsed Time (Minutes)     : 4.024479146798452

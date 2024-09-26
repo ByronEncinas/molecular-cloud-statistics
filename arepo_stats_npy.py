@@ -112,7 +112,6 @@ for cycle in range(max_cycles):
                 R = 1
                 reduction_factor.append(1)
                 numb_density_at.append(n_init)
-
         else:
             R = 1
             reduction_factor.append(1)
