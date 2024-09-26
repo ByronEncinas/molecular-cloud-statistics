@@ -35,7 +35,7 @@ def list_files(directory, ext):
 
 # Example usage
 directory_path = './arepo_npys/'
-npy_files = list_files(directory_path)
+npy_files = list_files(directory_path, "hdf5")
 
 reduction_factor = []
 numb_density_at  = []

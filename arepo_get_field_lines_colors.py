@@ -151,7 +151,9 @@ def get_along_lines(x_init):
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
     gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
-    numb_densities  = gas_densities * 6.02214076e+23 / 1.00794       # from gram/cm^3 to Nucleus/cm^3
+
+    gas_densities   *= 1.0* 6.771194847794873e-23                    # M_sol/pc^3 to gram/cm^3
+    numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
 
     lower_bound = numb_densities > 100
     
@@ -177,7 +179,11 @@ def get_along_lines(x_init):
             trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
             prev = radius_vector[k, _n, :]
 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, gas_densities, volumes, radius_to_origin
+    radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
+    trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
+    magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+    
+    return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
 
 rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
 nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
@@ -212,13 +218,7 @@ print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 
-__, radius_vector, trajectory, magnetic_fields, gas_densities, volumes, radius_to_origin = get_along_lines(x_init)
-
-radius_vector   *= 1.0* 3.086e+18                                 # from Parsec to cm
-trajectory      *= 1.0* 3.086e+18                                 # from Parsec to cm
-magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2)  # in Gauss (cgs)
-gas_densities   *= 1.0* 6.771194847794873e-23                     # M_sol/pc^3 to gram/cm^3
-numb_densities   = gas_densities * 6.02214076e+23 / 1.00794       # from gram/cm^3 to Nucleus/cm^3
+__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
@@ -258,14 +258,14 @@ for i in range(m):
         axs[0,0].scatter(trajectory[lmn,i], magnetic_fields[lmn,i], marker="x", color="black")
         axs[0,0].set_xlabel("s (cm)")
         axs[0,0].set_ylabel("$B(s)$ Gauss (cgs)")
-        axs[0,0].set_title("MAgnetic FIeld")
+        axs[0,0].set_title("Magnetic FIeld")
         axs[0,0].grid(True)
 		
         axs[0,1].plot(trajectory[:,i], radius_to_origin[:,i], linestyle="--", color="m")
         axs[0,1].scatter(trajectory[:,i], radius_to_origin[:,i], marker="+", color="m")
         axs[0,1].scatter(trajectory[lmn,i], radius_to_origin[lmn,i], marker="x", color="black")
         axs[0,1].set_xlabel("s (cm)")
-        axs[0,1].set_ylabel("$n_g(s)$ gr/cm^3 (cgs)")
+        axs[0,1].set_ylabel("$norm(\vec{R})$ cm (cgs)")
         axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
         axs[0,1].grid(True)
 
