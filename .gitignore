@@ -16,3 +16,6 @@ multiprocessing_test.py
 cluster_outputs/
 discontinuities/
 density_profiles/
+*json
+*.out
+output
