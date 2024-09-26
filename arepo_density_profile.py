@@ -53,58 +53,6 @@ if len(sys.argv)>=2:
 else:
     N            = 100
 
-""" Arepo Process Methods (written by A. Mayer at MPA July 2024)
-
-(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
-"""
-def get_magnetic_field_at_points(x, Bfield, rel_pos):
-	n = len(rel_pos[:,0])
-	local_fields = np.zeros((n,3))
-	for  i in range(n):
-		local_fields[i,:] = Bfield[i,:]
-	return local_fields
-
-def get_density_at_points(x, Density, Density_grad, rel_pos):
-	n = len(rel_pos[:,0])	
-	local_densities = np.zeros(n)
-	for  i in range(n):
-		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
-	return local_densities
-
-def find_points_and_relative_positions(x, Pos, VoronoiPos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
-	rel_pos = VoronoiPos[cells] - x
-	return dist, cells, rel_pos
-
-def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
-	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
-	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
-	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
-	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
-	return local_fields, abs_local_fields, local_densities, cells
-	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
-    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
-    local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
-    CellVol = Volume[cells]
-    dx *= 0.3*((4/3)*Volume[cells]/np.pi)**(1/3)  
-    x_tilde = x + dx[:, np.newaxis] * local_fields_1
-    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
-    local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
-    abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
-    unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
-    x_final = x + 0.5 * dx[:, np.newaxis] * unito  
-    return x_final, abs_local_fields_1, local_densities, CellVol
-
-def list_files(directory, ext):
-    import os
-    # List all files in the specified directory
-    all_files = os.listdir(directory)
-    # Filter out only .npy files
-    files = [directory + f for f in all_files if f.endswith(f'{ext}')]
-    return files
-
-
 """  B. Jesus Velazquez """
 
 directory_path = "arepo_data/"
@@ -224,7 +172,9 @@ for filename in files[::-1]:
             volumes[k+1,:] = vol
             bfields[k+1,:] = bfield
             densities[k+1,:] = dens
-            #mass_at[k+1,:] = dens*(4/3)*np.pi*x**2
+            #avg_den_at_x = np.mean(dens[densities[k+1,:]]) average density at radius r to calculate mass at r
+            #r = np.sqrt(x[:,:,0]*x[:,:,0] + x[:,:,1]*x[:,:,1]+x[:,:,2]*x[:,:,2]) # if adding masses of cells in radius less than current
+            #mass_at[k+1,:] = sum(Mass[ < ])
 
         radius_vector   = line
         magnetic_fields = bfields
@@ -294,7 +244,7 @@ for filename in files[::-1]:
         trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
         magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
 
-        return radius_vector, trajectory, magnetic_fields, gas_densities, volumes, radius_to_origin
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)

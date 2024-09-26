@@ -98,6 +98,7 @@ for cycle in range(max_cycles):
             closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
         else:
             # If p_i is None, select the two closest values based on some other criteria
+            print(p_i)
             continue
 
         if len(closest_values) == 2:

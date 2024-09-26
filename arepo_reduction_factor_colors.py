@@ -182,21 +182,49 @@ def get_along_lines(x_init):
 
     gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
     numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-
-    lower_bound = numb_densities > 100
     
-    # Use np.where to preserve the shape while replacing values where condition is False
-    radius_vector   = np.where(lower_bound[:, :, np.newaxis], radius_vector, 0.0)
-    magnetic_fields = np.where(lower_bound, magnetic_fields, 0.0)
-    gas_densities   = np.where(lower_bound, gas_densities, 0.0)
-    numb_densities  = np.where(lower_bound, numb_densities, 0.0)
-    volumes         = np.where(lower_bound, volumes_all, 0.0)
+    lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] 
 
+    # Function to keep interior False values only
+    def cut_boundary_falses(row):
+        # Find indices of True values
+        true_indices = np.where(row == True)[0]
+        
+        # Check for no True or only one True value
+        if len(true_indices) <= 1:
+            return row  # Return the row as is for no True values or a single True
+
+        # Get the first and last occurrence of True
+        first_true = true_indices[0]
+        last_true = true_indices[-1]
+
+        # Create a mask that keeps only the interior True values
+        mask = np.zeros_like(row, dtype=bool)  # Start with all False
+        
+        # Set the values between first and last True to True
+        mask[first_true + 1:last_true] = True  # Only preserve interior True values
+
+        return mask
+    
+    # Apply the function to each row of lower_bound
+    cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
+    #cut_lower_bound = np.array([row for row in lower_bound])
+    print(cut_lower_bound)
+
+    # Now use this modified `cut_lower_bound` to mask your arrays
+    radius_vector   = np.where(cut_lower_bound[:, :, np.newaxis], radius_vector, 0.0)
+    magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
+    gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
+    numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
     radius_to_origin= np.zeros_like(magnetic_fields)
-	
-    trajectory[0,:] = 0.0
+
+    print("Magnetic fields shape:", magnetic_fields.shape)
+    print("Radius vector shape:", radius_vector.shape)
+    print("Numb densities shape:", numb_densities.shape)
+    
+    trajectory[0,:]  = 0.0
 	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
@@ -212,21 +240,6 @@ def get_along_lines(x_init):
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
-
-import os
-import shutil
-
-# Define the directory names
-output_folder = 'arepo_output_data'
-new_folder = 'arepo_npys'
-
-# Check if the arepo_output_data folder exists
-if os.path.exists(output_folder):
-    # Delete the folder and its contents
-    shutil.rmtree(output_folder)
-
-# Create the new arepo_npys directory
-os.makedirs(new_folder, exist_ok=True)
 
 rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
 nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
@@ -358,12 +371,11 @@ for cycle in range(max_cycles):
             numb_density_at.append(n_init)
         else:
             R = 1
-            reduction_factor.append(1)
+            reduction_factor.append(R)
             numb_density_at.append(n_init)
-
     else:
         R = 1
-        reduction_factor.append(1)
+        reduction_factor.append(R)
         numb_density_at.append(n_init) 
         continue
 
@@ -378,6 +390,7 @@ for cycle in range(max_cycles):
     # Now we pair reduction factors at one position with the numb density there.
     #numb_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, numb_den)
 
+print(reduction_factor)
 print(numb_density_at)
 
 # Print elapsed time

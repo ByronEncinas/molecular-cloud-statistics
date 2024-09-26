@@ -152,23 +152,51 @@ def get_along_lines(x_init):
     gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
-    gas_densities   *= 1.0* 6.771194847794873e-23                    # M_sol/pc^3 to gram/cm^3
+    gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
     numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-
-    lower_bound = numb_densities > 100
     
-    # Use np.where to preserve the shape while replacing values where condition is False
-    radius_vector   = np.where(lower_bound[:, :, np.newaxis], radius_vector, 0.0)
-    magnetic_fields = np.where(lower_bound, magnetic_fields, 0.0)
-    gas_densities   = np.where(lower_bound, gas_densities, 0.0)
-    numb_densities  = np.where(lower_bound, numb_densities, 0.0)
-    volumes         = np.where(lower_bound, volumes_all, 0.0)
+    lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] 
 
+    # Function to keep interior False values only
+    def cut_boundary_falses(row):
+        # Find indices of True values
+        true_indices = np.where(row == True)[0]
+        
+        # Check for no True or only one True value
+        if len(true_indices) <= 1:
+            return row  # Return the row as is for no True values or a single True
+
+        # Get the first and last occurrence of True
+        first_true = true_indices[0]
+        last_true = true_indices[-1]
+
+        # Create a mask that keeps only the interior True values
+        mask = np.zeros_like(row, dtype=bool)  # Start with all False
+        
+        # Set the values between first and last True to True
+        mask[first_true + 1:last_true] = True  # Only preserve interior True values
+
+        return mask
+    
+    # Apply the function to each row of lower_bound
+    cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
+    #cut_lower_bound = np.array([row for row in lower_bound])
+    print(cut_lower_bound)
+
+    # Now use this modified `cut_lower_bound` to mask your arrays
+    radius_vector   = np.where(cut_lower_bound[:, :, np.newaxis], radius_vector, 0.0)
+    magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
+    gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
+    numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
     radius_to_origin= np.zeros_like(magnetic_fields)
-	
-    trajectory[0,:] = 0.0
+
+    print("Magnetic fields shape:", magnetic_fields.shape)
+    print("Radius vector shape:", radius_vector.shape)
+    print("Numb densities shape:", numb_densities.shape)
+    
+    trajectory[0,:]  = 0.0
 	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
