@@ -70,7 +70,7 @@ for filename in files[::-1]:
 
     # Check if the directory exists, if not create it
     if not os.path.exists(directory_path):
-        os.mkdir(directory_path)
+        os.makedirs(directory_path, exist_ok=True)
         print(f"Directory {directory_path} created.")
     else:
         print(f"Directory {directory_path} already exists.")
@@ -207,11 +207,14 @@ for filename in files[::-1]:
             mask[first_true + 1:last_true] = True  # Only preserve interior True values
 
             return mask
-        
+        """ 
         from collections import Counter
 
-        how_many_trues = Counter(lower_bound)[True]
-        
+        how_many_trues = Counter(lower_bound.tolist())
+        total_entries = sum([v for k,v in how_many_trues.items()])
+
+
+        """
         # Apply the function to each row of lower_bound
         cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
         #cut_lower_bound = np.array([row for row in lower_bound])
