@@ -62,6 +62,8 @@ print(files)
 for filename in files[::-1]:
     #filename  = "arepo_data/snap_117.hdf5"
     snap = filename.split(".")[0][-3:]
+    if int(snap) < 300: # approx 2 Myrs past the Supernova blasts
+        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
@@ -183,7 +185,7 @@ for filename in files[::-1]:
         gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
         numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
         
-        lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] 
+        lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] )
 
         # Function to keep interior False values only
         def cut_boundary_falses(row):
@@ -205,6 +207,10 @@ for filename in files[::-1]:
             mask[first_true + 1:last_true] = True  # Only preserve interior True values
 
             return mask
+        
+        from collections import Counter
+
+        how_many_trues = Counter(lower_bound)[True]
         
         # Apply the function to each row of lower_bound
         cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
@@ -306,9 +312,9 @@ for filename in files[::-1]:
         ax = plt.figure().add_subplot(projection='3d')
 
         for k in range(m):
-            x=radius_vector[:,k,0]/ 1.496e13                            
-            y=radius_vector[:,k,1]/ 1.496e13
-            z=radius_vector[:,k,2]/ 1.496e13
+            x=radius_vector[:,k,0]/ 3.086e+18                                # from Parsec to cm
+            y=radius_vector[:,k,1]/ 3.086e+18                                # from Parsec to cm
+            z=radius_vector[:,k,2]/ 3.086e+18                                # from Parsec to cm
             
             for l in range(len(radius_vector[:,0,0])):
                 ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
