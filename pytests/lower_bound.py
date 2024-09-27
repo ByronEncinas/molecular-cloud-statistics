@@ -33,3 +33,32 @@ cut_lower_bound = np.array([cut_boundary_falses(row) for row in a])
 #cut_lower_bound = np.array([row for row in lower_bound])
 print(cut_lower_bound)
 
+import matplotlib.pyplot as plt
+
+# Sample data
+x = [1, 2, 3, 4, 5]
+y = [10, 15, 20, 25, 30]  # Same data for both axes
+
+# Create the first plot
+fig, ax1 = plt.subplots()
+
+# Plot the data on the first y-axis
+ax1.set_xlabel('X Axis')
+ax1.set_ylabel('Y1 Axis', color='blue')
+ax1.plot(x, y, color='blue', label='Y1 Data')
+ax1.tick_params(axis='y', labelcolor='blue')
+
+# Create a second y-axis with a different scale
+ax2 = ax1.twinx()
+ax2.set_ylabel('Y2 Axis (different scale)', color='green')
+
+# Optionally rescale y for ax2, e.g., by multiplying by a constant
+y_rescaled = [value * 2 for value in y]  # Example of rescaling
+
+# Plot the same data (but scaled) on the second y-axis
+ax2.plot(x, y_rescaled, color='green', label='Y2 Data (rescaled)')
+ax2.tick_params(axis='y', labelcolor='green')
+
+# Show plot
+plt.title('Plot with Two Y-Axes (Different Scales)')
+plt.show()

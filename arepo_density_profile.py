@@ -59,10 +59,9 @@ directory_path = "arepo_data/"
 files = list_files(directory_path, '.hdf5')
 print(files)
 
-for filename in files[::-1]:
-    #filename  = "arepo_data/snap_117.hdf5"
+for filename in files:
     snap = filename.split(".")[0][-3:]
-    if int(snap) < 300: # approx 2 Myrs past the Supernova blasts
+    if int(snap) < 299: # approx 2 Myrs past the Supernova blasts
         continue
 
     # Create the directory path
@@ -212,8 +211,6 @@ for filename in files[::-1]:
 
         how_many_trues = Counter(lower_bound.tolist())
         total_entries = sum([v for k,v in how_many_trues.items()])
-
-
         """
         # Apply the function to each row of lower_bound
         cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
@@ -225,6 +222,7 @@ for filename in files[::-1]:
         magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
         gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
         numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
+        
         # Initialize trajectory and radius_to_origin with the same shape
         trajectory      = np.zeros_like(magnetic_fields)
         radius_to_origin= np.zeros_like(magnetic_fields)
@@ -244,7 +242,6 @@ for filename in files[::-1]:
 
                 radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
                 cur = radius_vector[k, _n, :]
-                print(k, cur)
                 diff_rj_ri = magnitude(cur, prev)
                 trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
                 prev = radius_vector[k, _n, :]

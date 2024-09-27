@@ -15,20 +15,17 @@ file_list = glob.glob('random_distributed_reduction_factor*.json')
 
 print(file_list)
 
+reduction_factor = []
 for file_path in file_list:
     # Open the file in read mode
     with open(file_path, 'r') as file:
-        file_path = 'random_distributed_gas_density.json'
-        # Load the JSON data into a Python list
-        reduction_factor = json.load(file)
+        # Load the JSON data into a Python list and append to reduction_factor
+        reduction_factor.append(json.load(file))
 
-print(len(reduction_factor))
+# Now reduction_factor contains the contents of all matching JSON files
+print(reduction_factor)
 
 bins = len(reduction_factor)//10
-
-# Assuming you have defined reduction_factor and bins already
-counter = Counter(reduction_factor)
-print(counter[1])
 
 inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 print(len(inverse_reduction_factor))
@@ -58,25 +55,28 @@ plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 plt.show()
 
-# Open the file in read mode
-with open(file_path, 'r') as file:
-    # Load the JSON data into a Python list
-    gas_density = json.load(file)
+numb_density = []
+for file_path in file_list:
+    # Open the file in read mode
+    with open(file_path, 'r') as file:
+        file_path = 'random_distributed_numb_density.json'
+        # Load the JSON data into a Python list
+        numb_density.append(json.load(file))
 
-dic_gas_r = {}
-for gas, R in zip(gas_density, reduction_factor):
-    dic_gas_r[gas] = R
+dic_numb_r = {}
+for gas, R in zip(numb_density, reduction_factor):
+    dic_numb_r[gas] = R
 
-ordered_dict_gas_r = OrderedDict(sorted(dic_gas_r.items()))
-del gas_density, dic_gas_r
+ordered_dict_numb_r = OrderedDict(sorted(dic_numb_r.items()))
+del numb_density, dic_numb_r
 
-gas_density = list(ordered_dict_gas_r.keys())
-reduction_f = list(ordered_dict_gas_r.values() )
+numb_density = list(ordered_dict_numb_r.keys())
+reduction_f = list(ordered_dict_numb_r.values() )
 
 from scipy import stats
 
 # Extract data from the dictionary
-x = np.log10(np.array(gas_density))   # log10(gas number density)
+x = np.log10(np.array(numb_density))   # log10(gas number density)
 y = np.array(reduction_f)              # reduction factor R
 
 # Plot original scatter plot
