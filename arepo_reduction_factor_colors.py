@@ -53,10 +53,14 @@ if len(sys.argv)>2:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
+	num_file = f'{sys.argv[4]}'
+	if len(sys.argv) == 6:
+		sys.argv.append('NO_ID')
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     max_cycles   =1
+    num_file = '430'
 
 # flow control to repeat calculations in no peak situations
 cycle = 0 
@@ -67,7 +71,7 @@ reduction_factor = np.array([])
 
 """  B. Jesus Velazquez """
 
-snap = 'snap_430'
+snap = 'snap_' + num_file
 filename = 'arepo_data/'+snap + '.hdf5'
 
 data = h5py.File(filename, 'r')
