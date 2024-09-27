@@ -133,7 +133,7 @@ for filename in files:
 
     x_init = np.zeros((m,3))
 
-    print(directions)
+    print(directions.shape)
 
     def store_in_directory():
         import os
@@ -184,7 +184,7 @@ for filename in files:
         gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
         numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
         
-        lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] )
+        lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F]
 
         # Function to keep interior False values only
         def cut_boundary_falses(row):
@@ -214,6 +214,7 @@ for filename in files:
         """
         # Apply the function to each row of lower_bound
         cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
+        cut_lower_bound = lower_bound
         #cut_lower_bound = np.array([row for row in lower_bound])
         print(cut_lower_bound)
 

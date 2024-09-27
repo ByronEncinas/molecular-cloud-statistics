@@ -19,3 +19,4 @@ density_profiles/
 *json
 *.out
 output
+jsonfiles/

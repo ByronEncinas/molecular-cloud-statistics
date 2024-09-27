@@ -12,7 +12,7 @@ import json
 import glob
 
 # Get a list of all files that match the pattern
-file_list = glob.glob('random_distributed_reduction_factor*.json')
+file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*.json')
 
 print(file_list)
 
@@ -29,7 +29,7 @@ print(reduction_factor[0])
 
 
 # Get a list of all files that match the pattern
-file_list = glob.glob('random_distributed_numb_density*.json')
+file_list = glob.glob('jsonfiles/random_distributed_numb_density*.json')
 
 print(file_list)
 
@@ -41,15 +41,25 @@ for file_path in file_list:
         numb_density.append(json.load(file))
 
 # Now reduction_factor contains the contents of all matching JSON files
-print(len(numb_density[0]))
-print(numb_density[0])
+#print(len(numb_density[0]))
+#print(numb_density[0])
 
 numb_density     = numb_density[0]
 reduction_factor = reduction_factor[0]
 
 bins = len(reduction_factor)//10
 
-inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
+inverse_reduction_factor = [1/(reduction_factor[i]+1.0e-11) for i in range(len(reduction_factor))]
+print(len(inverse_reduction_factor))
+
+print(len(reduction_factor))
+
+bins = len(reduction_factor)//10
+
+# Assuming you have defined reduction_factor and bins already
+counter = Counter(reduction_factor)
+
+inverse_reduction_factor = [1/(reduction_factor[i]+1.0e-30) for i in range(len(reduction_factor))]
 print(len(inverse_reduction_factor))
 
 # Create a figure and axes objects
@@ -64,7 +74,7 @@ axs[0].set_xlabel('$R$')
 control = np.ones_like(reduction_factor)
 
 axs[1].hist(inverse_reduction_factor, bins=bins, color='black')
-axs[1].set_yscale('log')
+axs[1].set_xscale('log')
 axs[1].set_title('Histogram of Reduction Factor ($1/R$)')
 axs[1].set_ylabel('Bins')
 axs[1].set_xlabel('$log_{10}(1/R)$')
@@ -73,9 +83,11 @@ axs[1].set_xlabel('$log_{10}(1/R)$')
 plt.tight_layout()
 
 # Save the figure
+#plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
 plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 plt.show()
+
 
 # Extract data from the dictionary
 x = np.log10(np.array(numb_density))   # log10(gas number density)
