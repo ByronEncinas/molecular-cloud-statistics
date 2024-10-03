@@ -62,11 +62,6 @@ for cycle in range(max_cycles):
         pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
         index_pocket, field_pocket = pocket[0], pocket[1]
 
-        # we can evaluate reduction factor if there are no pockets
-        if len(index_pocket) < 2:
-            # it there a minimum value of peaks we can work with? yes, two
-            continue
-
         globalmax_index = global_info[0]
         globalmax_field = global_info[1]
 

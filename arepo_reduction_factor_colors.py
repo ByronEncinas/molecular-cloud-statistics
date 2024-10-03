@@ -48,18 +48,19 @@ Parameters
 FloatType = np.float64
 IntType = np.int32
 
-if len(sys.argv)>2:
-	# first argument is a number related to rloc_boundary
+if len(sys.argv)>4:
+    #python3 arepo_reduction_factor_colors.py N rloc max_cycles num_file SLURM_JOB_ID
+    #python3 arepo_reduction_factor_colors.py 500 0.5 100 430 
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	num_file = f'{sys.argv[4]}'
-	if len(sys.argv) == 6:
+	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
 else:
     N            =100
-    rloc_boundary=256   # rloc_boundary for boundary region of the cloud
-    max_cycles   =1
+    rloc_boundary=1   # rloc_boundary for boundary region of the cloud
+    max_cycles   =10
     num_file = '430'
 
 # flow control to repeat calculations in no peak situations
@@ -67,7 +68,7 @@ cycle = 0
 
 reduction_factor_at_numb_density = defaultdict()
 
-reduction_factor = np.array([])
+reduction_factor = []
 
 """  B. Jesus Velazquez """
 
@@ -187,39 +188,6 @@ def get_along_lines(x_init):
     gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
     numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
     
-    lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] 
-
-    # Function to keep interior False values only
-    def cut_boundary_falses(row):
-        # Find indices of True values
-        true_indices = np.where(row == True)[0]
-        
-        # Check for no True or only one True value
-        if len(true_indices) <= 1:
-            return row  # Return the row as is for no True values or a single True
-
-        # Get the first and last occurrence of True
-        first_true = true_indices[0]
-        last_true = true_indices[-1]
-
-        # Create a mask that keeps only the interior True values
-        mask = np.zeros_like(row, dtype=bool)  # Start with all False
-        
-        # Set the values between first and last True to True
-        mask[first_true + 1:last_true] = True  # Only preserve interior True values
-
-        return mask
-    
-    # Apply the function to each row of lower_bound
-    cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
-    #cut_lower_bound = np.array([row for row in lower_bound])
-    print(cut_lower_bound)
-
-    # Now use this modified `cut_lower_bound` to mask your arrays
-    radius_vector   = np.where(cut_lower_bound[:, :, np.newaxis], radius_vector, 0.0)
-    magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
-    gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
-    numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
     radius_to_origin= np.zeros_like(magnetic_fields)
@@ -257,11 +225,13 @@ zz = np.array(random.sample(list(zz), max_cycles))
 
 m = len(zz) # amount of values that hold which_up_down
 
+print("Values of reduction factor to be generated: ",m)
+
 x_init = np.zeros((m,3))
 
-x_init[:,0]      = rloc_center * xx[:]
-x_init[:,1]      = rloc_center * yy[:]
-x_init[:,2]      = rloc_center * zz[:]
+x_init[:,0]      = rloc_center * xx
+x_init[:,1]      = rloc_center * yy
+x_init[:,2]      = rloc_center * zz
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
@@ -279,7 +249,6 @@ print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
 __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
-
 
 with open('output', 'w') as file:
     file.write(f"{filename}\n")
@@ -299,8 +268,6 @@ with open('output', 'w') as file:
 
 # flow control to repeat calculations in no peak situations
 
-reduction_factor_at_numb_density = defaultdict()
-
 reduction_factor = []
 numb_density_at  = []
 
@@ -315,87 +282,71 @@ for cycle in range(max_cycles):
     print(numb_densities.shape)
     print(numb_density.shape)
 
-    min_den_cycle.append(min(numb_density))
-
-    p_r = N - 1
-
-    x_init = distance[p_r]
-    B_init = bfield[p_r]
-    n_init = numb_density[p_r]
-
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
-    # we can evaluate reduction factor if there are no pockets
-    if len(index_pocket) < 2:
-        # it there a minimum value of peaks we can work with? yes, two
-        continue
+    min_den_cycle.append(min(numb_density))
+
+    p_r = N - 1
+
+    x_r = distance[p_r]
+    B_r = bfield[p_r]
+    n_r = numb_density[p_r]
+    
 
     globalmax_index = global_info[0]
     globalmax_field = global_info[1]
 
-    # Calculate the range within the 80th percentile
-    start_index = len(bfield) // 10  # Skip the first 10% of indices
-    end_index = len(bfield) - start_index  # Skip the last 10% of indices
-
-    # we gotta find peaks in the interval   (B_l < random_element < B_h)
-    # Generate a random index within the range
-    #s_r = distance[p_r]
-    B_r = bfield[p_r]
-
-    print("random index: ", p_r, "peak's index: ", index_pocket)
-    
-    """How to find index of Bl?"""
-
-    # Bl it is definitely between two peaks, we need to verify is also inside a pocket
-    # such that Bl < Bs < Bh (p_i < p_r < p_j)
-
     # finds index at which to insert p_r and be kept sorted
     p_i = find_insertion_point(index_pocket, p_r)
 
-    #print()
-    print("Random Index:", p_r, "assoc. B(s_r):",B_r)
-    print("Maxima Values related to pockets: ",len(index_pocket), p_i)
+    print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
+    
+    """How to find index of Bl?"""
 
-    if p_i is not None:
-        # If p_i is not None, select the values at indices p_i-1 and p_i
+    print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+    try:
+        # possible error is len(index_pocket) is only one or two elements
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-    else:
-        # If p_i is None, select the two closest values based on some other criteria
-        continue
-
-    if len(closest_values) == 2:
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+        success = True  # Flag to track if try was successful
 
-        if B_r/B_l < 1:
-            R = 1 - np.sqrt(1-B_r/B_l)
+    except:
+        R = 1
+        reduction_factor.append(R)
+        numb_density_at.append(n_r)
+        success = False  # Set flag to False if there's an exception
+        continue
+
+    # Only execute this block if try was successful
+    if success:
+        if B_r / B_l < 1:
+            R = 1 - np.sqrt(1 - B_r / B_l)
             reduction_factor.append(R)
-            numb_density_at.append(n_init)
+            numb_density_at.append(n_r)
         else:
             R = 1
             reduction_factor.append(R)
-            numb_density_at.append(n_init)
-    else:
-        R = 1
-        reduction_factor.append(R)
-        numb_density_at.append(n_init) 
-        continue
+            numb_density_at.append(n_r)
 
     print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", bfield[p_r], "Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
-    try:
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "< 1 ") 
-    except:
-        # this statement won't reach cycle += 1 so the cycle will continue again.
-        print("Bl: ", B_l, " B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+    print("Bs: ", B_r, "ns: ", n_r)
+    print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
-    # Now we pair reduction factors at one position with the numb density there.
-    #numb_density_at_random = interpolate_scalar_field(point_i,point_j,point_k, numb_den)
+    if B_r/B_l < 1:
+        print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+    else:
+        # this statement won't reach cycle += 1 so the cycle will continue again.
+        print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+
+from collections import Counter
 
 print(reduction_factor)
 print(numb_density_at)
+counter = Counter(reduction_factor)
+counter[0]
 
 # Print elapsed time
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
@@ -459,7 +410,7 @@ import seaborn as sns
 if True:
 
     # Extract data from the dictionary
-    x = np.log10(np.array(numb_density_at))   # log10(numb number density)
+    x = np.log10(numb_density_at)   # log10(numb number density)
     y = np.array(reduction_factor)              # reduction factor R
 
     # Plot original scatter plot

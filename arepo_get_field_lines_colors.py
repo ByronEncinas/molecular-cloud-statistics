@@ -188,6 +188,7 @@ def get_along_lines(x_init):
     magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
     gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
     numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
+    
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
     radius_to_origin= np.zeros_like(magnetic_fields)

@@ -51,7 +51,7 @@ IntType = np.int32
 if len(sys.argv)>=2:
 	N             = int(sys.argv[-1])
 else:
-    N            = 100
+    N            = 1000
 
 """  B. Jesus Velazquez """
 
@@ -61,8 +61,8 @@ print(files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    if int(snap) < 299: # approx 2 Myrs past the Supernova blasts
-        continue
+    #if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
+    #    continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
@@ -149,80 +149,60 @@ for filename in files:
         bfields   = np.zeros((N+1,m))
         densities = np.zeros((N+1,m))
         volumes   = np.zeros((N+1,m))
-        mass_at   = np.zeros((N+1,m))	
-        
+        threshold = np.zeros((m,)).astype(int) # one value for each
+
         line[0,:,:]     = x_init
-
         x = x_init
-
-        dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
-
+        dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
         vol = Volume[cells]
+        densities[0,:] = dens
+        k=0
+        #for k in range(N):
 
-        # propagates from same inner region to the outside in -dx direction
-        for k in range(N):
+        while np.any((dens > 100)):
 
+            # Create a mask for values that are still above the threshold
+            mask = dens > 100
+
+            un_masked = np.logical_not(mask)
+            
+            # Only update values where mask is True
             _, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
-            dx_vec = 0.3*((4/3)*vol/np.pi)**(1/3)
+            # Update `dx_vec` for the values still above the threshold
+
+            vol[un_masked] = 0
+
+            dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+            threshold += mask.astype(int)  # Increment threshold count only for values still above 100
             
+            print(threshold)
+
+            if np.all(un_masked):  # ~arr negates the array
+                print("All values are False: means all crossed the threshold")
+
             x += dx_vec[:, np.newaxis] * directions
 
-            print(k+1,x)
-            line[k+1,:,:] = x
-            volumes[k+1,:] = vol
-            bfields[k+1,:] = bfield
+            line[k+1,:,:]    = x
+            volumes[k+1,:]   = vol
+            bfields[k+1,:]   = bfield
             densities[k+1,:] = dens
-            #avg_den_at_x = np.mean(dens[densities[k+1,:]]) average density at radius r to calculate mass at r
-            #r = np.sqrt(x[:,:,0]*x[:,:,0] + x[:,:,1]*x[:,:,1]+x[:,:,2]*x[:,:,2]) # if adding masses of cells in radius less than current
-            #mass_at[k+1,:] = sum(Mass[ < ])
 
-        radius_vector   = line
-        magnetic_fields = bfields
-        gas_densities   = densities
-    
-        gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-        numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
+            k += 1
+
+        threshold = threshold.astype(int)
+        larger_cut = np.max(threshold)
+        print(threshold)
         
-        lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F]
+        # cut all of them to a standard
+        radius_vector   = line[:larger_cut,:,:]
+        magnetic_fields = bfields[:larger_cut,:]
+        gas_densities   = densities[:larger_cut,:]
+        volumes         = volumes[:larger_cut,:]
 
-        # Function to keep interior False values only
-        def cut_boundary_falses(row):
-            # Find indices of True values
-            true_indices = np.where(row == True)[0]
-            
-            # Check for no True or only one True value
-            if len(true_indices) <= 1:
-                return row  # Return the row as is for no True values or a single True
-
-            # Get the first and last occurrence of True
-            first_true = true_indices[0]
-            last_true = true_indices[-1]
-
-            # Create a mask that keeps only the interior True values
-            mask = np.zeros_like(row, dtype=bool)  # Start with all False
-            
-            # Set the values between first and last True to True
-            mask[first_true + 1:last_true] = True  # Only preserve interior True values
-
-            return mask
-        """ 
-        from collections import Counter
-
-        how_many_trues = Counter(lower_bound.tolist())
-        total_entries = sum([v for k,v in how_many_trues.items()])
-        """
-        # Apply the function to each row of lower_bound
-        cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
-        cut_lower_bound = lower_bound
-        #cut_lower_bound = np.array([row for row in lower_bound])
-        print(cut_lower_bound)
-
-        # Now use this modified `cut_lower_bound` to mask your arrays
-        radius_vector   = np.where(cut_lower_bound[:, :, np.newaxis], radius_vector, 0.0)
-        magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
-        gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
-        numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
+        gas_densities  *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
+        numb_densities  = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
         
         # Initialize trajectory and radius_to_origin with the same shape
         trajectory      = np.zeros_like(magnetic_fields)
@@ -236,8 +216,13 @@ for filename in files:
         
         for _n in range(m):  # Iterate over the first dimension
 
+            cut = threshold[_n]
+            
+            radius_vector[cut:,:,:]   = radius_vector[cut-1,:,:]
+            magnetic_fields[cut:,:]   = magnetic_fields[cut-1,:]
+            gas_densities[cut:,:]     = gas_densities[cut-1,:] 
+            
             prev = radius_vector[0, _n, :]
-            den  = numb_densities[:,_n] 
             
             for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
 
@@ -311,6 +296,10 @@ for filename in files:
             
     if True:
         ax = plt.figure().add_subplot(projection='3d')
+        dens_min = np.log10(np.min(numb_densities))
+        dens_max = np.log10(np.max(numb_densities))
+
+        dens_diff = dens_max - dens_min
 
         for k in range(m):
             x=radius_vector[:,k,0]/ 3.086e+18                                # from Parsec to cm
@@ -318,8 +307,8 @@ for filename in files:
             z=radius_vector[:,k,2]/ 3.086e+18                                # from Parsec to cm
             
             for l in range(len(radius_vector[:,0,0])):
-                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
-            
+                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color='m',linewidth=0.3)
+                
             ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
             ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
             

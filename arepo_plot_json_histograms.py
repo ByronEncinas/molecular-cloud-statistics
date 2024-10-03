@@ -14,8 +14,6 @@ import glob
 # Get a list of all files that match the pattern
 file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*.json')
 
-print(file_list)
-
 reduction_factor = []
 for file_path in file_list:
     # Open the file in read mode
@@ -24,14 +22,9 @@ for file_path in file_list:
         reduction_factor.append(json.load(file))
 
 # Now reduction_factor contains the contents of all matching JSON files
-print(len(reduction_factor[0]))
-print(reduction_factor[0])
-
 
 # Get a list of all files that match the pattern
 file_list = glob.glob('jsonfiles/random_distributed_numb_density*.json')
-
-print(file_list)
 
 numb_density = []
 for file_path in file_list:
@@ -40,123 +33,190 @@ for file_path in file_list:
         # Load the JSON data into a Python list and append to reduction_factor
         numb_density.append(json.load(file))
 
-# Now reduction_factor contains the contents of all matching JSON files
-#print(len(numb_density[0]))
-#print(numb_density[0])
+import itertools
+from collections import Counter
 
-numb_density     = numb_density[0]
-reduction_factor = reduction_factor[0]
+#print(reduction_factor)
+#print(numb_density)
+
+numb_density = list(itertools.chain(*numb_density))
+reduction_factor = list(itertools.chain(*reduction_factor))
+
+counter = Counter(reduction_factor)
+print(counter[0])
+
 
 bins = len(reduction_factor)//10
+reduction_factor
 
-inverse_reduction_factor = [1/(reduction_factor[i]+1.0e-11) for i in range(len(reduction_factor))]
-print(len(inverse_reduction_factor))
+def replace_zeros_with_half_of_second_min(arr):
+    # Convert to a NumPy array if it's not already
+    arr = np.asarray(arr)
 
-print(len(reduction_factor))
+    # Step 1: Find the indices of all zero values
+    zero_indices = np.where(arr == 0.0)[0]
+
+    if len(zero_indices) == 0:  # If there are no zeros, return the array as is
+        return arr
+
+    # Step 2: Replace the zero values with infinity to ignore them in finding the second minimum
+    arr[zero_indices] = np.inf
+
+    # Step 3: Find the second minimum value
+    second_min_value = np.min(arr)
+
+    # Step 4: Replace all original zero values with half of the second minimum value
+    arr[zero_indices] = second_min_value / 2
+
+    return arr
+
+# Update both reduction_factor and numb_density arrays
+reduction_factor = replace_zeros_with_half_of_second_min(reduction_factor)
+numb_density = replace_zeros_with_half_of_second_min(numb_density)
+
+inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 
 bins = len(reduction_factor)//10
 
 # Assuming you have defined reduction_factor and bins already
 counter = Counter(reduction_factor)
+print(counter[1], len(reduction_factor))
 
-inverse_reduction_factor = [1/(reduction_factor[i]+1.0e-30) for i in range(len(reduction_factor))]
-print(len(inverse_reduction_factor))
+inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
+counter = Counter(inverse_reduction_factor)
 
 # Create a figure and axes objects
 fig, axs = plt.subplots(1, 2, figsize=(9, 3))
 
+# Plot histograms on the respective axes
 axs[0].hist(reduction_factor, bins=bins, color='black')
 axs[0].set_yscale('log')
 axs[0].set_title('Histogram of Reduction Factor (R)')
-axs[0].set_ylabel('Bins')
-axs[0].set_xlabel('$R$')
-
-control = np.ones_like(reduction_factor)
+axs[0].set_xlabel('Bins')
+axs[0].set_ylabel('Frequency')
 
 axs[1].hist(inverse_reduction_factor, bins=bins, color='black')
-axs[1].set_xscale('log')
-axs[1].set_title('Histogram of Reduction Factor ($1/R$)')
-axs[1].set_ylabel('Bins')
-axs[1].set_xlabel('$log_{10}(1/R)$')
+axs[1].set_yscale('log')
+axs[1].set_title('Histogram of Inverse Reduction Factor (1/R)')
+axs[1].set_xlabel('Bins')
+axs[1].set_ylabel('Frequency')
 
 # Adjust layout
 plt.tight_layout()
 
 # Save the figure
-#plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
 plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
 
 plt.show()
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+# Assuming numb_density and reduction_factor are defined previously in your code.
 # Extract data from the dictionary
 x = np.log10(np.array(numb_density))   # log10(gas number density)
-y = np.array(reduction_factor)              # reduction factor R
-
-# Plot original scatter plot
-fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-axs.scatter(x, y, marker="x", s=1, color='red', label='Data points')
-axs.set_title('Histogram of Reduction Factor (R)')
-axs.set_ylabel('$R$')
-axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
+y = np.array(reduction_factor)          # reduction factor R
 
 # Compute binned statistics
-num_bins = 100
+num_bins = len(numb_density) // 50
 
 # Median binned statistics
-bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
+bin_medians, bin_edges, _ = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
 bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-axs.plot(bin_centers, bin_medians, marker="+", color='#17becf', linestyle='-', label='Binned medians')
 
 # Mean binned statistics
-bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-axs.plot(bin_centers, bin_means, marker="x", color='pink', linestyle='-', label='Binned means')
+bin_means, bin_edges, _ = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
 
 # Overall mean and median
-overall_mean = np.average(y)
+overall_mean = np.mean(y)
 overall_median = np.median(y)
 
-mean = np.ones_like(y) * overall_mean
-median = np.ones_like(y) * overall_median
+# Create a figure with two subplots (1 row, 2 columns)
+fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
-axs.plot(x, mean, color='dimgrey', linestyle='--', label=f'Overall mean ({overall_mean:.2f})')
-axs.plot(x, median, color='dimgray', linestyle='--', label=f'Overall median ({overall_median:.2f})')
+# Plot bars for mean
+axs[0].bar(bin_centers, bin_means, width=np.diff(bin_edges), color='salmon', alpha=0.6, edgecolor='red')
+axs[0].axhline(overall_mean, color='blue', linestyle='--', label=f'Overall mean ($\\bar{{R}}$ = {overall_mean:.2f})')
+axs[0].set_title('Binned Means')
+axs[0].set_ylabel('$R$')
+axs[0].set_xlabel('$\log_{10}(n_g \, [N/cm^{-3}])$')
+axs[0].legend()
+axs[0].grid()
 
-# Add legend
-axs.legend()
+# Plot bars for median
+axs[1].bar(bin_centers, bin_medians, width=np.diff(bin_edges), color='lightblue', alpha=0.6, edgecolor='blue')
+axs[1].axhline(overall_median, color='orange', linestyle='--', label=f'Overall median ($m_{{R}}$ = {overall_median:.2f})')
+axs[1].set_title('Binned Medians')
+axs[1].set_ylabel('$R$')
+axs[1].set_xlabel('$\log_{10}(n_g \, [N/cm^{-3}])$')
+axs[1].legend()
+axs[1].grid()
 
-plt.savefig(f"histograms/mean_median.png")
+# Adjust layout
+plt.tight_layout()
 
-#plt.show()
-
-# Define the number of bins
-num_bins = 100
-
-# Compute binned statistics
-bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
-bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-
-# Set Seaborn style
-sns.set(style="whitegrid")
-
-# Create the figure and axis
-fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-# Plot the histograms using Matplotlib
-axs.hist(bin_edges[:-1], bins=bin_edges, weights=bin_medians, alpha=0.5, label='medians', color='c', edgecolor='darkcyan')
-axs.hist(bin_edges[:-1], bins=bin_edges, weights=-bin_means, alpha=0.5, label='means', color='m', edgecolor='darkmagenta')
-
-# Set the labels and title
-axs.set_title('Histograms of Binned Medians and Means (Inverted)')
-axs.set_ylabel('$(R)$')
-axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
-
-# Add legend
-axs.legend(loc='center')
-
-# save figure
-plt.savefig(f"histograms/mirrored_histograms.png")
+# Save the figure
+plt.savefig(f"histograms/mean_median_mosaic.png")
 
 # Show the plot
-#plt.show()
+plt.show()
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+# Assuming numb_density and reduction_factor are defined previously in your code.
+# Extract data from the dictionary
+x = np.log10(np.array(numb_density))   # log10(gas number density)
+y = np.array(reduction_factor)          # reduction factor R
+
+# Median binned statistics
+bin_medians, bin_edges, _ = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
+bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+# Mean binned statistics
+bin_means, bin_edges, _ = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
+
+# Overall mean and median
+overall_mean = np.mean(y)
+overall_median = np.median(y)
+
+# Create a figure with two subplots (1 row, 2 columns)
+fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+# Plot original scatter plot in the first subplot
+axs[0].scatter(x, y, marker="x", s=1, color='red', label='Data points')
+axs[0].set_title('Reduction Factor vs Log Density')
+axs[0].set_ylabel('$R$')
+axs[0].set_xlabel('$\log_{10}(n_g \, [N/cm^{-3}])$')
+axs[0].grid()
+
+# Plot bars for mean in the second subplot
+axs[1].bar(bin_centers, bin_means, width=np.diff(bin_edges), color='salmon', alpha=0.6, edgecolor='red', label='Binned Mean')
+axs[1].axhline(overall_mean, color='blue', linestyle='--', label=f'Overall mean ($\\bar{{R}}$ = {overall_mean:.2f})')
+axs[1].set_title('Binned Means')
+axs[1].set_ylabel('$R$')
+axs[1].set_xlabel('$\log_{10}(n_g \, [N/cm^{-3}])$')
+axs[1].legend()
+axs[1].grid()
+
+# Plot bars for median in the same subplot
+axs[1].bar(bin_centers, bin_medians, width=np.diff(bin_edges), color='lightblue', alpha=0.4, edgecolor='blue', label='Binned Median')
+axs[1].axhline(overall_median, color='orange', linestyle='--', label=f'Overall median ($m_{{R}}$ = {overall_median:.2f})')
+
+# Add legend for the second subplot
+axs[1].legend()
+
+# Adjust layout
+plt.tight_layout()
+
+# Save the figure
+plt.savefig(f"histograms/mean_median_scatter_mosaic.png")
+
+# Show the plot
+plt.show()
