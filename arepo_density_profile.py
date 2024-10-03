@@ -144,6 +144,8 @@ for filename in files:
         os.makedirs(new_folder, exist_ok=True)
 
     def get_along_lines(x_init):
+
+        gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
         
         line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
         bfields   = np.zeros((N+1,m))
@@ -155,6 +157,7 @@ for filename in files:
         x = x_init
         dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
         vol = Volume[cells]
+        dens = dens* gr_cm3_to_nuclei_cm3
         densities[0,:] = dens
         k=0
         #for k in range(N):
@@ -162,7 +165,8 @@ for filename in files:
         while np.any((dens > 100)):
 
             # Create a mask for values that are still above the threshold
-            mask = dens > 100
+            numb_dens = dens * gr_cm3_to_nuclei_cm3 
+            mask = numb_dens > 100
 
             un_masked = np.logical_not(mask)
             
@@ -194,14 +198,14 @@ for filename in files:
         threshold = threshold.astype(int)
         larger_cut = np.max(threshold)
         
-        # cut all of them to a standard
+        # cut all of them to standard
         radius_vector   = line[:larger_cut,:,:]
         magnetic_fields = bfields[:larger_cut,:]
         gas_densities   = densities[:larger_cut,:]
         volumes         = volumes[:larger_cut,:]
 
         gas_densities  *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-        numb_densities  = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
+        numb_densities  = gas_densities.copy() * 6.02214076e+23 / 1.00794# from gram/cm^3 to Nucleus/cm^3
         
         # Initialize trajectory and radius_to_origin with the same shape
         trajectory      = np.zeros_like(magnetic_fields)
