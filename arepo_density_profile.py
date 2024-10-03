@@ -193,7 +193,6 @@ for filename in files:
 
         threshold = threshold.astype(int)
         larger_cut = np.max(threshold)
-        print(threshold)
         
         # cut all of them to a standard
         radius_vector   = line[:larger_cut,:,:]
@@ -218,9 +217,10 @@ for filename in files:
 
             cut = threshold[_n]
             
-            radius_vector[cut:,:,:]   = radius_vector[cut-1,:,:]
-            magnetic_fields[cut:,:]   = magnetic_fields[cut-1,:]
-            gas_densities[cut:,:]     = gas_densities[cut-1,:] 
+            # make it constant after threshold, this will make diff = 0.0 so s wont grow
+            radius_vector[cut:,:,:]  = radius_vector[cut,:,:] 
+            magnetic_fields[cut:,:]  = magnetic_fields[cut,:]
+            gas_densities[cut:,:]    = gas_densities[cut,:]
             
             prev = radius_vector[0, _n, :]
             

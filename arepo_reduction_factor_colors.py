@@ -63,6 +63,8 @@ else:
     max_cycles   =10
     num_file = '430'
 
+print(*sys.argv)
+
 # flow control to repeat calculations in no peak situations
 cycle = 0 
 

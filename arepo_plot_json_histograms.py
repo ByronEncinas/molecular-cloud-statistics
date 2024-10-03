@@ -12,39 +12,42 @@ import json
 import glob
 
 # Get a list of all files that match the pattern
-file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*.json')
+#file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*.json')
+file_list = glob.glob('random_distributed_reduction_factor*.json')
 
 reduction_factor = []
 for file_path in file_list:
     # Open the file in read mode
     with open(file_path, 'r') as file:
         # Load the JSON data into a Python list and append to reduction_factor
-        reduction_factor.append(json.load(file))
+        reduction_factor += list(json.load(file))
 
 # Now reduction_factor contains the contents of all matching JSON files
 
 # Get a list of all files that match the pattern
-file_list = glob.glob('jsonfiles/random_distributed_numb_density*.json')
+#file_list = glob.glob('jsonfiles/random_distributed_numb_density*.json')
+file_list = glob.glob('random_distributed_numb_density*.json')
 
 numb_density = []
 for file_path in file_list:
     # Open the file in read mode
     with open(file_path, 'r') as file:
         # Load the JSON data into a Python list and append to reduction_factor
-        numb_density.append(json.load(file))
+        numb_density += list(json.load(file))
 
 import itertools
 from collections import Counter
 
-#print(reduction_factor)
-#print(numb_density)
-
-numb_density = list(itertools.chain(*numb_density))
-reduction_factor = list(itertools.chain(*reduction_factor))
-
+print("how many elements?  ",len(reduction_factor))
+print("how many elements?  ",len(numb_density))
 counter = Counter(reduction_factor)
-print(counter[0])
 
+print("how many zeroes?  ",counter[0], counter[1])
+print("is first element? ",reduction_factor[0])
+
+counter = Counter(numb_density)
+print("how many zeroes?  ",counter[0])
+print("is first element? ",numb_density[0])
 
 bins = len(reduction_factor)//10
 reduction_factor
@@ -77,10 +80,6 @@ numb_density = replace_zeros_with_half_of_second_min(numb_density)
 inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 
 bins = len(reduction_factor)//10
-
-# Assuming you have defined reduction_factor and bins already
-counter = Counter(reduction_factor)
-print(counter[1], len(reduction_factor))
 
 inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 counter = Counter(inverse_reduction_factor)
