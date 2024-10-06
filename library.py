@@ -11,6 +11,11 @@ import sys
 import matplotlib
 import healpy as hp
 
+""" Constants and convertion factor """
+
+gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
+parsec_to_cm3 = 3.086e+18
+gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
