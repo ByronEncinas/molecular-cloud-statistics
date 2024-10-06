@@ -61,8 +61,8 @@ print(files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
-        continue
+    #if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
+    #    continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
