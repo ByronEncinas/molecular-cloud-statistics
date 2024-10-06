@@ -61,8 +61,8 @@ print(files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    #if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
-    #    continue
+    if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
+        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
@@ -144,8 +144,6 @@ for filename in files:
         os.makedirs(new_folder, exist_ok=True)
 
     def get_along_lines(x_init):
-
-        gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
         
         line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
         bfields   = np.zeros((N+1,m))
@@ -160,31 +158,26 @@ for filename in files:
         dens = dens* gr_cm3_to_nuclei_cm3
         densities[0,:] = dens
         k=0
-        #for k in range(N):
 
         while np.any((dens > 100)):
 
             # Create a mask for values that are still above the threshold
-            numb_dens = dens * gr_cm3_to_nuclei_cm3 
-            mask = numb_dens > 100
+            mask = dens > 100
 
             un_masked = np.logical_not(mask)
             
             # Only update values where mask is True
             _, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
-            # Update `dx_vec` for the values still above the threshold
-
+            dens = dens * gr_cm3_to_nuclei_cm3 
+            
             vol[un_masked] = 0
 
             dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
             
-            print(threshold)
-
-            if np.all(un_masked):  # ~arr negates the array
-                print("All values are False: means all crossed the threshold")
+            print(np.log10(dens))
 
             x += dx_vec[:, np.newaxis] * directions
 
@@ -192,6 +185,10 @@ for filename in files:
             volumes[k+1,:]   = vol
             bfields[k+1,:]   = bfield
             densities[k+1,:] = dens
+            
+            if np.all(un_masked):
+                print("All values are False: means all crossed the threshold")
+                break
 
             k += 1
 
@@ -199,14 +196,11 @@ for filename in files:
         larger_cut = np.max(threshold)
         
         # cut all of them to standard
-        radius_vector   = line[:larger_cut,:,:]
-        magnetic_fields = bfields[:larger_cut,:]
-        gas_densities   = densities[:larger_cut,:]
-        volumes         = volumes[:larger_cut,:]
+        radius_vector   = line[:larger_cut+1,:,:]
+        magnetic_fields = bfields[:larger_cut+1,:]
+        numb_densities   = densities[:larger_cut+1,:]
+        volumes         = volumes[:larger_cut+1,:]
 
-        gas_densities  *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-        numb_densities  = gas_densities.copy() * 6.02214076e+23 / 1.00794# from gram/cm^3 to Nucleus/cm^3
-        
         # Initialize trajectory and radius_to_origin with the same shape
         trajectory      = np.zeros_like(magnetic_fields)
         radius_to_origin= np.zeros_like(magnetic_fields)
@@ -214,17 +208,16 @@ for filename in files:
         print("Magnetic fields shape:", magnetic_fields.shape)
         print("Radius vector shape:", radius_vector.shape)
         print("Numb densities shape:", numb_densities.shape)
-        
-        trajectory[0,:]  = 0.0
+    
         
         for _n in range(m):  # Iterate over the first dimension
 
-            cut = threshold[_n]
+            cut = threshold[_n] - 1
             
             # make it constant after threshold, this will make diff = 0.0 so s wont grow
-            radius_vector[cut:,:,:]  = radius_vector[cut,:,:] 
-            magnetic_fields[cut:,:]  = magnetic_fields[cut,:]
-            gas_densities[cut:,:]    = gas_densities[cut,:]
+            #radius_vector[cut:,:,:]  = radius_vector[cut,:,:]*0
+            #magnetic_fields[cut:,:]  = magnetic_fields[cut,:]*0
+            #numb_densities[cut:,:]    = numb_densities[cut,:]*0
             
             prev = radius_vector[0, _n, :]
             
@@ -236,9 +229,10 @@ for filename in files:
                 trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
                 prev = radius_vector[k, _n, :]
 
-        radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
-        trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
-        magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+        radius_vector   *= 1.0* parsec_to_cm3
+        trajectory      *= 1.0* parsec_to_cm3
+        magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
+        trajectory[0,:]  = 0.0
 
         return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
 
