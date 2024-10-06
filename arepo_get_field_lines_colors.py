@@ -294,7 +294,7 @@ for i in range(m):
         axs[0,1].scatter(trajectory[:,i], radius_to_origin[:,i], marker="+", color="m")
         axs[0,1].scatter(trajectory[lmn,i], radius_to_origin[lmn,i], marker="x", color="black")
         axs[0,1].set_xlabel("s (cm)")
-        axs[0,1].set_ylabel("$norm(\vec{R})$ cm (cgs)")
+        axs[0,1].set_ylabel("$r$ cm (cgs)")
         axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
         axs[0,1].grid(True)
 
