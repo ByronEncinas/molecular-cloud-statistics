@@ -59,8 +59,6 @@ directory_path = "arepo_data/"
 files = list_files(directory_path, '.hdf5')
 print(files)
 
-
-
 for filename in files:
     snap = filename.split(".")[0][-3:]
     if int(snap)%20 != 0: # this way only evaluates every 20 snapshots / for CAS
