@@ -53,16 +53,18 @@ if len(sys.argv)>=2:
 else:
     N            = 1000
 
-"""  B. Jesus Velazquez """
+"""  B. Jesus Velazquez    """
 
 directory_path = "arepo_data/"
 files = list_files(directory_path, '.hdf5')
 print(files)
 
+
+
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    #if int(snap) != 300: # approx 2 Myrs past the Supernova blasts
-    #    continue
+    if int(snap)%20 != 0: # this way only evaluates every 20 snapshots / for CAS
+        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
