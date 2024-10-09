@@ -165,13 +165,13 @@ def get_along_lines(x_init):
 
         un_masked = np.logical_not(mask)
 
-        x[un_masked] = 0.0
+        aux = x[un_masked]
 
         x, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
-
+        x[un_masked] = aux
         print(threshold)
 
         line[k+1,:,:]    = x
@@ -208,12 +208,13 @@ def get_along_lines(x_init):
 
         un_masked = np.logical_not(mask)
 
-        x[un_masked] = 0.0
+        aux = x[un_masked]
 
         x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
+        x[un_masked] = aux
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
@@ -253,8 +254,6 @@ def get_along_lines(x_init):
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
     print("Numb densities shape:", numb_densities.shape)
-    
-    trajectory[0,:]  = 0.0
 	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
@@ -264,6 +263,8 @@ def get_along_lines(x_init):
             diff_rj_ri = magnitude(cur, prev)
             trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
             prev = radius_vector[k, _n, :]
+    
+    trajectory[0,:]  = 0.0
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
     trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm

@@ -173,12 +173,13 @@ def get_along_lines(x_init):
 
         un_masked = np.logical_not(mask)
 
-        x[un_masked] = 0.0
+        aux = x[un_masked]
 
         x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
+        x[un_masked] = aux
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
