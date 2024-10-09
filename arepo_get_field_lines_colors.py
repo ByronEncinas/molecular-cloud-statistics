@@ -60,7 +60,7 @@ else:
 
 """  B. Jesus Velazquez """
 
-snap = '430'
+snap = '117'
 filename = 'arepo_data/snap_'+ snap + '.hdf5'
 
 data = h5py.File(filename, 'r')
@@ -102,11 +102,13 @@ def get_along_lines(x_init):
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
+    threshold = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
+    threshold_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init
@@ -116,78 +118,98 @@ def get_along_lines(x_init):
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
+    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
 
-    print(line.shape)
+    k=0
 
-    # propagates from same inner region to the outside in -dx direction
-    for k in range(N):
-        print(k,x)
+    while np.any((dens > 100)):
+
+        # Create a mask for values that are still above the threshold
+        mask = dens > 100
+
+        un_masked = np.logical_not(mask)
+
+        aux = x[un_masked]
 
         x, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        dens = dens * gr_cm3_to_nuclei_cm3
 
-        line[k+1,:,:] = x
-        volumes[k+1,:] = vol
-        bfields[k+1,:] = bfield
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+        x[un_masked] = aux
+        print(threshold)
+
+        line[k+1,:,:]    = x
+        volumes[k+1,:]   = vol
+        bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
+        
+        if np.all(un_masked):
+            print("All values are False: means all crossed the threshold")
+            break
+
+        k += 1
+    
+    threshold = threshold.astype(int)
+    larger_cut = np.max(threshold)
     
     x = x_init.copy()
 
     dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
+
+    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     
     print(line_rev.shape)
 
-    for k in range(N):
-        print(-k, x)
+    k=0
+
+    while np.any((dens > 100)):
+
+        # Create a mask for values that are still above the threshold
+        mask = dens > 100
+
+        un_masked = np.logical_not(mask)
+
+        x[un_masked] = 0.0
+
         x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        dens = dens * gr_cm3_to_nuclei_cm3
+
+        threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
-        densities_rev[k+1,:] = dens
-	
+        densities_rev[k+1,:] = dens 
+                    
+        if np.all(un_masked):  # ~arr negates the array
+            print("All values are False: means all crossed the threshold")
+            break
+        k += 1
+
+    threshold = threshold.astype(int)
+    threshold_rev = threshold_rev.astype(int)
+    larger_cut = np.max(threshold)
+    larger_cut_rev = np.max(threshold_rev)
+    """ 
+        line[un_masked,:,:] *= 0.0
+        bfields[un_masked:,i] *= 0.0
+        densities[un_masked:,i] *= 0.0
+
+        line_rev[un_masked:,:,:] *= 0.0
+        bfields_rev[un_masked:,i] *= 0.0
+        densities_rev[un_masked:,i] *= 0.0
+    """
     radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
-    gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
-    gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-    numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-    
-    lower_bound = numb_densities > 100 #=> [F,F,T,T,F,T,F,T,T,T,T,T,T,T,F,F,T,F] 
-
-    # Function to keep interior False values only
-    def cut_boundary_falses(row):
-        # Find indices of True values
-        true_indices = np.where(row == True)[0]
-        
-        # Check for no True or only one True value
-        if len(true_indices) <= 1:
-            return row  # Return the row as is for no True values or a single True
-
-        # Get the first and last occurrence of True
-        first_true = true_indices[0]
-        last_true = true_indices[-1]
-
-        # Create a mask that keeps only the interior True values
-        mask = np.zeros_like(row, dtype=bool)  # Start with all False
-        
-        # Set the values between first and last True to True
-        mask[first_true + 1:last_true] = True  # Only preserve interior True values
-
-        return mask
-    
-    # Apply the function to each row of lower_bound
-    cut_lower_bound = np.array([cut_boundary_falses(row) for row in lower_bound])
-    #cut_lower_bound = np.array([row for row in lower_bound])
-    print(cut_lower_bound)
-
-    # Now use this modified `cut_lower_bound` to mask your arrays
-    radius_vector   = np.where(cut_lower_bound[:, :, np.newaxis], radius_vector, 0.0)
-    magnetic_fields = np.where(cut_lower_bound, magnetic_fields, 0.0)
-    gas_densities   = np.where(cut_lower_bound, gas_densities, 0.0)
-    numb_densities  = np.where(cut_lower_bound, numb_densities, 0.0)
+    #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
+    #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
     
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
@@ -196,8 +218,6 @@ def get_along_lines(x_init):
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
     print("Numb densities shape:", numb_densities.shape)
-    
-    trajectory[0,:]  = 0.0
 	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
@@ -207,6 +227,8 @@ def get_along_lines(x_init):
             diff_rj_ri = magnitude(cur, prev)
             trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
             prev = radius_vector[k, _n, :]
+    
+    trajectory[0,:]  = 0.0
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
     trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
