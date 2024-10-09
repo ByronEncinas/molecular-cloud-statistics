@@ -234,7 +234,7 @@ for filename in files:
         magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
         trajectory[0,:]  = 0.0
 
-        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)
@@ -243,32 +243,34 @@ for filename in files:
     print(f"Smallest Density  : {Density[np.argmin(Density)]}")
     print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin = get_along_lines(x_init)
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold = get_along_lines(x_init)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
     for i in range(m):
 
+        cut = threshold[i]
+
         if True:
             # Create a figure and axes for the subplot layout
             fig, axs = plt.subplots(2, 2, figsize=(8, 6))
             
-            axs[0,0].plot(trajectory[:,i], magnetic_fields[:,i], linestyle="--", color="m")
-            axs[0,0].scatter(trajectory[:,i], magnetic_fields[:,i], marker="+", color="m")
+            axs[0,0].plot(trajectory[:cut,i], magnetic_fields[:cut,i], linestyle="--", color="m")
+            axs[0,0].scatter(trajectory[:cut,i], magnetic_fields[:cut,i], marker="+", color="m")
             axs[0,0].set_xlabel("s (cm)")
             axs[0,0].set_ylabel("$B(s)$ Gauss (cgs)")
             axs[0,0].set_title("Magnetic FIeld")
             axs[0,0].grid(True)
             
-            axs[0,1].plot(trajectory[:,i], radius_to_origin[:,i], linestyle="--", color="m")
-            axs[0,1].scatter(trajectory[:,i], radius_to_origin[:,i], marker="+", color="m")
+            axs[0,1].plot(trajectory[:cut,i], radius_to_origin[:cut,i], linestyle="--", color="m")
+            axs[0,1].scatter(trajectory[:cut,i], radius_to_origin[:cut,i], marker="+", color="m")
             axs[0,1].set_xlabel("s (cm)")
             axs[0,1].set_ylabel("$log_{10}8n_g(s) (gr/cm^3))$  (cgs)")
             axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
             axs[0,1].grid(True)
 
-            axs[1,0].plot(trajectory[:,i], numb_densities[:,i], linestyle="--", color="m")
-            axs[1,0].scatter(trajectory[:,i], numb_densities[:,i], marker="+", color="m")
+            axs[1,0].plot(trajectory[:cut,i], numb_densities[:cut,i], linestyle="--", color="m")
+            axs[1,0].scatter(trajectory[:cut,i], numb_densities[:cut,i], marker="+", color="m")
             axs[1,0].set_xscale('log')
             axs[1,0].set_yscale('log')
             axs[1,0].set_xlabel("s (cm)")
@@ -276,7 +278,7 @@ for filename in files:
             axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
             axs[1,0].grid(True)
             
-            axs[1,1].plot(volumes[:,i], linestyle="--", color="black")
+            axs[1,1].plot(volumes[:cut,i], linestyle="--", color="black")
             axs[1,1].set_yscale('log')
             axs[1,1].set_xlabel("steps")
             axs[1,1].set_ylabel("$V(s)$ cm^3 (cgs)")
