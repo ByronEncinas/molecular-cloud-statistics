@@ -61,8 +61,8 @@ print(files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    if int(snap)%20 != 0: # this way only evaluates every 20 snapshots / for CAS
-        continue
+    #if int(snap)%20 != 0: # this way only evaluates every 20 snapshots / for CAS
+    #    continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)

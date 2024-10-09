@@ -58,7 +58,7 @@ if len(sys.argv)>4:
 	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
 else:
-    N            =100
+    N            =10_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
     max_cycles   =10
     num_file = '430'
@@ -137,11 +137,13 @@ def get_along_lines(x_init):
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
+    threshold = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
+    threshold_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init
@@ -151,44 +153,98 @@ def get_along_lines(x_init):
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
+    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
 
-    print(line.shape)
+    k=0
 
-    # propagates from same inner region to the outside in -dx direction
-    for k in range(N):
-        print(k,x)
+    while np.any((dens > 100)):
+
+        # Create a mask for values that are still above the threshold
+        mask = dens > 100
+
+        un_masked = np.logical_not(mask)
+
+        x[un_masked] = 0.0
 
         x, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        dens = dens * gr_cm3_to_nuclei_cm3
 
-        line[k+1,:,:] = x
-        volumes[k+1,:] = vol
-        bfields[k+1,:] = bfield
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        print(threshold)
+
+        line[k+1,:,:]    = x
+        volumes[k+1,:]   = vol
+        bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
+        
+        if np.all(un_masked):
+            print("All values are False: means all crossed the threshold")
+            break
+
+        k += 1
+    
+    threshold = threshold.astype(int)
+    larger_cut = np.max(threshold)
     
     x = x_init.copy()
 
     dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
+
+    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     
     print(line_rev.shape)
 
-    for k in range(N):
-        print(-k, x)
+    k=0
+
+    while np.any((dens > 100)):
+
+        # Create a mask for values that are still above the threshold
+        mask = dens > 100
+
+        un_masked = np.logical_not(mask)
+
+        x[un_masked] = 0.0
+
         x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        dens = dens * gr_cm3_to_nuclei_cm3
+
+        threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
-        densities_rev[k+1,:] = dens
-	
+        densities_rev[k+1,:] = dens 
+                    
+        if np.all(un_masked):  # ~arr negates the array
+            print("All values are False: means all crossed the threshold")
+            break
+        k += 1
+
+    threshold = threshold.astype(int)
+    threshold_rev = threshold_rev.astype(int)
+    larger_cut = np.max(threshold)
+    larger_cut_rev = np.max(threshold_rev)
+    """ 
+        line[un_masked,:,:] *= 0.0
+        bfields[un_masked:,i] *= 0.0
+        densities[un_masked:,i] *= 0.0
+
+        line_rev[un_masked:,:,:] *= 0.0
+        bfields_rev[un_masked:,i] *= 0.0
+        densities_rev[un_masked:,i] *= 0.0
+    """
     radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
-    gas_densities = np.append(densities_rev[::-1, :], densities, axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
-    gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-    numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
+    #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
+    #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
     
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
@@ -270,10 +326,10 @@ with open('output', 'w') as file:
 
 # flow control to repeat calculations in no peak situations
 
-reduction_factor = []
-numb_density_at  = []
+reduction_factor = list()
+numb_density_at  = list()
 
-min_den_cycle = []
+min_den_cycle = list()
 
 for cycle in range(max_cycles):
 
@@ -296,7 +352,6 @@ for cycle in range(max_cycles):
     B_r = bfield[p_r]
     n_r = numb_density[p_r]
     
-
     globalmax_index = global_info[0]
     globalmax_field = global_info[1]
 
