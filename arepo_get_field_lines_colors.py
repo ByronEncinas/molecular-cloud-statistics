@@ -193,17 +193,19 @@ def get_along_lines(x_init):
 
     threshold = threshold.astype(int)
     threshold_rev = threshold_rev.astype(int)
-    larger_cut = np.max(threshold)
-    larger_cut_rev = np.max(threshold_rev)
-    """ 
-        line[un_masked,:,:] *= 0.0
-        bfields[un_masked:,i] *= 0.0
-        densities[un_masked:,i] *= 0.0
 
-        line_rev[un_masked:,:,:] *= 0.0
-        bfields_rev[un_masked:,i] *= 0.0
-        densities_rev[un_masked:,i] *= 0.0
-    """
+    for cut in threshold:
+        line[:cut,:,:] = line[cut-1,:,:]
+        volumes[:cut,:,:]   = volumes[cut-1,:]
+        bfields[:cut,:,:]   = bfields[cut-1,:]
+        densities[:cut,:,:] = densities[cut-1,:]
+
+    for cut in threshold_rev:
+        line_rev[:cut,:,:] = line_rev[cut-1,:,:]
+        volumes_rev[:cut,:]   = volumes_rev[cut-1,:]
+        bfields_rev[:cut,:]   = bfields_rev[cut-1,:]
+        densities_rev[:cut,:] = densities_rev[cut-1,:,:]
+
     radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
