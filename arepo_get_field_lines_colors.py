@@ -123,12 +123,28 @@ def get_along_lines(x_init):
 
     k=0
 
-    while np.any((dens > 100)):
+    mask = dens > 100 # True if continue
+    un_masked = np.logical_not(mask)
+    
+    # Create a mask for values that are away 20 Pc from the core
+    #mask_dis = np.linalg.norm(x, axis=1) < 20 # True if continue
+    #un_masked_dis = np.logical_not(mask_dis)
 
-        # Create a mask for values that are still above the threshold
-        mask = dens > 100
+    #mask = np.logical_or(mask_dis, mask_den)
+    #un_masked = np.logical_not(mask)
 
-        un_masked = np.logical_not(mask)
+    while np.any((mask)):
+
+        # Create a mask for values that are 10^2 N/cm^3 above the threshold
+        mask = dens > 100 # 1 if not finished
+        un_masked = np.logical_not(mask) # 1 if finished
+        
+        # Create a mask for values that are away 20 Pc from the core
+        #mask_dis = np.linalg.norm(x, axis=1) < outer_radius  # True if continue
+        #un_masked_dis = np.logical_not(mask_dis)
+
+        #mask = np.logical_or(mask_dis, mask_den)
+        #un_masked = np.logical_not(mask)
 
         aux = x[un_masked]
 
@@ -136,22 +152,42 @@ def get_along_lines(x_init):
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        if len(threshold[un_masked]) != 0:
+            unique_unmasked_max_threshold = np.max(np.unique(threshold[un_masked]))
+            max_threshold = np.max(threshold)
+        else:
+            unique_unmasked_max_threshold = np.max(threshold)
+            max_threshold = np.max(threshold)
+        
         x[un_masked] = aux
+        
         print(threshold)
+        print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
         
-        if np.all(un_masked):
-            print("All values are False: means all crossed the threshold")
-            break
+        # if 75% of lines have concluded and the order of magnitude between steps in finished and not finished
+        # lines is greater than max_threshold/unique_unmasked_max_threshold > 10^1.5
+        order_clause = np.log10(max_threshold/unique_unmasked_max_threshold) >= 1 # np.log10(1000/100) = 1
+        percentage_clause = np.sum(un_masked)/len(mask) > 0.75 
+
+        if np.all(un_masked) or (order_clause and percentage_clause):
+            if (order_clause and percentage_clause):
+                with open('lone_run_radius_vectors.dat', 'w') as file:
+                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
+                    file.write(f"{x_init[mask]}\n")
+                print("75% of lines have concluded ")
+            else:
+                print("All values are False: means all crossed the threshold")
+            break    
 
         k += 1
     
     threshold = threshold.astype(int)
-    larger_cut = np.max(threshold)
     
     x = x_init.copy()
 
@@ -166,33 +202,85 @@ def get_along_lines(x_init):
 
     k=0
 
-    while np.any((dens > 100)):
+    mask_rev = dens > 100 # True if continue
+    un_masked_rev = np.logical_not(mask_rev)
+    
+    # Create a mask for values that are away 20 Pc from the core
+    #mask_dis = np.linalg.norm(x, axis=1) < 20 # True if continue
+    #un_masked_dis = np.logical_not(mask_dis)
 
-        # Create a mask for values that are still above the threshold
-        mask = dens > 100
+    #mask = np.logical_or(mask_dis, mask_den)
+    #un_masked = np.logical_not(mask)
 
-        un_masked = np.logical_not(mask)
+    while np.any((mask_rev)):
 
-        aux = x[un_masked]
+        # Create a mask for values that are 10^2 N/cm^3 above the threshold
+        mask_rev = dens > 100 # True if continue
+        un_masked_rev = np.logical_not(mask_rev)
+        
+        # Create a mask for values that are away 20 Pc from the core
+        #mask_dis = np.linalg.norm(x, axis=1) < outer_radius # True if continue
+        #un_masked_dis = np.logical_not(mask_dis)
+
+        #mask = np.logical_or(mask_dis, mask_den)
+        #un_masked = np.logical_not(mask)
+
+        aux = x[un_masked_rev]
 
         x, bfield, dens, vol = Heun_step(x, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
-        threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
-        x[un_masked] = aux
+        threshold_rev += mask_rev.astype(int)  # Increment threshold count only for values still above 100
+
+        if len(threshold_rev[un_masked_rev]) != 0:
+            unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
+            max_threshold = np.max(threshold_rev)
+        else:
+            unique_unmasked_max_threshold = np.max(threshold_rev)
+            max_threshold = np.max(threshold_rev)
+
+        print(max_threshold, unique_unmasked_max_threshold)
+        x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens 
                     
-        if np.all(un_masked):  # ~arr negates the array
-            print("All values are False: means all crossed the threshold")
+        # if 75% of lines have concluded and the order of magnitude between steps in finished and not finished
+        # lines is greater than max_threshold/unique_unmasked_max_threshold > 10^1.5
+        order_clause = np.log10(max_threshold/unique_unmasked_max_threshold) >= 1 # np.log10(3162/100) = 1.5
+        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.75 
+
+        if np.all(un_masked_rev) or (order_clause and percentage_clause):
+            if (order_clause and percentage_clause):
+                with open('lone_run_radius_vectors.dat', 'a') as file: 
+                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
+                    file.write(f"{x_init[mask_rev]}\n")
+                print("75% of lines have concluded ")
+            else:
+                print("All values are False: means all crossed the threshold")
             break
+
         k += 1
 
-    threshold = threshold.astype(int)
-    threshold_rev = threshold_rev.astype(int)
+    # at this stage lines integrated forward along field may have converged and are not
+    # necesarily the same as in the integration backwards. We want to keep those that converged in both
+
+    updated_mask = np.logical_and(mask, mask_rev)
+    
+    threshold = threshold[updated_mask].astype(int)
+    threshold_rev = threshold_rev[updated_mask].astype(int)
+
+    line = line[updated_mask]
+    volumes   = volumes[updated_mask]
+    bfields   = bfields[updated_mask]
+    densities = densities[updated_mask]
+
+    line_rev = line_rev[updated_mask]
+    volumes_rev   = volumes_rev[updated_mask]
+    bfields_rev   = bfields_rev[updated_mask]
+    densities_rev = densities_rev[updated_mask]
 
     for cut in threshold:
         line[:cut,:,:] = line[cut-1,:,:]
@@ -239,25 +327,67 @@ def get_along_lines(x_init):
     
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin
 
-rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
-nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-npix  = 12 * nside ** 2
-ipix_center       = np.arange(npix)
-xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
+if sys.argv[-1] == "longrun":
 
-xx = np.array(random.sample(list(xx), max_cycles))
-yy = np.array(random.sample(list(yy), max_cycles))
-zz = np.array(random.sample(list(zz), max_cycles))
+    unique_vectors = set()  # Use a set to store unique vectors
 
-m = len(zz) # amount of values that hold which_up_down
+    with open('lone_run_radius_vectors.dat', 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            if line.startswith('['):  # Assuming x_init vectors are represented as arrays in brackets
+                # Convert the string representation of the array to a numpy array
+                vector = np.fromstring(line.strip().strip('[]'), sep=',')
+                # Convert to tuple (so it can be added to a set) and add to unique_vectors
+                unique_vectors.add(tuple(vector))
 
-x_init = np.zeros((m,3))
+    # Step 2: Convert set back to a list of unique numpy arrays
+    x_init = np.array([np.array(vec) for vec in unique_vectors])
 
-x_init[:,0]      = rloc_center * xx[:]
-x_init[:,1]      = rloc_center * yy[:]
-x_init[:,2]      = rloc_center * zz[:]
+    with open('output', 'w') as file:
+        file.write(f"Make sure the initial radius vectors correspond with the file that will provide the\n")
+        file.write(f"Magnetic field that will be use to trace field lines\n")
+        file.write(f"{filename}\n")
+        file.write(f"Cores Used: {os.cpu_count()}\n")
+        file.write(f"Steps in Simulation: {2 * N}\n")
+        file.write(f"max_cycles         : {len(x_init[0,:,0])}\n")
+        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+else:
+    rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
+    nside = max_cycles     # sets number of cells sampling the spherical boundary layers = 12*nside**2
+    npix  = 12 * nside ** 2
+    ipix_center       = np.arange(npix)
+    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
 
-lmn = N
+    xx = np.array(random.sample(list(xx), max_cycles))
+    yy = np.array(random.sample(list(yy), max_cycles))
+    zz = np.array(random.sample(list(zz), max_cycles))
+
+    m = len(zz) # amount of values that hold which_up_down
+
+    x_init = np.zeros((m,3))
+
+    x_init[:,0]      = rloc_center * xx[:]
+    x_init[:,1]      = rloc_center * yy[:]
+    x_init[:,2]      = rloc_center * zz[:]
+
+    lmn = N
+
+    with open('output', 'w') as file:
+        file.write(f"{filename}\n")
+        file.write(f"Cores Used: {os.cpu_count()}\n")
+        file.write(f"Steps in Simulation: {2 * N}\n")
+        file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
+        file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
+        file.write(f"max_cycles         : {max_cycles}\n")
+        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+        file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
+        file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+        file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+        file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmin(Volume)]} \n")
+        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmax(Volume)]}\n")
+        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
@@ -275,22 +405,6 @@ print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
-
-with open('output', 'w') as file:
-    file.write(f"{filename}\n")
-    file.write(f"Cores Used: {os.cpu_count()}\n")
-    file.write(f"Steps in Simulation: {2 * N}\n")
-    file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
-    file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
-    file.write(f"max_cycles         : {max_cycles}\n")
-    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-    file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
-    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmax(Volume)]}\n")
-    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 for i in range(m):
 
