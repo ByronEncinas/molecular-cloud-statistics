@@ -404,7 +404,7 @@ for cycle in range(max_cycles):
     bfield    = magnetic_fields[_from:_to,cycle]
     distance = trajectory[_from:_to,cycle]
     numb_density = numb_densities[_from:_to,cycle]
-    tupi = (x_init[cycle,0],x_init[cycle,1],x_init[cycle,2])
+    tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
