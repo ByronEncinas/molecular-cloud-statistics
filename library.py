@@ -11,11 +11,17 @@ import sys
 import matplotlib
 import healpy as hp
 
+""" Toggle Parameters """
+
+outer_radius  = 1 # In Parsecs
+
 """ Constants and convertion factor """
 
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
 parsec_to_cm3 = 3.086e+18
 gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
+boltzmann_constant_cgs = 1.380649e-16
+grav_constant_cgs = 6.67430e-8
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
@@ -51,13 +57,13 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
     local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
     CellVol = Volume[cells]
-    dx *= 0.3*((4/3)*Volume[cells]/np.pi)**(1/3)  
+    dx *= 0.4*((4/3)*Volume[cells]/np.pi)**(1/3)  
     x_tilde = x + dx[:, np.newaxis] * local_fields_1
     local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
     abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
-    unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
-    x_final = x + 0.5 * dx[:, np.newaxis] * unito  
+    #unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
+    x_final = x + 0.5 * dx[:, np.newaxis] * (local_fields_1 + local_fields_2)
     return x_final, abs_local_fields_1, local_densities, CellVol
 
 def list_files(directory, ext):
@@ -102,6 +108,11 @@ def process_line(line):
         return data_dict
     else:
         return None
+    
+""" Energies """
+
+def temperature(KE, N):
+    return (2./3.)*KE/(N*boltzmann_constant_cgs)
 
 """ b_ionization_model Methods """
 """ c_reduction_factor Methods """

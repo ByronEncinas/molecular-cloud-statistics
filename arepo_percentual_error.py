@@ -16,18 +16,18 @@ import time
     
 rounds = int(sys.argv[1]) # number of files
 
-group_one   = [] #dict()
-group_two   = [] #dict()
-group_three = [] #dict()
-group_four  = []
-
 for cycle in range(rounds):
 
-    radius_vector  = np.array(np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r'))
-    distance       = np.array(np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r'))
-    bfield         = np.array(np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r'))
-    numb_density   = np.array(np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r'))
-    
+    radius_vector  = np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r')
+    distance       = np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r')
+    bfield         = np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r')
+    numb_density   = np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r')
+
+    group_one   = [] 
+    group_two   = [] 
+    group_three = [] 
+    group_four  = []
+
     for index, B_i in enumerate(bfield):
 
         N_i = numb_density[index]
@@ -39,62 +39,59 @@ for cycle in range(rounds):
             B_ip = B_i
             N_ip = N_i
 
-        B_error = np.abs(B_ip - B_i)/B_i # B_ip percentaje of error compared to previous line
-        N_error = np.abs(N_ip - N_i)/N_i 
+        B_error = np.abs(B_ip - B_i) / B_i if B_i != 0 else 0
+        N_error = np.abs(N_ip - N_i) / N_i if N_i != 0 else 0
 
-        #print([N_error, B_error])
-
-        if N_i >= 10 and N_i <= 10e+2:
+        if 0 <= N_i <= 10e+2:
             group_one.append([N_error, B_error])
-        elif N_i > 10e+2 and N_i <= 10e+4:
+        elif 10e+2 < N_i <= 10e+4:
             group_two.append([N_error, B_error])
-        elif N_i > 10e+4 and N_i <= 10e+6:
+        elif 10e+4 < N_i <= 10e+6:
             group_three.append([N_error, B_error])
         elif N_i > 10e+6:
             group_four.append([N_error, B_error])
 
     groups = [group_one, group_two, group_three, group_four]
+    group_names = ['Group 1 (0 to 10e+2)', 'Group 2 (10e+2 to 10e+4)', 
+                   'Group 3 (10e+4 to 10e+6)', 'Group 4 (> 10e+6)']
 
-    # we'll make one histogram per group
     for j, g in enumerate(groups):
         if len(g) == 0:
             continue
 
-        print(f"cycle: {cycle}: group {j+1}: lenght: ", len(g))
+        print(f"cycle: {cycle}: group {j+1}: length: ", len(g))
+        lenbfield = len(bfield)
+        print("number of elements", lenbfield)
 
         g = np.array(g)
 
-        eN = g[:,0]
-        eB = g[:,1]
+        eN = g[:,0]*100
+        eB = g[:,1]*100
 
-        if len(g) <= 10:
-            bins = 10
-        else:
-            bins = len(g)//10
+        bins = max(10, len(g) // 10)
 
-        # Create a figure and axes objects
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
-        # Plot histograms on the respective axes
-        axs[0].hist(eN, bins=bins, color='skyblue', edgecolor='black')
+        axs[0].hist(eN, bins=bins, color='skyblue', edgecolor='black', label=group_names[j])
         axs[0].set_title('Percentual difference Number density (%)')
-        axs[0].set_xlabel('Bins')
+        axs[0].set_xlabel('Percent Difference')
         axs[0].set_ylabel('Frequency')
+        axs[0].legend() 
 
-        axs[1].hist(eB, bins=bins, color='skyblue', edgecolor='black')
+        axs[1].hist(eB, bins=bins, color='skyblue', edgecolor='black' , label=group_names[j])
         axs[1].set_title('Percentual difference Magnetic Field (%)')
-        axs[1].set_xlabel('Bins')
+        axs[1].set_xlabel('Percent Difference')
         axs[1].set_ylabel('Frequency')
+        axs[1].legend()
 
-        axs[2].plot(bfield/np.max(bfield), color='red')
-        axs[2].plot(numb_density/np.max(numb_density), color='blue')
-        axs[2].set_title('Percentual difference Magnetic Field (%)')
-        axs[2].set_xlabel('Bins')
-        axs[2].set_ylabel('Frequency')
+        axs[2].plot(numb_density/np.max(numb_density), color='blue',label='Number Density')
+        axs[2].plot(bfield/np.max(bfield), color='red',label='Magnetic Field')
+        axs[2].set_title('Profile Shape N/cm^3 (blue) & B(s) (red)')
+        axs[2].set_xlabel('Steps')
+        axs[2].set_ylabel('Arbitrary Units')
+        axs[2].legend()
 
-        # Adjust layout
         plt.tight_layout()
 
-        # Save the figure
-        #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-        plt.savefig(f"histograms/percentual_errors{cycle}-{j}.png")
+        plt.savefig(f"histograms/error/percentual_errors{cycle}-{j+1}.png")
+
