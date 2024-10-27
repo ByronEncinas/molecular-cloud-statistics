@@ -492,7 +492,7 @@ with open(file_path, 'w') as json_file:
     json.dump(numb_density_at, json_file)
 
 # Specify the file path
-file_path = f'position_vector_reduction'
+file_path = f'position_vector_reduction{sys.argv[-1]}'
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
