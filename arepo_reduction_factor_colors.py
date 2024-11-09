@@ -88,6 +88,13 @@ for f in file_list:
 print(filename)
 
 data = h5py.File(filename, 'r')
+# Access the 'Header' group
+
+header_group = data['Header']
+
+# Retrieve the 'Time' attribute from the 'Header' group
+time_value = header_group.attrs['Time']
+
 Boxsize = data['Header'].attrs['BoxSize'] #
 
 # Directly convert and cast to desired dtype
@@ -101,6 +108,9 @@ Volume   = Mass/Density
 # Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
+
+# Print the time
+print(f"Time: {time_value} Myr")
 
 # printing relevant info about the data
 # 1 Parsec  = 3.086e+18 cm
@@ -375,9 +385,14 @@ __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-with open('output', 'w') as file:
+snap = filename.split('/')[1].split('.')[0]
+
+new_folder = os.join("histograms/" , snap)
+
+with open(os.join(new_folder, 'output'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
     file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
     file.write(f"x_init (Pc)        :\n {x_init}\n")
@@ -389,6 +404,8 @@ with open('output', 'w') as file:
     file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
     file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
     file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
     file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 # flow control to repeat calculations in no peak situations
@@ -484,9 +501,6 @@ counter = Counter(reduction_factor)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-snap = filename.split('/')[1].split('.')[0]
-
-new_folder = os.join("histograms/" , snap)
 # Create the new arepo_npys directory
 os.makedirs(new_folder, exist_ok=True)
 
