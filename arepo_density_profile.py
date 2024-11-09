@@ -57,12 +57,21 @@ else:
 
 directory_path = "arepo_data/"
 files = list_files(directory_path, '.hdf5')
-print(files)
+
+total_files = len(files)
+num_to_pick = total_files // 2
+
+# Generate 20 evenly spaced indices
+indices = np.linspace(0, total_files - 1, num_to_pick, dtype=int)
+
+# Select the files using the generated indices
+selected_files = [files[i] for i in indices]
+
+# Print the selected files
+print(selected_files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    if int(snap)%50 != 0: # this way only evaluates every 20 snapshots / for CAS
-        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
@@ -83,6 +92,7 @@ for filename in files:
     Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
     Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
     Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
+    Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
 
     # Initialize gradients
     Bfield_grad = np.zeros((len(Pos), 9))
@@ -106,12 +116,12 @@ for filename in files:
     VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
     # Original direction vectors
-    axis = np.array([[ 1.0,  0.0,  0.0],
-                    [ 0.0,  1.0,  0.0],
-                    [ 0.0,  0.0,  1.0],
-                    [-1.0,  0.0,  0.0],
-                    [ 0.0, -1.0,  0.0],
-                    [ 0.0,  0.0, -1.0]])
+    axis = np.array([[ 1.0,  0.0,  0.0], # +x 0
+                    [ 0.0,  1.0,  0.0],  # +y 1
+                    [ 0.0,  0.0,  1.0],  # +z 2
+                    [-1.0,  0.0,  0.0],  # -x 3
+                    [ 0.0, -1.0,  0.0],  # -y 4
+                    [ 0.0,  0.0, -1.0]]) # -z 5
 
     # Diagonal vectors
     diagonals = np.array([[ 1.0,  1.0,  1.0],
@@ -151,19 +161,30 @@ for filename in files:
         volumes   = np.zeros((N+1,m))
         threshold = np.zeros((m,)).astype(int) # one value for each
 
+        energy_magnetic   = np.zeros((N+1,m))
+        energy_thermal   = np.zeros((N+1,m))
+        energy_grav   = np.zeros((N+1,m))
+
         line[0,:,:]     = x_init
         x = x_init
         dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
         vol = Volume[cells]
         dens = dens* gr_cm3_to_nuclei_cm3
         densities[0,:] = dens
+        
+        energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
+        energy_thermal[0,:] = (3/2) * boltzmann_constant_cgs * temperature(0.5*dens*vol, dens) # 3kT/2 int_0^R 4 pi rho(r)dr 
+        energy_grav[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
+        
         k=0
 
-        while np.any((dens > 100)):
+        mask = dens > 100 # True if continue
+        un_masked = np.logical_not(mask)
 
-            # Create a mask for values that are still above the threshold
-            mask = dens > 100
+        while np.any((mask)):
 
+            # Create a mask for values that are 10^2 N/cm^3 above the threshold
+            mask = dens > 100 # True if continue
             un_masked = np.logical_not(mask)
             
             # Only update values where mask is True
@@ -185,9 +206,19 @@ for filename in files:
             volumes[k+1,:]   = vol
             bfields[k+1,:]   = bfield
             densities[k+1,:] = dens
-            
+
+            # care with units since all variables are in code units except density
+            rad      = np.linalg.norm(x, axis=0)
+            avg_den  = np.sum(densities[:,:], axis=0)/(3*(k+1))
+            avg_mass = (4*np.pi*avg_den*rad**2)
+            grav_aux =  avg_mass/rad #* grav_constant_cgs
+
+            energy_grav[k+1,:] = 0.0
+            energy_magnetic[k+1,:] = bfield*bfield/(8*np.pi)*vol 
+            energy_thermal[k+1,:] = (3/2) * boltzmann_constant_cgs * temperature(0.5*dens*vol, dens) # 3kT/2 int_0^R 4 pi rho(r)dr 
+
             if np.all(un_masked):
-                print("All values are False: means all crossed the threshold")
+                print("All values are False: means all density < 10^2 or |vec(r)| > 1 Parsec")
                 break
 
             k += 1
@@ -234,7 +265,7 @@ for filename in files:
         magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
         trajectory[0,:]  = 0.0
 
-        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal]
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)
@@ -243,12 +274,14 @@ for filename in files:
     print(f"Smallest Density  : {Density[np.argmin(Density)]}")
     print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold = get_along_lines(x_init)
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, energies = get_along_lines(x_init)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
     for i in range(m):
 
+        energy_grav, energy_magnetic, energy_thermal = energies
+        
         cut = threshold[i]
 
         if True:
@@ -265,7 +298,7 @@ for filename in files:
             axs[0,1].plot(trajectory[:cut,i], radius_to_origin[:cut,i], linestyle="--", color="m")
             axs[0,1].scatter(trajectory[:cut,i], radius_to_origin[:cut,i], marker="+", color="m")
             axs[0,1].set_xlabel("s (cm)")
-            axs[0,1].set_ylabel("$log_{10}8n_g(s) (gr/cm^3))$  (cgs)")
+            axs[0,1].set_ylabel("$log_{10}n_g(s) (gr/cm^3))$  (cgs)")
             axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
             axs[0,1].grid(True)
 
@@ -274,7 +307,7 @@ for filename in files:
             axs[1,0].set_xscale('log')
             axs[1,0].set_yscale('log')
             axs[1,0].set_xlabel("s (cm)")
-            axs[1,0].set_ylabel("$log_{10}8n_g(s) (gr/cm^3))$  (cgs)")
+            axs[1,0].set_ylabel("$log_{10}n_g(s) (gr/cm^3))$  (cgs)")
             axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
             axs[1,0].grid(True)
             

@@ -1,7 +1,7 @@
 #
 arepo_*/
 field_shapes/
-./pytest/
+pytest/
 *.png
 colors.py
 rs_output

@@ -18,7 +18,7 @@ from mpl_toolkits.mplot3d import Axes3D
 start_time = time.time()
 
 # Specify the file path
-file_path = f'position_vector_reduction'
+file_path = f'cluster_outputs/redfactJAKAR/position_vector_reduction15237_300'
 
 # Write the list data to a JSON file
 with open(file_path, 'r') as json_file:
@@ -26,8 +26,6 @@ with open(file_path, 'r') as json_file:
 
 radius_vector = []
 red_factor = []
-
-
 
 for k, v in pos_red.items():
     if v == 1:

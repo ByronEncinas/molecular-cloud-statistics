@@ -60,8 +60,8 @@ else:
 
 """  B. Jesus Velazquez """
 
-snap = '430'
-filename = 'arepo_data/snap_' + snap + '.hdf5'
+snap = '3000'
+filename = 'arepo_data/snap_ambipolar' + snap + '.hdf5'
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -279,32 +279,36 @@ def get_along_lines(x_init):
 
     #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
     #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-    
+
     # Initialize trajectory and radius_to_origin with the same shape
-    trajectory      = np.zeros_like(magnetic_fields)
-    radius_to_origin= np.zeros_like(magnetic_fields)
+    trajectory = np.zeros_like(magnetic_fields)
+    radius_to_origin = np.zeros_like(magnetic_fields)
 
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
     print("Numb densities shape:", numb_densities.shape)
 
     m = magnetic_fields.shape[1]
-    
-    print("Survinving lines: ", m, "out of: ", max_cycles)
-	
-    for _n in range(m): # Iterate over the first dimension
+    print("Surviving lines: ", m, "out of: ", max_cycles)
+
+    for _n in range(m):  # Iterate over the second dimension
+        start_idx = (magnetic_fields.shape[0] - threshold_rev[_n]).astype(int) 
         prev = radius_vector[0, _n, :]
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
-            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
+            radius_to_origin[k, _n] = np.linalg.norm(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur, prev)
-            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
-            prev = radius_vector[k, _n, :]
-    
-    trajectory[0,:]  = 0.0
+            diff_rj_ri = np.linalg.norm(cur - prev)*3.086e+18  # Calculate the difference between consecutive points
+            if k == 0:
+                trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
+            else:
+                trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
+            prev = cur  # Update `prev` to the current point
+            print("Trajectory at step", k, ":", trajectory[k, _n])
 
+        #trajectory[:,_n] = trajectory[:,_n] - trajectory[start_idx,_n] #np.zeros((m,))
+    
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
-    trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
+    #trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3) 
 
@@ -390,27 +394,7 @@ x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.08827144,  0.07445224, -0.01678605],
                    [ 0.11605630,  0.24466445, -0.32513439],
                    [-0.01082023, -0.02556539, -0.00694829],
-                   [-0.19161783,  0.10030747,  0.14942809],
-                   [-0.03898861, -0.06147262,  0.04476948],
-                   [-0.04530558,  0.17802062,  0.03465805],
-                   [ 0.03956358, -0.14925817,  0.07320193],
-                   [ 0.11858629, -0.00915086, -0.03844344],
-                   [-0.06221415, -0.02786275, -0.01543062],
-                   [-0.01471285, -0.04326095,  0.15387472],
-                   [ 0.09092865, -0.19758664,  0.        ],
-                   [ 0.30345711, -0.22839880, -0.13984198],
-                   [ 0.04359673,  0.21970147, -0.16077028],
-                   [-0.00489506, -0.01136041,  0.01957748],
-                   [-0.00430429, -0.01134255, -0.01481634],
-                   [-0.07229427, -0.08835368, -0.05024784],
-                   [ 0.07602587,  0.13618145, -0.26195616],
-                   [-0.19258247,  0.        , -0.27806416],
-                   [-0.15450404, -0.20257052,  0.06606030],
-                   [-0.10600864,  0.10690097, -0.03609047],
-                   [-0.13021014, -0.10080587, -0.11620258],
-                   [ 0.01389313,  0.02353585, -0.02223771],
-                   [-0.16866302, -0.34937277, -0.32489837],
-                   [ 0.22805418,  0.14416563,  0.24846352]])
+                   [-0.19161783,  0.10030747,  0.14942809]])
 """
 __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
 
@@ -429,7 +413,7 @@ for i in range(m):
 
     mag_field    = magnetic_fields[_from:_to,i]
     pos_vector   = radius_vector[_from:_to,i,:]
-    s_coordinate = trajectory[_from:_to,i]
+    s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i]
     numb_density = numb_densities[_from:_to,i]
     volume       = volumes[_from:_to,i]
     """ 
@@ -457,7 +441,7 @@ for i in range(m):
 
         #plt.ticklabel_format(axis='both', style='sci')
         
-        axs[0,0].plot(mag_field/(10e-6), linestyle="--", color="m")
+        axs[0,0].plot(mag_field, linestyle="--", color="m")
         #axs[0,0].scatter(trajectory[:,i], magnetic_fields[:,i], marker="+", color="m")
         #axs[0,0].scatter(trajectory[lmn,i], magnetic_fields[lmn,i], marker="x", color="black")
         axs[0,0].set_xlabel("s (cm)")

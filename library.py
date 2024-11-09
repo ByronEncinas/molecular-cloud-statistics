@@ -13,9 +13,10 @@ import healpy as hp
 
 """ Toggle Parameters """
 
-outer_radius  = 1 # In Parsecs
+outer_radius  = 1 # In Parsecs (Deprecated)
 
 """ Constants and convertion factor """
+
 
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
 parsec_to_cm3 = 3.086e+18
@@ -57,13 +58,15 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
     local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
     CellVol = Volume[cells]
-    dx *= 0.4*((4/3)*Volume[cells]/np.pi)**(1/3)  
+    dx *= 0.4*((3/4)*Volume[cells]/np.pi)**(1/3)  
     x_tilde = x + dx[:, np.newaxis] * local_fields_1
     local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
     abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
-    #unito = (local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
-    x_final = x + 0.5 * dx[:, np.newaxis] * (local_fields_1 + local_fields_2)
+
+    unito = 2*(local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
+    x_final = x + 0.5 * dx[:, np.newaxis] * unito
+    
     return x_final, abs_local_fields_1, local_densities, CellVol
 
 def list_files(directory, ext):

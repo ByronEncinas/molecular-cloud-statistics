@@ -18,10 +18,10 @@ rounds = int(sys.argv[1]) # number of files
 
 for cycle in range(rounds):
 
-    radius_vector  = np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r')
-    distance       = np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r')
-    bfield         = np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r')
-    numb_density   = np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r')
+    radius_vector  = np.load(f"arepo_npys/saved/ArePositions{cycle}.npy", mmap_mode='r')
+    distance       = np.load(f"arepo_npys/saved/ArepoTrajectory{cycle}.npy", mmap_mode='r')
+    bfield         = np.load(f"arepo_npys/saved/ArepoMagneticFields{cycle}.npy", mmap_mode='r')
+    numb_density   = np.load(f"arepo_npys/saved/ArepoNumberDensities{cycle}.npy", mmap_mode='r')
 
     group_one   = [] 
     group_two   = [] 

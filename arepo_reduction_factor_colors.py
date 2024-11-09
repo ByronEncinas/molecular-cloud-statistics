@@ -6,6 +6,7 @@ from scipy import spatial
 import healpy as hp
 import numpy as np
 import random
+import glob
 import os
 import h5py
 import json
@@ -61,7 +62,7 @@ else:
     N            =10_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
     max_cycles   =10
-    num_file = '300'
+    num_file = '430'
 
 print(*sys.argv)
 
@@ -76,6 +77,15 @@ reduction_factor = []
 
 snap = 'snap_ambipolar_' + num_file
 filename = 'arepo_data/'+snap + '.hdf5'
+
+file_list = glob.glob('arepo_data/*.hdf5')
+print(file_list)
+
+for f in file_list:
+    if num_file in f:
+        filename = f
+
+print(filename)
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -358,8 +368,8 @@ print("Center              : ", Center) # 256
 print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
-print(f"Smallest Density   : {Density[np.argmin(Volume)]}")
-print(f"Biggest  Density   : {Density[np.argmax(Volume)]}")
+print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
+print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
 __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
 
@@ -377,8 +387,8 @@ with open('output', 'w') as file:
     file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
     file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
     file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
     file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 # flow control to repeat calculations in no peak situations
@@ -474,25 +484,31 @@ counter = Counter(reduction_factor)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
+snap = filename.split('/')[1].split('.')[0]
+
+new_folder = os.join("histograms/" , snap)
+# Create the new arepo_npys directory
+os.makedirs(new_folder, exist_ok=True)
+
 # Print elapsed time
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
 # Specify the file path
-file_path = f'random_distributed_reduction_factor{sys.argv[-1]}.json'
+file_path = os.join(new_folder, f'random_distributed_reduction_factor{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(reduction_factor, json_file)
 
 # Specify the file path
-file_path = f'random_distributed_numb_density{sys.argv[-1]}.json'
+file_path = os.join(new_folder,f'random_distributed_numb_density{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(numb_density_at, json_file)
 
 # Specify the file path
-file_path = f'position_vector_reduction{sys.argv[-1]}'
+file_path = os.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
@@ -533,7 +549,7 @@ plt.tight_layout()
 
 # Save the figure
 #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig(os.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
 
 # Show the plot
 #plt.show()
@@ -580,7 +596,7 @@ if True:
     # Add legend
     axs.legend()
 
-    plt.savefig(f"histograms/mean_median.png")
+    plt.savefig(os.join(new_folder,f"mean_median.png"))
     plt.close(fig)
     #plt.show()
 
@@ -610,7 +626,7 @@ if True:
     axs.legend(loc='center')
 
     # save figure
-    plt.savefig(f"histograms/mirrored_histograms.png")
+    plt.savefig(os.join(new_folder,f"mirrored_histograms.png"))
 
     # Show the plot
     plt.close(fig)
