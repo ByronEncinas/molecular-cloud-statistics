@@ -514,7 +514,6 @@ file_path = os.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
 with open(file_path, 'w') as json_file:
     json.dump(pos_red, json_file) # [x,y,z] = R basicly a 3D stochastic functin
 
-
 """# Graphs"""
 
 #plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
