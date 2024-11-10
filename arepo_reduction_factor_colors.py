@@ -75,9 +75,6 @@ reduction_factor = []
 
 """  B. Jesus Velazquez """
 
-snap = 'snap_ambipolar_' + num_file
-filename = 'arepo_data/'+snap + '.hdf5'
-
 file_list = glob.glob('arepo_data/*.hdf5')
 print(file_list)
 
@@ -94,6 +91,10 @@ header_group = data['Header']
 
 # Retrieve the 'Time' attribute from the 'Header' group
 time_value = header_group.attrs['Time']
+
+snap = filename.split('/')[1].split('.')[0]
+
+new_folder = os.join("histograms/" , snap)
 
 Boxsize = data['Header'].attrs['BoxSize'] #
 
@@ -384,10 +385,6 @@ print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Vol
 __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
-
-snap = filename.split('/')[1].split('.')[0]
-
-new_folder = os.join("histograms/" , snap)
 
 with open(os.join(new_folder, 'output'), 'w') as file:
     file.write(f"{filename}\n")
