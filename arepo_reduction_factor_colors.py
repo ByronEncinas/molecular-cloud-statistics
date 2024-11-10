@@ -94,7 +94,7 @@ time_value = header_group.attrs['Time']
 
 snap = filename.split('/')[1].split('.')[0]
 
-new_folder = os.join("histograms/" , snap)
+new_folder = os.path.join("histograms/" , snap)
 
 Boxsize = data['Header'].attrs['BoxSize'] #
 
@@ -386,7 +386,7 @@ __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-with open(os.join(new_folder, 'output'), 'w') as file:
+with open(os.path.join(new_folder, 'output'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
@@ -505,21 +505,21 @@ os.makedirs(new_folder, exist_ok=True)
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
 # Specify the file path
-file_path = os.join(new_folder, f'random_distributed_reduction_factor{sys.argv[-1]}.json')
+file_path = os.path.join(new_folder, f'random_distributed_reduction_factor{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(reduction_factor, json_file)
 
 # Specify the file path
-file_path = os.join(new_folder,f'random_distributed_numb_density{sys.argv[-1]}.json')
+file_path = os.path.join(new_folder,f'random_distributed_numb_density{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(numb_density_at, json_file)
 
 # Specify the file path
-file_path = os.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
+file_path = os.path.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
@@ -559,7 +559,7 @@ plt.tight_layout()
 
 # Save the figure
 #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig(os.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
+plt.savefig(os.path.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
 
 # Show the plot
 #plt.show()
@@ -606,7 +606,7 @@ if True:
     # Add legend
     axs.legend()
 
-    plt.savefig(os.join(new_folder,f"mean_median.png"))
+    plt.savefig(os.path.join(new_folder,f"mean_median.png"))
     plt.close(fig)
     #plt.show()
 
@@ -636,7 +636,7 @@ if True:
     axs.legend(loc='center')
 
     # save figure
-    plt.savefig(os.join(new_folder,f"mirrored_histograms.png"))
+    plt.savefig(os.path.join(new_folder,f"mirrored_histograms.png"))
 
     # Show the plot
     plt.close(fig)
