@@ -205,9 +205,9 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold)
         
         x[un_masked] = aux
+        print(np.log10(dens[:3]))
         
         #print(threshold)
-        #
         # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
@@ -270,6 +270,7 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
+        print(np.log10(dens[:3]))
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
@@ -318,18 +319,17 @@ def get_along_lines(x_init):
 
     #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
     #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-    
+
     # Initialize trajectory and radius_to_origin with the same shape
-    trajectory      = np.zeros_like(magnetic_fields)
-    radius_to_origin= np.zeros_like(magnetic_fields)
+    trajectory = np.zeros_like(magnetic_fields)
+    radius_to_origin = np.zeros_like(magnetic_fields)
 
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
     print("Numb densities shape:", numb_densities.shape)
 
     m = magnetic_fields.shape[1]
-    
-    print("Survinving lines: ", m, "out of: ", max_cycles)
+    print("Surviving lines: ", m, "out of: ", max_cycles)
 	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
@@ -386,24 +386,8 @@ __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-with open(os.path.join(new_folder, 'output'), 'w') as file:
-    file.write(f"{filename}\n")
-    file.write(f"Cores Used: {os.cpu_count()}\n")
-    file.write(f"Snap Time (Myr): {time_value}\n")
-    file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
-    file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
-    file.write(f"x_init (Pc)        :\n {x_init}\n")
-    file.write(f"max_cycles         : {max_cycles}\n")
-    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-    file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
-    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
-    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
-    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+# Create the new arepo_npys directory
+os.makedirs(new_folder, exist_ok=True)
 
 # flow control to repeat calculations in no peak situations
 
@@ -423,7 +407,7 @@ for cycle in range(max_cycles):
     _from = N+1 - threshold_rev[cycle]
     _to   = N+1 + threshold[cycle]
     #print(f"{_from} - {_to}")
-    p_r = N +1 - _from
+    p_r = N + 1 - _from
 
     bfield    = magnetic_fields[_from:_to,cycle]
     distance = trajectory[_from:_to,cycle]
@@ -431,7 +415,7 @@ for cycle in range(max_cycles):
     tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=True) # this plots
+    pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
     min_den_cycle.append(min(numb_density))
@@ -451,6 +435,7 @@ for cycle in range(max_cycles):
     """How to find index of Bl?"""
 
     print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+
     try:
         # possible error is len(index_pocket) is only one or two elements
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
@@ -498,8 +483,24 @@ counter = Counter(reduction_factor)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-# Create the new arepo_npys directory
-os.makedirs(new_folder, exist_ok=True)
+with open(os.path.join(new_folder, 'output'), 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
+    file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
+    file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
+    file.write(f"x_init (Pc)        :\n {x_init}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+    file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
+    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 # Print elapsed time
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
