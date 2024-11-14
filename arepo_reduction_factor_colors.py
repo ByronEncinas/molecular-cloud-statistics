@@ -56,7 +56,7 @@ if len(sys.argv)>4:
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	num_file = f'{sys.argv[4]}'
-	if len(sys.argv) < 6:
+	if len(sys.argv) < 5:
 		sys.argv.append('NO_ID')
 else:
     N            =10_000

@@ -23,6 +23,7 @@ parsec_to_cm3 = 3.086e+18
 gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 boltzmann_constant_cgs = 1.380649e-16
 grav_constant_cgs = 6.67430e-8
+hydrogen_mass = 1.6735e-24
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
