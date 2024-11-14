@@ -152,7 +152,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 def get_along_lines(x_init):
 
-    dx = 1.0
+    dx = 2.0
 
     m = x_init.shape[0]
 
