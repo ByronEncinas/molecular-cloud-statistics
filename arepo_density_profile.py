@@ -1,13 +1,8 @@
-from collections import defaultdict
-from multiprocessing import Pool
 import matplotlib.pyplot as plt
 from scipy import spatial
 import healpy as hp
 import numpy as np
-import random
-import shutil
 import h5py
-import json
 import sys
 import os
 
@@ -17,24 +12,52 @@ import time
 
 start_time = time.time()
 
+def get_magnetic_field_at_points(x, Bfield, rel_pos):
+	n = len(rel_pos[:,0])
+	local_fields = np.zeros((n,3))
+	for  i in range(n):
+		local_fields[i,:] = Bfield[i,:]
+	return local_fields
+
+def get_density_at_points(x, Density, Density_grad, rel_pos):
+	n = len(rel_pos[:,0])	
+	local_densities = np.zeros(n)
+	for  i in range(n):
+		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
+	return local_densities
+
+def find_points_and_relative_positions(x, Pos, VoronoiPos):
+	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
+	rel_pos = VoronoiPos[cells] - x
+	return dist, cells, rel_pos
+
+def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
+	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
+	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
+	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
+	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
+	return local_fields, abs_local_fields, local_densities, cells
+	
+def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
+    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
+    CellVol = Volume[cells]
+    dx *= 0.4*((3/4)*CellVol/np.pi)**(1/3)  
+    x_tilde = x + dx[:, np.newaxis] * local_fields_1
+    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
+    abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
+
+    unito = 2*(local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
+    x_final = x + 0.5 * dx[:, np.newaxis] * unito
+    kinetic_energy = 0.5*Mass[cells]*np.linalg.norm(Velocities[cells], axis=1)**2
+    internal_energy = InternalEnergy[cells]
+    pressure = Pressure[cells]
+    
+    return x_final, abs_local_fields_1, local_densities, CellVol, kinetic_energy, internal_energy, pressure
+
 """  
-Using Margo Data
-
-Analysis of reduction factor
-
-$$N(s) 1 - \sqrt{1-B(s)/B_l}$$
-
-Where $B_l$ corresponds with (in region of randomly choosen point) the lowest between the highest peak at both left and right.
-where $s$ is a random chosen point at original 128x128x128 grid.
-
-1.- Randomly select a point in the 3D Grid. 
-2.- Follow field lines until finding B_l, if non-existent then change point.
-3.- Repeat 10k times
-4.- Plot into a histogram.
-
-contain results using at least 20 boxes that contain equally spaced intervals for the reduction factor.
-
-# Calculating Histogram for Reduction Factor in Randomized Positions in the 128**3 Cube 
+Using Alex Mayer Data
 
 """
 
@@ -72,6 +95,8 @@ print(selected_files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
+    if snap != "430":
+        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
@@ -93,6 +118,8 @@ for filename in files:
     Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
     Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
     Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
+    InternalEnergy = np.asarray(data['PartType0']['InternalEnergy'], dtype=FloatType)
+    Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
 
     # Initialize gradients
     Bfield_grad = np.zeros((len(Pos), 9))
@@ -162,19 +189,34 @@ for filename in files:
         threshold = np.zeros((m,)).astype(int) # one value for each
 
         energy_magnetic   = np.zeros((N+1,m))
-        energy_thermal   = np.zeros((N+1,m))
         energy_grav   = np.zeros((N+1,m))
-
+        energy_thermal_two   = np.zeros((N+1,m))
+        energy_thermal_one   = np.zeros((N+1,m))
+        energy_thermal_three = np.zeros((N+1,m))
+        
         line[0,:,:]     = x_init
         x = x_init
         dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
         vol = Volume[cells]
         dens = dens* gr_cm3_to_nuclei_cm3
         densities[0,:] = dens
+        dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+        mass = 0.0
+
+        rad = np.linalg.norm(x, axis=1)
+        ie = InternalEnergy[cells]
+        ke = 0.5*Mass[cells]*np.linalg.norm(Velocities[cells], axis=1)**2
+        print(dens.shape, rad.shape, dx_vec.shape)
+        mass_shell_cumulative = 4 * np.pi * dens * (rad**2) * (dx_vec * parsec_to_cm3) * parsec_to_cm3
+        phi_grav = grav_constant_cgs*Mass
+        grav_potential = -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
+        thermal_three = 0.0
         
         energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
-        energy_thermal[0,:] = (3/2) * boltzmann_constant_cgs * temperature(0.5*dens*vol, dens) # 3kT/2 int_0^R 4 pi rho(r)dr 
-        energy_grav[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
+        energy_grav[0,:] = grav_potential
+        energy_thermal_two[0,:] = (3/2) * boltzmann_constant_cgs * temperature(ke, dens)*mass_shell_cumulative # 3kT/2 int_0^R 4 pi r^2 rho(r)dr 
+        energy_thermal_one[0,:] = (2/3) * ie*hydrogen_mass/boltzmann_constant_cgs
         
         k=0
 
@@ -188,37 +230,51 @@ for filename in files:
             un_masked = np.logical_not(mask)
             
             # Only update values where mask is True
-            _, bfield, dens, vol = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            _, bfield, dens, vol, ke, ie, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
-            dens = dens * gr_cm3_to_nuclei_cm3 
+            mass_dens *=code_units_to_gr_cm3
+            pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
+            dens *= gr_cm3_to_nuclei_cm3 
+
             
             vol[un_masked] = 0
 
-            dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
+            non_zero = vol > 0
+
+            dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3)) # make sure to cover the shell in all directions at the same pace
+            
+            print(dx_vec)
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
-            
-            print(np.log10(dens))
 
-            x += dx_vec[:, np.newaxis] * directions
+            x += dx_vec * directions
 
             line[k+1,:,:]    = x
             volumes[k+1,:]   = vol
             bfields[k+1,:]   = bfield
             densities[k+1,:] = dens
 
-            # care with units since all variables are in code units except density
-            rad      = np.linalg.norm(x, axis=0)
-            avg_den  = np.sum(densities[:,:], axis=0)/(3*(k+1))
-            avg_mass = (4*np.pi*avg_den*rad**2)
-            grav_aux =  avg_mass/rad #* grav_constant_cgs
+            # Line of Sight 
+            rad      = np.linalg.norm(x[0], axis=1)
+            surface_area = 4*np.pi*rad**2
+            avg_den  = np.mean(mass_dens)
+            
+            mass_shell_cumulative += 4*np.pi*dens*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3) # adding concentric shells with density 'dens'
+            mass += 4*np.pi*np.average(dens)*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3)
+            grav_potential += -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
+            
+            thermal_three += (3/2)*pressure*surface_area*dx_vec/1.0
+            
+            temperature = mass_dens*(surface_area*dx_vec)*pressure/boltzmann_constant_cgs
 
-            energy_grav[k+1,:] = 0.0
+            energy_grav[k+1,:] = grav_potential
             energy_magnetic[k+1,:] = bfield*bfield/(8*np.pi)*vol 
-            energy_thermal[k+1,:] = (3/2) * boltzmann_constant_cgs * temperature(0.5*dens*vol, dens) # 3kT/2 int_0^R 4 pi rho(r)dr 
+            energy_thermal_one[k+1,:] = (2/3) * ie*hydrogen_mass/boltzmann_constant_cgs
+            energy_thermal_two[k+1,:] = (3/2) * boltzmann_constant_cgs * temperature(ke, dens)*mass_shell_cumulative # 3kT/2 int_0^R 4 pi r^2 rho(r)dr 
+            energy_thermal_three[k+1,:] = thermal_three
 
             if np.all(un_masked):
-                print("All values are False: means all density < 10^2 or |vec(r)| > 1 Parsec")
+                print("All values are False: means all density < 10^2")
                 break
 
             k += 1
@@ -240,7 +296,6 @@ for filename in files:
         print("Radius vector shape:", radius_vector.shape)
         print("Numb densities shape:", numb_densities.shape)
     
-        
         for _n in range(m):  # Iterate over the first dimension
 
             cut = threshold[_n] - 1
@@ -265,7 +320,7 @@ for filename in files:
         magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
         trajectory[0,:]  = 0.0
 
-        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal]
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal_one]
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)
@@ -311,7 +366,9 @@ for filename in files:
             axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
             axs[1,0].grid(True)
             
-            axs[1,1].plot(volumes[:cut,i], linestyle="--", color="black")
+            axs[1,1].plot(trajectory[:cut,i], energy_grav[:cut,i], linestyle="--", color="green")
+            axs[1,1].plot(trajectory[:cut,i], energy_magnetic[:cut,i], linestyle="--", color="blue")
+            axs[1,1].plot(trajectory[:cut,i], energy_thermal[:cut,i], linestyle="--", color="red")
             axs[1,1].set_yscale('log')
             axs[1,1].set_xlabel("steps")
             axs[1,1].set_ylabel("$V(s)$ cm^3 (cgs)")
@@ -322,7 +379,7 @@ for filename in files:
             plt.tight_layout()
 
             # Save the figure
-            plt.savefig(f"{directory_path}/shapes_{i}.png")
+            plt.savefig(f"{directory_path}/energies_shapes_{i}.png")
 
             # Close the plot
             plt.close(fig)

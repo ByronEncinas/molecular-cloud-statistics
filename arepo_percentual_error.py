@@ -1,14 +1,6 @@
-from collections import defaultdict
-from multiprocessing import Pool
 import matplotlib.pyplot as plt
-from scipy import spatial
 import numpy as np
-import random
-import shutil
-import h5py
-import json
 import sys
-import os
 
 from library import *
 
@@ -16,12 +8,16 @@ import time
     
 rounds = int(sys.argv[1]) # number of files
 
-for cycle in range(rounds):
+group_names = ['Group 1 (0 to 10e+2)', 'Group 2 (10e+2 to 10e+4)', 
+                'Group 3 (10e+4 to 10e+6)', 'Group 4 (> 10e+6)']
 
-    radius_vector  = np.load(f"arepo_npys/saved/ArePositions{cycle}.npy", mmap_mode='r')
-    distance       = np.load(f"arepo_npys/saved/ArepoTrajectory{cycle}.npy", mmap_mode='r')
-    bfield         = np.load(f"arepo_npys/saved/ArepoMagneticFields{cycle}.npy", mmap_mode='r')
-    numb_density   = np.load(f"arepo_npys/saved/ArepoNumberDensities{cycle}.npy", mmap_mode='r')
+for cycle in range(rounds):
+    step = '0.8'
+
+    radius_vector  = np.load(f"arepo_npys/stepsizetest/{step}/ArePositions{cycle}.npy", mmap_mode='r')
+    distance       = np.load(f"arepo_npys/stepsizetest/{step}/ArepoTrajectory{cycle}.npy", mmap_mode='r')
+    bfield         = np.load(f"arepo_npys/stepsizetest/{step}/ArepoMagneticFields{cycle}.npy", mmap_mode='r')
+    numb_density   = np.load(f"arepo_npys/stepsizetest/{step}/ArepoNumberDensities{cycle}.npy", mmap_mode='r')
 
     group_one   = [] 
     group_two   = [] 
@@ -52,8 +48,6 @@ for cycle in range(rounds):
             group_four.append([N_error, B_error])
 
     groups = [group_one, group_two, group_three, group_four]
-    group_names = ['Group 1 (0 to 10e+2)', 'Group 2 (10e+2 to 10e+4)', 
-                   'Group 3 (10e+4 to 10e+6)', 'Group 4 (> 10e+6)']
 
     for j, g in enumerate(groups):
         if len(g) == 0:
@@ -93,5 +87,5 @@ for cycle in range(rounds):
 
         plt.tight_layout()
 
-        plt.savefig(f"histograms/error/percentual_errors{cycle}-{j+1}.png")
+        plt.savefig(f"arepo_npys/stepsizetest/{step}/percentual_errors{cycle}-{j+1}.png")
 

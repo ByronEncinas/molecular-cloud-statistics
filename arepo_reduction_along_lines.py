@@ -9,9 +9,15 @@ import sys
 """
 
 #pocket_finder(bmag, cycle=0, plot =False):
- 
-distance = np.array(np.load("arepo_output_data/ArepoTrajectory.npy", mmap_mode='r'))
-bfield   = np.array(np.load("arepo_output_data/ArepoMagneticFields.npy", mmap_mode='r'))
+import glob
+
+# Get a list of all files that match the pattern
+#file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*.json')
+
+j = 4
+
+distance = np.array(np.load(f"arepo_npys/saved/ArepoTrajectory{j}.npy", mmap_mode='r'))
+bfield   = np.array(np.load(f"arepo_npys/saved/ArepoMagneticFields{j}.npy", mmap_mode='r'))
 
 print(" Data Successfully Loaded")
 
@@ -86,7 +92,7 @@ if True:
     #plt.tight_layout()
 
     # Save Figure
-    plt.savefig("arepo_output_data/reductionf_at_s2.png")
+    plt.savefig(f"reductionf_at_s{j}.png")
 
     # Display the plot
     #plt.show()

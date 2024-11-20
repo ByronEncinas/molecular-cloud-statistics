@@ -1,16 +1,11 @@
-from collections import defaultdict
-from multiprocessing import Pool
 import matplotlib.pyplot as plt
-from scipy import spatial
 import healpy as hp
 import numpy as np
 import random
-import shutil
 import h5py
-import json
 import sys
 import os
-
+import glob
 from library import *
 
 import time
@@ -53,15 +48,20 @@ if len(sys.argv)>2:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
+	num_file = str(sys.argv[4])
 else:
     N            =100
     rloc_boundary=256   # rloc_boundary for boundary region of the cloud
     max_cycles   =1
+    num_file = '430'
 
 """  B. Jesus Velazquez """
 
-snap = '3000'
-filename = 'arepo_data/snap_ambipolar' + snap + '.hdf5'
+file_list = glob.glob('arepo_data/*.hdf5')
+
+for f in file_list:
+    if num_file in f:
+        filename = f
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -95,14 +95,14 @@ Name: PartType0/Masses
 Name: PartType0/Velocities
     Attribute: to_cgs = 100_000.0
 Name: PartType0/MagneticField
-
 """
 
 #Center= 0.5 * Boxsize * np.ones(3) # Center
 #Center = np.array( [91,       -110,          -64.5]) #117
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
-print("Center before Centering", Center)
+CloudCord = Center.copy()
+print("Center before Centering", CloudCord)
 
 VoronoiPos-=Center
 Pos-=Center
@@ -113,7 +113,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 def get_along_lines(x_init):
 
-    dx = 1.0
+    dx = 0.3
 
     m = x_init.shape[0]
 
@@ -167,7 +167,7 @@ def get_along_lines(x_init):
         
         x[un_masked] = aux
         
-        #print(threshold)
+        print(np.log10(dens))
         #
         # print(max_threshold, unique_unmasked_max_threshold)
 
@@ -183,7 +183,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'lone_run_radius_vectors{num_file}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -231,6 +231,7 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
+        print(np.log10(dens))
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
@@ -245,7 +246,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'lone_run_radius_vectors{num_file}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -297,7 +298,7 @@ def get_along_lines(x_init):
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
             radius_to_origin[k, _n] = np.linalg.norm(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = np.linalg.norm(cur - prev)*3.086e+18  # Calculate the difference between consecutive points
+            diff_rj_ri = np.linalg.norm(cur - prev)  # Calculate the difference between consecutive points
             if k == 0:
                 trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
             else:
@@ -308,7 +309,7 @@ def get_along_lines(x_init):
         #trajectory[:,_n] = trajectory[:,_n] - trajectory[start_idx,_n] #np.zeros((m,))
     
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
-    #trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
+    trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3) 
 
@@ -369,7 +370,7 @@ else:
         file.write(f"x_init (Pc)        :\n {x_init}\n")
         file.write(f"max_cycles         : {max_cycles}\n")
         file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-        file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
+        file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
         file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
         file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
         file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
@@ -383,7 +384,7 @@ print("rloc_boundary      : ", rloc_boundary)
 print("rloc_center        :\n ", rloc_center)
 print("max_cycles         : ", max_cycles)
 print("Boxsize            : ", Boxsize) # 256
-print("Center             : ", Center) # 256
+print("Center             : ", CloudCord) # 256
 print("Posit Max Density  : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
@@ -482,21 +483,31 @@ for i in range(m):
         # Close the plot
         plt.close(fig)
 		
-if True:
+if False:
+        
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+    # Assuming mag_field is of shape (N+1, m)
+    norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+    cmap = cm.viridis  # Choose a colormap
+
     ax = plt.figure().add_subplot(projection='3d')
+    radius_vector /= 3.086e+18
 
     for k in range(m):
-        x=radius_vector[:,k,0]/ 3.086e+18                           
-        y=radius_vector[:,k,1]/ 3.086e+18
-        z=radius_vector[:,k,2]/ 3.086e+18
+        x=radius_vector[:, k, 0]
+        y=radius_vector[:, k, 1]
+        z=radius_vector[:, k, 2]
         
         for l in range(len(x)):
-            ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color="m",linewidth=0.3)
+            color = cmap(norm(magnetic_fields[l, k]))
+            ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
 
         #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
         ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
         ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
             
+    radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
     zoom = np.max(radius_to_origin)
     ax.set_xlim(-zoom,zoom)
     ax.set_ylim(-zoom,zoom)
@@ -506,4 +517,11 @@ if True:
     ax.set_zlabel('z [Pc]')
     ax.set_title('Magnetic field morphology')
 
+    # Add a colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+    cbar.set_label('Magnetic Field Strength')
+
     plt.savefig(f'field_shapes/MagneticFieldTopology.png', bbox_inches='tight')
+    plt.show()

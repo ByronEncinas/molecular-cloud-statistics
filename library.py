@@ -16,8 +16,11 @@ import healpy as hp
 outer_radius  = 1 # In Parsecs (Deprecated)
 
 """ Constants and convertion factor """
-
-
+mass_unit = 1.99e33
+length_unit = 3.086e18  # cm
+velocity_unit = 1e5  # cm/s
+time_unit = length_unit / velocity_unit  # s
+code_units_to_gr_cm3 = 6.771194847794873e-23
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / 1.00794 * 6.771194847794873e-23
 parsec_to_cm3 = 3.086e+18
 gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
@@ -59,7 +62,7 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
     local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
     CellVol = Volume[cells]
-    dx *= 0.4*((3/4)*Volume[cells]/np.pi)**(1/3)  
+    dx *= ((3/4)*Volume[cells]/np.pi)**(1/3)  
     x_tilde = x + dx[:, np.newaxis] * local_fields_1
     local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	

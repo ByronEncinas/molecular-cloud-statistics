@@ -1,16 +1,17 @@
-from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
-from collections import Counter, OrderedDict
-import seaborn as sns
+from collections import Counter
 from scipy import stats
 import numpy as np
-import copy
 import json
 import glob
+import sys
+
+snap = sys.argv[1]
+norm = bool(sys.argv[2])
 
 # Get a list of all files that match the pattern
 #file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*NO_IDEAL_300.json')
-file_list = glob.glob('jsonfiles/random_distributed_reduction*_300.json')
+file_list = glob.glob(f'cluster_outputs/histCAS/1000/ideal_mhd_snap_{snap}/random_distributed_reduction_factorNO_ID.json')
 
 print(file_list)
 for file in file_list:
@@ -27,7 +28,7 @@ for file_path in file_list:
 
 # Get a list of all files that match the pattern
 #file_list = glob.glob('jsonfiles/random_distributed_numb_density*NO_IDEAL_300.json')
-file_list = glob.glob('jsonfiles//random_distributed_numb*_300.json')
+file_list = glob.glob(f'cluster_outputs/histCAS/1000/ideal_mhd_snap_{snap}/random_distributed_numb_densityNO_ID.json')
 
 numb_density = []
 for file_path in file_list:
@@ -71,13 +72,13 @@ counter = Counter(inverse_reduction_factor)
 fig, axs = plt.subplots(1, 2, figsize=(9, 3))
 
 # Plot histograms on the respective axes
-axs[0].hist(reduction_factor, bins=bins, color='black')
+axs[0].hist(reduction_factor, bins=bins, color='black',density=norm)
 axs[0].set_yscale('log')
 axs[0].set_title('Histogram of Reduction Factor (R)')
 axs[0].set_xlabel('Bins')
 axs[0].set_ylabel('Frequency')
 
-axs[1].hist(inverse_reduction_factor, bins=bins, color='black')
+axs[1].hist(inverse_reduction_factor, bins=bins, color='black',density=norm)
 axs[1].set_yscale('log')
 axs[1].set_title('Histogram of Inverse Reduction Factor (1/R)')
 axs[1].set_xlabel('Bins')
@@ -87,7 +88,7 @@ axs[1].set_ylabel('Frequency')
 plt.tight_layout()
 
 # Save the figure
-plt.savefig(f"histograms/hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig(f"hist={len(reduction_factor)}bins={bins}.png")
 
 plt.show()
 
@@ -139,7 +140,7 @@ axs[1].grid()
 plt.tight_layout()
 
 # Save the figure
-plt.savefig(f"histograms/mean_median_mosaic.png")
+plt.savefig(f"mean_median_mosaic.png")
 
 # Show the plot
 plt.show()
@@ -196,7 +197,7 @@ axs[1].legend()
 plt.tight_layout()
 
 # Save the figure
-plt.savefig(f"histograms/mean_median_scatter_mosaic.png")
+plt.savefig(f"mean_median_scatter_mosaic.png")
 
 # Show the plot
 plt.show()
@@ -212,9 +213,16 @@ def stats(n):
         if np.abs(np.log10(density_data[i]/n)) < 1:
             sample_r.append(reduction_data[i])
     sample_r.sort()
-    mean = sum(sample_r)/len(sample_r)
-    median = np.quantile(sample_r, .5)
-    ten = np.quantile(sample_r, .1)
+    if len(sample_r) == 0:
+        mean = None
+        median = None
+        ten = None
+    else:
+        mean = sum(sample_r)/len(sample_r)
+
+        median = np.quantile(sample_r, .5)
+        ten = np.quantile(sample_r, .1)
+
     return [mean, median, ten]
 
 Npoints = len(reduction_factor)
@@ -261,7 +269,7 @@ fig.subplots_adjust(top = .98)
 fig.subplots_adjust(right = .98)
 
 # Save the figure
-plt.savefig('histograms/pocket_statistics_bjev.png')
+plt.savefig('pocket_statistics_bjev.png')
 plt.show()
 # plot 3D cavities in CR density
 
