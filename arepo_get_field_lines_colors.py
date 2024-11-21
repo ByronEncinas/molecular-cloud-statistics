@@ -167,7 +167,7 @@ def get_along_lines(x_init):
         
         x[un_masked] = aux
         
-        print(np.log10(dens))
+        print(bfield)
         #
         # print(max_threshold, unique_unmasked_max_threshold)
 
@@ -231,7 +231,7 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
-        print(np.log10(dens))
+        print(print(bfield))
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
