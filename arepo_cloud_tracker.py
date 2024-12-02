@@ -241,7 +241,7 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/ideal*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
     print("No files to process.")
@@ -306,7 +306,7 @@ for fileno, filename in enumerate(file_list):
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
-    print(CloudCord, filename)
+    print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
     continue 
 
