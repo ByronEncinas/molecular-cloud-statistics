@@ -278,6 +278,8 @@ for fileno, filename in enumerate(file_list):
         CloudVelocity = Velocities[np.argmax(Density), :]        
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+
+        surrounding_cloud = 0.0
     else:
         # Update using the previous value of CloudCord
         CloudCord = CloudCord + CloudVelocity * time_code_units 
