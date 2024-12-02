@@ -11,7 +11,7 @@ import sys
 #pocket_finder(bmag, cycle=0, plot =False):
 import glob
 
-cycle = ''
+cycle = '10'
 
 radius_vector  = np.array(np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r'))
 distance       = np.array(np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r'))
@@ -56,9 +56,12 @@ Estar = 1.0e+6
 
 size = distance.shape[0]
 
+
 mu_ism = np.flip(np.logspace(-3,0,50))
 
-Nforward  = np.zeros(len(mu_ism), size)
+print(size, len(mu_ism))
+
+Nforward  = np.zeros((len(mu_ism), size))
 
 B_ism     = bfield[0]
 
@@ -85,9 +88,9 @@ for i, mui_ism in enumerate(mu_ism):
 
 size = distance.shape[0]
 
-mu_ism = np.flip(np.logspace(-3,0,50))
+mu_ism = np.flip(np.logspace(-1,0,10))
 
-Nbackward  = np.zeros(len(mu_ism), size)
+Nbackward  = np.zeros((len(mu_ism), size))
 
 rev_numb_density = numb_density[::-1]
 rev_bfield        = bfield[::-1]
@@ -125,6 +128,8 @@ diff_energy[0] = energy[0]
 ism_spectrum = lambda x: Jstar*(x/Estar)**a
 loss_function = lambda z: Lstar*(Estar/z)**d
 
+mu_ism = np.flip(np.logspace(-1,0,10))
+
 log_forward_ion_rate = np.zeros((len(mu_ism), len(Nforward[0,:])))
 
 for i, mui in enumerate(mu_ism):
@@ -134,6 +139,7 @@ for i, mui in enumerate(mu_ism):
         jl_dE = 0.0
     
         for k, E in enumerate(energy): # will go from 3,4,5,6--- almost in integers#
+            #print(E,d,Lstar,Estar,Nj)
 
             Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
 
@@ -146,9 +152,61 @@ for i, mui in enumerate(mu_ism):
                 Jacobian = (mui/mu_local)*(bfield[j]/bfield[0])    
             else:
                 Jacobian = 0.0
-                break
+                #break
             Jacobian = 1.0 
 
-        zeta_Ni = jl_dE / epsilon  # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+        log_zeta_Ni = np.log10(jl_dE / epsilon)  # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
 
-        log_forward_ion_rate[i,j] = np.log10(zeta_Ni)
+        if np.isnan(log_zeta_Ni):  # or use numpy.isnan(result) for numpy arrays
+            log_zeta_Ni = 0.0
+
+        print(mui,log_zeta_Ni)
+        log_forward_ion_rate[i,j] = log_zeta_Ni
+
+not_nan = log_forward_ion_rate[-1,:] != 0
+zeros = np.where(log_forward_ion_rate[-1,:] == 0)
+print(log_forward_ion_rate.shape)
+print(zeros)
+print(log_forward_ion_rate[-1,not_nan])
+
+#Plot log(y) vs x
+plt.plot(distance[not_nan],log_forward_ion_rate[-1, not_nan], label=r'$\log(y)$ vs $x$', color='b')
+
+# Set x-axis to log scale
+plt.xscale('log')
+
+# Labels and title
+plt.xlabel('x')
+plt.ylabel(r'$\log(y)$')
+plt.title('Plot of $\log(y)$ vs x')
+
+# Optional: Adding a grid
+plt.grid(True)
+
+# Optional: Adding a legend
+plt.legend()
+
+# Show the plot
+plt.show()
+
+mu_ism = np.flip(np.logspace(-1,0,10))
+
+#Plot log(y) vs x
+plt.plot(mui_ism, label=r'$\log(\mu_i)$', color='b')
+
+# Set x-axis to log scale
+plt.yscale('log')
+
+# Labels and title
+plt.xlabel('x')
+plt.ylabel(r'$\log(\mu_i)$')
+plt.title('Plot of $\log(\mu_i)$ vs x')
+
+# Optional: Adding a grid
+plt.grid(True)
+
+# Optional: Adding a legend
+plt.legend()
+
+# Show the plot
+plt.show()
