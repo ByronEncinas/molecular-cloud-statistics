@@ -304,7 +304,7 @@ for fileno, filename in enumerate(file_list):
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
-    print(CloudCord, filename)
+    print(surrounding_cloud, filename)
     continue 
 
     for dim in range(3):  # Loop over x, y, z
