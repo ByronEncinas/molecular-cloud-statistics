@@ -102,7 +102,7 @@ Name: PartType0/MagneticField
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
 CloudCord = Center.copy()
-print("Center before Centering", CloudCord)
+print("Center before Centering", Center)
 
 VoronoiPos-=Center
 Pos-=Center
@@ -231,7 +231,7 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
-        print(print(bfield))
+        print(bfield)
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
@@ -311,7 +311,7 @@ def get_along_lines(x_init):
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
     trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
-    volumes_all     *= 1.0#/(3.086e+18**3) 
+    volumes_all     *= 1.0#/(3.086e+18**3)                           # in Parsec^3
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
@@ -330,6 +330,8 @@ if sys.argv[-1] == "input":
 
     # Step 2: Convert set back to a list of unique numpy arrays
     x_init = np.array([np.array(vec) for vec in unique_vectors])
+    print(x_init)
+    max_cycles = x_init.shape[1]
 
     with open('output', 'w') as file:
         file.write(f"Make sure the initial radius vectors correspond with the file that will provide the\n")
@@ -337,7 +339,7 @@ if sys.argv[-1] == "input":
         file.write(f"{filename}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Steps in Simulation: {2 * N}\n")
-        file.write(f"max_cycles         : {len(x_init[0,:,0])}\n")
+        file.write(f"max_cycles         : {x_init.shape}\n")
         file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 else:
@@ -381,7 +383,6 @@ else:
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
-print("rloc_center        :\n ", rloc_center)
 print("max_cycles         : ", max_cycles)
 print("Boxsize            : ", Boxsize) # 256
 print("Center             : ", CloudCord) # 256
@@ -426,7 +427,7 @@ for i in range(m):
     numb_density = numb_densities[where,i]
     volume       = volumes[where,i]
     """    
-    pocket, global_info = pocket_finder(mag_field, i, plot=True) # this plots
+    pocket, global_info = pocket_finder(mag_field, i, plot=False) # this plots
 
     np.save(f"arepo_npys/ArePositions{i}.npy", pos_vector)
     np.save(f"arepo_npys/ArepoTrajectory{i}.npy", s_coordinate)
@@ -478,7 +479,10 @@ for i in range(m):
         plt.tight_layout()
 
         # Save the figure
-        plt.savefig(f"field_shapes/shapes_{i}.png")
+        if sys.argv[-1] == 'input':
+            plt.savefig(f"long_llines/shapes_{i}.png")
+        else:
+            plt.savefig(f"field_lines/shapes_{i}.png")
 
         # Close the plot
         plt.close(fig)

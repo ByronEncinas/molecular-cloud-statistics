@@ -17,8 +17,8 @@ import h5py
 import json
 import sys
 import os
+import yt
 from library import *
-
 
 start_time = time.time()
 FloatType = np.float64
@@ -33,7 +33,7 @@ else:
     N             =10_000
     rloc_boundary =0.5
     max_cycles    =20
-    spacing      = 20
+    spacing      = 1
 
 print(*sys.argv)
 cycle = 0 
@@ -241,8 +241,8 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/ideal*.hdf5'))[::spacing]
-
+file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
+print(file_list)
 if len(file_list) == 0:
     print("No files to process.")
     exit()
@@ -277,15 +277,16 @@ for fileno, filename in enumerate(file_list):
         CloudVelocity = Velocities[np.argmax(Density), :]        
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+
     else:
         # Update using the previous value of CloudCord
         delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-        CloudCord = CloudCord + (CloudVelocity*km_to_parsec) * delta_time_seconds
+        UpdatedCord = CloudCord + (CloudVelocity*km_to_parsec) * delta_time_seconds
         
         # Center around the predicted higher density region
-        AuxVoronoiPos = VoronoiPos - CloudCord 
-        AuxPos = Pos - CloudCord
-        region_radius = np.linalg.norm(CloudVelocity) * time_code_units
+        AuxVoronoiPos = VoronoiPos - UpdatedCord
+        AuxPos = Pos - UpdatedCord
+        region_radius = np.inf #np.linalg.norm(CloudVelocity) * time_code_units
         print("CloudVel: ", CloudVelocity, "Disp: ", (CloudVelocity*km_to_parsec) * delta_time_seconds)     
 
         # Isolate positions inside the cloud
@@ -294,12 +295,12 @@ for fileno, filename in enumerate(file_list):
         zc = Pos[:, 2]
 
         surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
-        AuxVoronoiPos = AuxVoronoiPos[surrounding_cloud, :] + CloudCord
-        AuxPos = AuxPos[surrounding_cloud, :] + CloudCord
+        AuxVoronoiPos = VoronoiPos[surrounding_cloud, :] + CloudCord
+        AuxPos = Pos[surrounding_cloud, :] + CloudCord
         AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
 
         # Update CloudCord with the position of the highest density in the filtered region
-        CloudCord = AuxPos[np.argmax(AuxDensity), :]
+        CloudCord = Pos[np.argmax(AuxDensity), :]
         CloudVelocity = Velocities[np.argmax(AuxDensity), :]
 
         # Append the new CloudCord values to the file
@@ -307,6 +308,23 @@ for fileno, filename in enumerate(file_list):
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
     print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
+
+    # Load the dataset
+    ds = yt.load(filename)
+
+    # Access the all_data object
+    ad = ds.all_data()
+
+    # Check field list and create the plot
+    px = yt.ProjectionPlot(ds, 'z', ('gas', 'density'), 
+                        center=CloudCord.tolist())
+
+    # Annotate the plot with timestamp and scale
+    px.annotate_timestamp(redshift=False)
+    px.annotate_scale()
+
+    # Save the plot as a PNG file
+    px.save(f"{fileno}-{filename.split('/')[-1]}_z.png")
     continue 
 
     for dim in range(3):  # Loop over x, y, z
