@@ -8,10 +8,11 @@ import sys
 
 snap = sys.argv[1]
 norm = bool(sys.argv[2])
+case = 'ideal'
 
 # Get a list of all files that match the pattern
-#file_list = glob.glob('jsonfiles/random_distributed_reduction_factor*NO_IDEAL_300.json')
-file_list = glob.glob(f'cluster_outputs/histCAS/1000/ideal_mhd_snap_{snap}/random_distributed_reduction_factorNO_ID.json')
+#file_list = glob.glob('jsonfiles/random_distributed_reduction_factorNO_ID.json')
+file_list = glob.glob(f'cluster_outputs/histCAS/1000/{case}_mhd_snap_{snap}/random_distributed_reduction_factorNO_ID.json')
 
 print(file_list)
 for file in file_list:
@@ -27,8 +28,8 @@ for file_path in file_list:
 # Now reduction_factor contains the contents of all matching JSON files
 
 # Get a list of all files that match the pattern
-#file_list = glob.glob('jsonfiles/random_distributed_numb_density*NO_IDEAL_300.json')
-file_list = glob.glob(f'cluster_outputs/histCAS/1000/ideal_mhd_snap_{snap}/random_distributed_numb_densityNO_ID.json')
+#file_list = glob.glob('jsonfiles/random_distributed_numb_densityNO_ID.json')
+file_list = glob.glob(f'cluster_outputs/histCAS/1000/{case}_mhd_snap_{snap}/random_distributed_numb_densityNO_ID.json')
 
 numb_density = []
 for file_path in file_list:
@@ -41,6 +42,11 @@ from collections import Counter
 
 print("how many elements? (R) ",len(reduction_factor))
 print("how many elements? (n) ",len(numb_density))
+print("mean (R) ",np.mean(reduction_factor))
+print("median (R) ",np.median(reduction_factor))
+
+
+
 counter = Counter(reduction_factor)
 
 print("how many zeroes? (R) ",counter[0])
@@ -88,9 +94,9 @@ axs[1].set_ylabel('Frequency')
 plt.tight_layout()
 
 # Save the figure
-plt.savefig(f"hist={len(reduction_factor)}bins={bins}.png")
+plt.savefig(f"{case}_snap{snap}_hist={len(reduction_factor)}bins={bins}.png")
 
-plt.show()
+plt.close(fig)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -142,8 +148,7 @@ plt.tight_layout()
 # Save the figure
 plt.savefig(f"mean_median_mosaic.png")
 
-# Show the plot
-plt.show()
+plt.close(fig)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -200,7 +205,7 @@ plt.tight_layout()
 plt.savefig(f"mean_median_scatter_mosaic.png")
 
 # Show the plot
-plt.show()
+plt.close(fig)
 
 
 reduction_data = reduction_factor.copy()
@@ -258,10 +263,18 @@ l3, = ax2.plot(x_n, ten_vec)
 plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
 plt.xscale('log')
 plt.ylim(0.25, 1.05)
-ax2.set_ylabel('Reduction factor', fontsize = 20)
+ax2.set_ylabel(f'Reduction factor ({len(reduction_factor)})', fontsize = 20)
 ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
 plt.setp(ax2.get_xticklabels(), fontsize = 16)
 plt.setp(ax2.get_yticklabels(), fontsize = 16)
+
+# Add global mean and median lines
+global_mean = np.mean(reduction_factor)
+global_median = np.median(reduction_factor)
+
+# Add text annotations for global mean and median
+ax2.text(0.98, global_mean, f'Global_Mean = {global_mean:.3f}', ha='right', va='bottom', fontsize=12, color=l1.get_color())
+ax2.text(0.98, global_median, f'Global_Median = {global_median:.3f}', ha='right', va='bottom', fontsize=12, color=l2.get_color())
 
 fig.subplots_adjust(left = .1)
 fig.subplots_adjust(bottom = .15)
@@ -269,9 +282,12 @@ fig.subplots_adjust(top = .98)
 fig.subplots_adjust(right = .98)
 
 # Save the figure
-plt.savefig('pocket_statistics_bjev.png')
+plt.savefig(f'RvsN_{case}_snap{snap}.png')
 plt.show()
 # plot 3D cavities in CR density
+
+print("mean (R) ",np.mean(reduction_factor))
+print("median (R) ",np.median(reduction_factor))
 
 if False:
     # Specify the file path

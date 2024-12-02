@@ -120,8 +120,6 @@ for filename in files:
     Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
     InternalEnergy = np.asarray(data['PartType0']['InternalEnergy'], dtype=FloatType)
     Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
-
-    # Initialize gradients
     Bfield_grad = np.zeros((len(Pos), 9))
     Density_grad = np.zeros((len(Density), 3))
 
@@ -129,9 +127,6 @@ for filename in files:
 
     Volume   = Mass/Density
 
-    #Center= 0.5 * Boxsize * np.ones(3) # Center
-    #Center = np.array( [91,       -110,          -64.5]) #117
-    #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
     Center = Pos[np.argmax(Density),:] #430
     print("Center before Centering", Center)
 
@@ -190,33 +185,33 @@ for filename in files:
 
         energy_magnetic   = np.zeros((N+1,m))
         energy_grav   = np.zeros((N+1,m))
-        energy_thermal_two   = np.zeros((N+1,m))
-        energy_thermal_one   = np.zeros((N+1,m))
-        energy_thermal_three = np.zeros((N+1,m))
+        energy_thermal   = np.zeros((N+1,m))
+
+        eff_column_densities   = np.zeros((N+1,m))
         
         line[0,:,:]     = x_init
         x = x_init
         dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
         vol = Volume[cells]
+        mass_dens = dens * code_units_to_gr_cm3
         dens = dens* gr_cm3_to_nuclei_cm3
         densities[0,:] = dens
         dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
 
-        mass = 0.0
-
         rad = np.linalg.norm(x, axis=1)
         ie = InternalEnergy[cells]
         ke = 0.5*Mass[cells]*np.linalg.norm(Velocities[cells], axis=1)**2
-        print(dens.shape, rad.shape, dx_vec.shape)
+        pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
+        molecular_weight = 1 # for atomic hydrogen
+        temp = (pressure/mass_dens)*molecular_weight*boltzmann_constant_cgs
+
         mass_shell_cumulative = 4 * np.pi * dens * (rad**2) * (dx_vec * parsec_to_cm3) * parsec_to_cm3
         phi_grav = grav_constant_cgs*Mass
         grav_potential = -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
-        thermal_three = 0.0
         
         energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
-        energy_grav[0,:] = grav_potential
-        energy_thermal_two[0,:] = (3/2) * boltzmann_constant_cgs * temperature(ke, dens)*mass_shell_cumulative # 3kT/2 int_0^R 4 pi r^2 rho(r)dr 
-        energy_thermal_one[0,:] = (2/3) * ie*hydrogen_mass/boltzmann_constant_cgs
+        energy_thermal[0,:]  = (3/2)*boltzmann_constant_cgs*temp* (4*np.pi*dens*vol)
+        energy_grav[0,:]     = grav_potential
         
         k=0
 
@@ -235,15 +230,12 @@ for filename in files:
             mass_dens *=code_units_to_gr_cm3
             pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
             dens *= gr_cm3_to_nuclei_cm3 
-
             
             vol[un_masked] = 0
 
             non_zero = vol > 0
 
             dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3)) # make sure to cover the shell in all directions at the same pace
-            
-            print(dx_vec)
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
@@ -262,22 +254,19 @@ for filename in files:
             mass_shell_cumulative += 4*np.pi*dens*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3) # adding concentric shells with density 'dens'
             mass += 4*np.pi*np.average(dens)*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3)
             grav_potential += -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
-            
-            thermal_three += (3/2)*pressure*surface_area*dx_vec/1.0
-            
-            temperature = mass_dens*(surface_area*dx_vec)*pressure/boltzmann_constant_cgs
 
             energy_grav[k+1,:] = grav_potential
             energy_magnetic[k+1,:] = bfield*bfield/(8*np.pi)*vol 
-            energy_thermal_one[k+1,:] = (2/3) * ie*hydrogen_mass/boltzmann_constant_cgs
-            energy_thermal_two[k+1,:] = (3/2) * boltzmann_constant_cgs * temperature(ke, dens)*mass_shell_cumulative # 3kT/2 int_0^R 4 pi r^2 rho(r)dr 
-            energy_thermal_three[k+1,:] = thermal_three
+            energy_thermal[k+1,:] = (3/2)*boltzmann_constant_cgs*temp
+            eff_column_densities[k+1,:] = dens*dx_vec
 
             if np.all(un_masked):
                 print("All values are False: means all density < 10^2")
                 break
 
             k += 1
+
+        mean_column = np.mean(eff_column_densities[-1,:])
 
         threshold = threshold.astype(int)
         larger_cut = np.max(threshold)
@@ -299,12 +288,7 @@ for filename in files:
         for _n in range(m):  # Iterate over the first dimension
 
             cut = threshold[_n] - 1
-            
-            # make it constant after threshold, this will make diff = 0.0 so s wont grow
-            #radius_vector[cut:,:,:]  = radius_vector[cut,:,:]*0
-            #magnetic_fields[cut:,:]  = magnetic_fields[cut,:]*0
-            #numb_densities[cut:,:]    = numb_densities[cut,:]*0
-            
+
             prev = radius_vector[0, _n, :]
             
             for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
@@ -320,7 +304,7 @@ for filename in files:
         magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
         trajectory[0,:]  = 0.0
 
-        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal_one]
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal]
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)

@@ -141,6 +141,7 @@ print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 #Center = np.array( [91,       -110,          -64.5]) #117
 #Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
+CloudCord = Center.copy()
 
 # all positions are relative to the 'Center'
 VoronoiPos-=Center
@@ -492,7 +493,7 @@ with open(os.path.join(new_folder, 'output'), 'w') as file:
     file.write(f"x_init (Pc)        :\n {x_init}\n")
     file.write(f"max_cycles         : {max_cycles}\n")
     file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-    file.write(f"Center (Pc, Pc, Pc): {Center[0]}, {Center[1]}, {Center[2]} \n")
+    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
     file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
     file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
     file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
