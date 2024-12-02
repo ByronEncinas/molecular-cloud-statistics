@@ -241,7 +241,7 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
     print("No files to process.")
@@ -255,7 +255,7 @@ for fileno, filename in enumerate(file_list):
     snap = filename.split('/')[1].split('.')[0]
     new_folder = os.path.join("histograms/" , 'ct_'+snap)
     Boxsize = data['Header'].attrs['BoxSize']
-    print()
+    print(time_value)
 
     # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
@@ -276,7 +276,7 @@ for fileno, filename in enumerate(file_list):
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         CloudVelocity = Velocities[np.argmax(Density), :]        
-        with open(new_folder + "cloud_trajectory.txt", "w") as file:
+        with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
     else:
         # Update using the previous value of CloudCord
@@ -292,7 +292,7 @@ for fileno, filename in enumerate(file_list):
         yc = Pos[:, 1]
         zc = Pos[:, 2]
 
-        surrounding_cloud = xc**2 + yc**2 + zc**2 < region_radius
+        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
         AuxVoronoiPos = AuxVoronoiPos[surrounding_cloud, :] + CloudCord
         AuxPos = AuxPos[surrounding_cloud, :] + CloudCord
         AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
@@ -302,8 +302,9 @@ for fileno, filename in enumerate(file_list):
         CloudVelocity = Velocities[np.argmax(AuxDensity), :]
 
         # Append the new CloudCord values to the file
-        with open(new_folder + "cloud_trajectory.txt", "a") as file:
-            file.write(f"{fileno}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+        with open("cloud_trajectory.txt", "a") as file:
+            file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+    print(CloudCord, filename)
     continue 
 
     for dim in range(3):  # Loop over x, y, z
