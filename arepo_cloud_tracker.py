@@ -255,8 +255,6 @@ for fileno, filename in enumerate(file_list):
     snap = filename.split('/')[1].split('.')[0]
     new_folder = os.path.join("histograms/" , 'ct_'+snap)
     Boxsize = data['Header'].attrs['BoxSize']
-    print(time_value)
-
     # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
