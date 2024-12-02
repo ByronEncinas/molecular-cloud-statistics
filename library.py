@@ -16,6 +16,7 @@ import healpy as hp
 outer_radius  = 1 # In Parsecs (Deprecated)
 
 """ Constants and convertion factor """
+km_in_parsec = 1/3.085677581e13  # 1 pc in km
 mass_unit = 1.99e33
 length_unit = 3.086e18  # cm
 velocity_unit = 1e5  # cm/s

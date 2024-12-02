@@ -274,27 +274,28 @@ for fileno, filename in enumerate(file_list):
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
-        CloudCord = Pos[np.argmax(Density), :]
-        CloudVelocity = Velocities[np.argmax(Density), :]        
+        CloudCord = Pos[np.argmax(Density), :]       
+        CloudVelocity = Velocities[np.argmax(Density), :]*km_in_parsec
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
 
         surrounding_cloud = 0.0
     else:
         # Update using the previous value of CloudCord
-        CloudCord = CloudCord + CloudVelocity * time_code_units 
+        CloudCord = CloudCord #+ CloudVelocity* time_code_units 
         
         # Center around the predicted higher density region
         AuxVoronoiPos = VoronoiPos - CloudCord 
         AuxPos = Pos - CloudCord
         region_radius = np.linalg.norm(CloudVelocity) * time_code_units
+        print(CloudVelocity/km_in_parsec, time_code_units )
         
         # Isolate positions inside the cloud
         xc = Pos[:, 0]
         yc = Pos[:, 1]
         zc = Pos[:, 2]
 
-        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        surrounding_cloud = (xc)**2 + (yc)**2 + (zc)**2 < region_radius
         AuxVoronoiPos = AuxVoronoiPos[surrounding_cloud, :] + CloudCord
         AuxPos = AuxPos[surrounding_cloud, :] + CloudCord
         AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
@@ -306,7 +307,7 @@ for fileno, filename in enumerate(file_list):
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
-    print(np.sum(surrounding_cloud), filename)
+    print(np.sum(surrounding_cloud), CloudCord, filename)
     continue 
 
     for dim in range(3):  # Loop over x, y, z
