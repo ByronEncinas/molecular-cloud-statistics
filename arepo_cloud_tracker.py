@@ -281,12 +281,12 @@ for fileno, filename in enumerate(file_list):
     else:
         # Update using the previous value of CloudCord
         delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-        UpdatedCord = CloudCord #+ (CloudVelocity*km_to_parsec) * delta_time_seconds
+        UpdatedCord = CloudCord + 0.1*(CloudVelocity*km_to_parsec) * delta_time_seconds
         
         # Center around the predicted higher density region
-        AuxVoronoiPos = VoronoiPos - UpdatedCord
-        AuxPos = Pos - UpdatedCord
-        region_radius = 10 #np.linalg.norm(CloudVelocity) * time_code_units
+        #AuxVoronoiPos = VoronoiPos - UpdatedCord
+        #AuxPos = Pos - UpdatedCord
+        region_radius = 20 #np.linalg.norm(CloudVelocity) * time_code_units
         print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         # Isolate positions inside the cloud
@@ -295,8 +295,8 @@ for fileno, filename in enumerate(file_list):
         zc = Pos[:, 2]
 
         surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
-        AuxVoronoiPos = VoronoiPos[surrounding_cloud, :] + CloudCord
-        AuxPos = Pos[surrounding_cloud, :] + CloudCord
+        AuxVoronoiPos = VoronoiPos[surrounding_cloud, :]
+        AuxPos = Pos[surrounding_cloud, :]
         AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
 
         # Update CloudCord with the position of the highest density in the filtered region
