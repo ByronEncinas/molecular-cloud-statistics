@@ -286,7 +286,7 @@ for fileno, filename in enumerate(file_list):
         # Center around the predicted higher density region
         AuxVoronoiPos = VoronoiPos - UpdatedCord
         AuxPos = Pos - UpdatedCord
-        region_radius = 5 #np.linalg.norm(CloudVelocity) * time_code_units
+        region_radius = 20 #np.linalg.norm(CloudVelocity) * time_code_units
         print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         # Isolate positions inside the cloud
