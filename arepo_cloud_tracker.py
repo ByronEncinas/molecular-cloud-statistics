@@ -272,7 +272,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 50
+    region_radius = 10
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
 
@@ -281,7 +281,7 @@ for fileno, filename in enumerate(file_list[::-1]):
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         with open("cloud_trajectory.txt", "w") as file:
-            file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
+            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
 
     else:
         surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
@@ -304,7 +304,7 @@ for fileno, filename in enumerate(file_list[::-1]):
 
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
-            file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
+            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
     print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
 
