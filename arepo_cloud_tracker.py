@@ -241,7 +241,7 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
 print(file_list)
 if len(file_list) == 0:
     print("No files to process.")
@@ -275,7 +275,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     region_radius = 5
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
-    
+
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
