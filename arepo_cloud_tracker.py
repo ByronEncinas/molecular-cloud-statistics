@@ -272,7 +272,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 5
+    region_radius = 3
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
 
@@ -290,17 +290,17 @@ for fileno, filename in enumerate(file_list[::-1]):
         
         # Update using the previous value of CloudCord
         delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
-        CloudVelocity = np.mean(Vels, axis=0)       
-        UpdatedCord = CloudCord + 0.2*CloudVelocity*km_to_parsec * delta_time_seconds
+        #CloudVelocity = np.mean(Vels, axis=0)       
+        UpdatedCord = CloudCord #+ 0.2*CloudVelocity*km_to_parsec * delta_time_seconds
 
-        region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
-        print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
+        #region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
+        #print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
         # Update CloudCord with the position of the highest density in the filtered region
         CloudCord = Pos[np.argmax(Density[surrounding_cloud]), :]
-        CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
+        #CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
 
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
