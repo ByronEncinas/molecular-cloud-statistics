@@ -269,34 +269,27 @@ for fileno, filename in enumerate(file_list[::-1]):
     Volume   = Mass/Density
     time_code_units = time_value*myrs_to_code_units
     delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-    region_radius = 50
+    xc = Pos[:, 0]
+    yc = Pos[:, 1]
+    zc = Pos[:, 2]
+    region_radius = 3
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
 
     if fileno == 0:
+        # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
 
-    else:        
-        for dim in range(3):  # Loop over x, y, z
-            pos_from_center = CloudCord[dim] #Pos[:, dim]
-            boundary_mask = pos_from_center > Boxsize / 2
-            Pos[boundary_mask, dim] -= Boxsize
-            VoronoiPos[boundary_mask, dim] -= Boxsize
-
-        Pos -= CloudCord
-        VoronoiPos -= CloudCord
-
-        xc = Pos[:, 0]
-        yc = Pos[:, 1]
-        zc = Pos[:, 2]
-            
-        surrounding_cloud = (xc)**2 + (yc)**2 + (zc)**2 < region_radius
-        # Vels = Velocities[surrounding_cloud, :]        
+    else:
+        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        print(surrounding_cloud.shape)
+        #Vels = Velocities[surrounding_cloud, :]        
+        
         # Update using the previous value of CloudCord
-        # delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
+        delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
         #CloudVelocity = np.mean(Vels, axis=0)       
         UpdatedCord = CloudCord #+ 0.2*CloudVelocity*km_to_parsec * delta_time_seconds
 
@@ -336,6 +329,11 @@ for fileno, filename in enumerate(file_list[::-1]):
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
     continue 
 
+    for dim in range(3):  # Loop over x, y, z
+        pos_from_center = Pos[:, dim]
+        boundary_mask = pos_from_center > Boxsize / 2
+        Pos[boundary_mask, dim] -= Boxsize
+        VoronoiPos[boundary_mask, dim] -= Boxsize
 
     rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
     nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
