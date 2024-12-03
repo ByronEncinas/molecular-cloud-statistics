@@ -241,13 +241,13 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/ideal*.hdf5'))[::spacing]
 print(file_list)
 if len(file_list) == 0:
     print("No files to process.")
     exit()
 
-for fileno, filename in enumerate(file_list):
+for fileno, filename in enumerate(file_list[::-1]):
     
     data = h5py.File(filename, 'r')
     header_group = data['Header']
@@ -269,14 +269,21 @@ for fileno, filename in enumerate(file_list):
     Volume   = Mass/Density
     time_code_units = time_value*myrs_to_code_units
     delta_time_seconds = (time_value-prev_time)*seconds_in_myr
+    xc = Pos[:, 0]
+    yc = Pos[:, 1]
+    zc = Pos[:, 2]
+    region_radius = 128
+    print(Pos[np.argmax(Density),:])
 
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
-        CloudVelocity = Velocities[np.argmax(Density), :]        
+        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        Vels = Velocities[surrounding_cloud, :]        
+        CloudVelocity = np.mean(Vels)        
         with open("cloud_trajectory.txt", "w") as file:
-            file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+            file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
 
     else:
         # Update using the previous value of CloudCord
@@ -286,45 +293,43 @@ for fileno, filename in enumerate(file_list):
         # Center around the predicted higher density region
         #AuxVoronoiPos = VoronoiPos - UpdatedCord
         #AuxPos = Pos - UpdatedCord
-        region_radius = 20 #np.linalg.norm(CloudVelocity) * time_code_units
+        #np.linalg.norm(CloudVelocity) * time_code_units
         print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
-        # Isolate positions inside the cloud
-        xc = Pos[:, 0]
-        yc = Pos[:, 1]
-        zc = Pos[:, 2]
-
-        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
         AuxVoronoiPos = VoronoiPos[surrounding_cloud, :]
         AuxPos = Pos[surrounding_cloud, :]
         AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
 
         # Update CloudCord with the position of the highest density in the filtered region
         CloudCord = Pos[np.argmax(AuxDensity), :]
-        CloudVelocity = Velocities[np.argmax(AuxDensity), :]
+        CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
 
         # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
-            file.write(f"{fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+            file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
     print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
 
-    # Load the dataset
     ds = yt.load(filename)
 
     # Access the all_data object
     ad = ds.all_data()
 
-    # Check field list and create the plot
-    px = yt.ProjectionPlot(ds, 'z', ('gas', 'density'), 
-                        center=CloudCord.tolist())
+    # Create the slice plot at z = CloudCord[2]
+    sp = yt.SlicePlot(
+        ds, 
+        'z', 
+        ('gas', 'density'), 
+        center=[CloudCord[0], CloudCord[1], CloudCord[2]]
+    )
 
     # Annotate the plot with timestamp and scale
-    px.annotate_timestamp(redshift=False)
-    px.annotate_scale()
+    sp.annotate_timestamp(redshift=False)
+    sp.annotate_scale()
 
     # Save the plot as a PNG file
-    px.save(f"{fileno}-{filename.split('/')[-1]}_z.png")
+    sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
     continue 
 
     for dim in range(3):  # Loop over x, y, z
