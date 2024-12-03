@@ -272,7 +272,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 128
+    region_radius = 10
     print(Pos[np.argmax(Density),:])
 
     if fileno == 0:
@@ -280,15 +280,14 @@ for fileno, filename in enumerate(file_list[::-1]):
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
-        Vels = Velocities[surrounding_cloud, :]        
-        CloudVelocity = np.mean(Vels)        
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
 
     else:
         # Update using the previous value of CloudCord
         delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-        UpdatedCord = CloudCord + 0.1*(CloudVelocity*km_to_parsec) * delta_time_seconds
+        CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
+        UpdatedCord = CloudCord + np.mean(CloudVelocity)*km_to_parsec * delta_time_seconds
         
         # Center around the predicted higher density region
         #AuxVoronoiPos = VoronoiPos - UpdatedCord
