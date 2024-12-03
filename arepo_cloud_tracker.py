@@ -281,12 +281,12 @@ for fileno, filename in enumerate(file_list):
     else:
         # Update using the previous value of CloudCord
         delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-        UpdatedCord = CloudCord + (CloudVelocity*km_to_parsec) * delta_time_seconds
+        UpdatedCord = CloudCord #+ (CloudVelocity*km_to_parsec) * delta_time_seconds
         
         # Center around the predicted higher density region
         AuxVoronoiPos = VoronoiPos - UpdatedCord
         AuxPos = Pos - UpdatedCord
-        region_radius = 20 #np.linalg.norm(CloudVelocity) * time_code_units
+        region_radius = 10 #np.linalg.norm(CloudVelocity) * time_code_units
         print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         # Isolate positions inside the cloud
