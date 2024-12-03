@@ -241,7 +241,7 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-file_list = sorted(glob.glob('arepo_data/ideal*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 print(file_list)
 if len(file_list) == 0:
     print("No files to process.")
@@ -272,36 +272,34 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 10
+    region_radius = 5
     print(Pos[np.argmax(Density),:])
-
+    print(Velocities.shape)
+    
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
-        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
         with open("cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
 
     else:
+        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        print(surrounding_cloud.shape)
+        Vels = Velocities[surrounding_cloud, :]        
+        
         # Update using the previous value of CloudCord
         delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-        CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
-        UpdatedCord = CloudCord + np.mean(CloudVelocity)*km_to_parsec * delta_time_seconds
-        
-        # Center around the predicted higher density region
-        #AuxVoronoiPos = VoronoiPos - UpdatedCord
-        #AuxPos = Pos - UpdatedCord
-        #np.linalg.norm(CloudVelocity) * time_code_units
+        CloudVelocity = np.mean(Vels, axis=0)       
+        UpdatedCord = CloudCord + 0.2*CloudVelocity*km_to_parsec * delta_time_seconds
+
+        region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
         print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
-        AuxVoronoiPos = VoronoiPos[surrounding_cloud, :]
-        AuxPos = Pos[surrounding_cloud, :]
-        AuxDensity = Density[surrounding_cloud] # surrounding cloud contains Cells IDs
 
         # Update CloudCord with the position of the highest density in the filtered region
-        CloudCord = Pos[np.argmax(AuxDensity), :]
+        CloudCord = Pos[np.argmax(Density[surrounding_cloud]), :]
         CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
 
         # Append the new CloudCord values to the file
