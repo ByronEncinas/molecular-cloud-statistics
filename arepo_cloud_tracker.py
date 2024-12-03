@@ -269,9 +269,6 @@ for fileno, filename in enumerate(file_list[::-1]):
     Volume   = Mass/Density
     time_code_units = time_value*myrs_to_code_units
     delta_time_seconds = (time_value-prev_time)*seconds_in_myr
-    xc = Pos[:, 0]
-    yc = Pos[:, 1]
-    zc = Pos[:, 2]
     region_radius = 50
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
@@ -288,8 +285,15 @@ for fileno, filename in enumerate(file_list[::-1]):
             boundary_mask = pos_from_center > Boxsize / 2
             Pos[boundary_mask, dim] -= Boxsize
             VoronoiPos[boundary_mask, dim] -= Boxsize
+
+        Pos -= CloudCord
+        VoronoiPos -= CloudCord
+
+        xc = Pos[:, 0]
+        yc = Pos[:, 1]
+        zc = Pos[:, 2]
             
-        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
+        surrounding_cloud = (xc)**2 + (yc)**2 + (zc)**2 < region_radius
         # Vels = Velocities[surrounding_cloud, :]        
         # Update using the previous value of CloudCord
         # delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
