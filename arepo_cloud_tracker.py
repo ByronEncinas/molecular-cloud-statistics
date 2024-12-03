@@ -289,7 +289,7 @@ for fileno, filename in enumerate(file_list[::-1]):
         Vels = Velocities[surrounding_cloud, :]        
         
         # Update using the previous value of CloudCord
-        delta_time_seconds = (time_value-prev_time)*seconds_in_myr
+        delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
         CloudVelocity = np.mean(Vels, axis=0)       
         UpdatedCord = CloudCord + 0.2*CloudVelocity*km_to_parsec * delta_time_seconds
 
