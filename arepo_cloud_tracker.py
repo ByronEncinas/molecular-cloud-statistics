@@ -262,7 +262,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
     Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
     Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
-    Momentums  = Mass*Velocities
+    Momentums = Mass[:, np.newaxis] * Velocities
     InternalEnergy = np.asarray(data['PartType0']['InternalEnergy'], dtype=FloatType)
     Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
     Bfield_grad = np.zeros((len(Pos), 9))
