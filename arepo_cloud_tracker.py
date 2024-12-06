@@ -273,7 +273,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 50
+    region_radius = 10
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
 
@@ -282,29 +282,23 @@ for fileno, filename in enumerate(file_list[::-1]):
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         with open("cloud_trajectory.txt", "w") as file:
-            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
+            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
     else:
+        # isolate values surrounding cloud
         surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
-        print(surrounding_cloud.shape)
         CloudVelocity = np.sum(Momentums[surrounding_cloud, :], axis=0)/np.sum(Mass[surrounding_cloud])
-        
-        # Update using the previous value of CloudCord
         delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
-        #CloudVelocity = np.mean(Vels, axis=0)       
-        UpdatedCord = CloudCord + 0.2*CloudVelocity * km_to_parsec * delta_time_seconds
+        
+        UpdatedCord = CloudCord + 0.5*CloudVelocity * km_to_parsec * delta_time_seconds
 
         #region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
-        #print("Disp: ", (CloudVelocity*km_to_parsec)*0.2 * delta_time_seconds)     
 
         surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
-        # Update CloudCord with the position of the highest density in the filtered region
         CloudCord = Pos[np.argmax(Density[surrounding_cloud]), :]
-        #CloudVelocity = np.mean(Velocities[surrounding_cloud, :])
 
-        # Append the new CloudCord values to the file
         with open("cloud_trajectory.txt", "a") as file:
-            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]-128}, {CloudCord[1]-128}, {CloudCord[2]-128}\n")
+            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
     print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
 
