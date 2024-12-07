@@ -295,7 +295,7 @@ for fileno, filename in enumerate(file_list[::-1]):
 
         surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
-        CloudCord = UpdatedCord #Pos[np.argmax(Density[surrounding_cloud]), :]
+        CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[surrounding_cloud]), :]
 
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
@@ -315,12 +315,20 @@ for fileno, filename in enumerate(file_list[::-1]):
         center=[CloudCord[0], CloudCord[1], CloudCord[2]]
     )
 
+    # Annotate the plot with a marker at CloudCord
+    sp.annotate_marker(
+        [CloudCord[0], CloudCord[1], CloudCord[2]], 
+        marker='x', 
+        plot_args={'color': 'red', 's': 100}
+    )
+
     # Annotate the plot with timestamp and scale
     sp.annotate_timestamp(redshift=False)
     sp.annotate_scale()
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
+
     continue 
 
     for dim in range(3):  # Loop over x, y, z
