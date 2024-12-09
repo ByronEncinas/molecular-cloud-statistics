@@ -285,17 +285,19 @@ for fileno, filename in enumerate(file_list[::-1]):
             file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
     else:
         # isolate values surrounding cloud
-        surrounding_cloud = (xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius
-        CloudVelocity = np.sum(Momentums[surrounding_cloud, :], axis=0)/np.sum(Mass[surrounding_cloud])
-        delta_time_seconds = abs(time_value-prev_time) *seconds_in_myr
+        cloud_sphere = ((xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius)
+        
+        CloudVelocity = np.sum(Momentums[cloud_sphere, :], axis=0)/np.sum(Mass[cloud_sphere])
 
-        UpdatedCord = CloudCord + CloudVelocity * km_to_parsec * delta_time_seconds
+        delta_time_seconds = abs(time_value-prev_time) * seconds_in_myr
+
+        UpdatedCord = CloudCord + 2.0*CloudVelocity * km_to_parsec * delta_time_seconds
 
         #region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
 
-        surrounding_cloud = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
+        cloud_sphere = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
-        CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[surrounding_cloud]), :]
+        CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
