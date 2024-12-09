@@ -291,7 +291,7 @@ for fileno, filename in enumerate(file_list[::-1]):
 
         delta_time_seconds = abs(time_value-prev_time) * seconds_in_myr
 
-        UpdatedCord = CloudCord + 2.0*CloudVelocity * km_to_parsec * delta_time_seconds
+        UpdatedCord = CloudCord + CloudVelocity * km_to_parsec * delta_time_seconds
 
         #region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
 
