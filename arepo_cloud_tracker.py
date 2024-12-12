@@ -314,7 +314,8 @@ for fileno, filename in enumerate(file_list[::-1]):
         ds, 
         'z', 
         ('gas', 'density'), 
-        center=[CloudCord[0], CloudCord[1], CloudCord[2]]
+        center=[CloudCord[0], CloudCord[1], CloudCord[2]],
+        width = 5
     )
 
     # Annotate the plot with a marker at CloudCord
