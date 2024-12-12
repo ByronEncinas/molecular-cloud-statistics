@@ -274,7 +274,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 20
+    region_radius = 5
     print(Pos[np.argmax(Density),:])
     print(Velocities.shape)
 
