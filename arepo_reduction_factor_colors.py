@@ -153,7 +153,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
 
 def get_along_lines(x_init):
 
-    dx = 2.0
+    dx = 0.5
 
     m = x_init.shape[0]
 
@@ -223,7 +223,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -286,7 +286,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")

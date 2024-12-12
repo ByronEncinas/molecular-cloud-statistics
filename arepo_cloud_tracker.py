@@ -19,6 +19,10 @@ import sys
 import os
 import yt
 from library import *
+import logging
+
+# Set yt logging to show only warnings and errors
+yt.funcs.mylog.setLevel(logging.WARNING)
 
 start_time = time.time()
 FloatType = np.float64
@@ -47,7 +51,7 @@ prev_time = 0.0
 
 def get_along_lines(x_init):
 
-    dx = 2.0
+    dx = 0.5
 
     m = x_init.shape[0]
 
@@ -117,7 +121,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -180,7 +184,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -225,7 +229,7 @@ def get_along_lines(x_init):
 
     m = magnetic_fields.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
-    
+	
     for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
@@ -244,6 +248,7 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
+#/ideal_mhd
 file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
@@ -295,15 +300,15 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
         UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
 
-        #region_radius = 0.5*np.linalg.norm(CloudVelocity) * time_code_units
-
         cloud_sphere = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
         CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
         with open("cloud_trajectory.txt", "a") as file:
             file.write(f"{fileno}, {np.round(time_value,5)},{np.round(CloudCord[0],5)}, {np.round(CloudCord[1],5)}, {np.round(CloudCord[2],5)}, {np.round(CloudVelocity[0],5)}, {np.round(CloudVelocity[1],5)}, {np.round(CloudVelocity[2],5)}\n")
+    
     print(CloudCord, delta_time_seconds, filename)
+    
     prev_time = time_value
 
     ds = yt.load(filename)
@@ -317,7 +322,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
         'z', 
         ('gas', 'density'), 
         center=[CloudCord[0], CloudCord[1], CloudCord[2]],
-        width = 2*rloc_boundary
+        width = 0.5
     )
 
     # Annotate the plot with a marker at CloudCord
@@ -333,13 +338,16 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
-    """
+    
+    VoronoiPos-=CloudCord
+    Pos-=CloudCord
+
     for dim in range(3):  # Loop over x, y, z
         pos_from_center = Pos[:, dim]
         boundary_mask = pos_from_center > Boxsize / 2
         Pos[boundary_mask, dim] -= Boxsize
         VoronoiPos[boundary_mask, dim] -= Boxsize
-    """
+
     rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
     nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
     npix  = 12 * nside ** 2
@@ -352,7 +360,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
     m = len(zz) # amount of values that hold which_up_down
 
-    print("Values of reduction factor to be generated: ",m)
+    print("Values of reduction factor to be generated: ", m)
 
     x_init = np.zeros((m,3))
 
@@ -397,35 +405,37 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
         _from = N+1 - threshold_rev[cycle]
         _to   = N+1 + threshold[cycle]
-        #print(f"{_from} - {_to}")
         p_r = N + 1 - _from
 
         bfield    = magnetic_fields[_from:_to,cycle]
         distance = trajectory[_from:_to,cycle]
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
-
-        #index_peaks, global_info = pocket_finder(bfield) # this plots
-        pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
-        index_pocket, field_pocket = pocket[0], pocket[1]
-
-        min_den_cycle.append(min(numb_density))
         
-        globalmax_index = global_info[0]
-        globalmax_field = global_info[1]
+        if len(bfield) != 0:
+            
+            #index_peaks, global_info = pocket_finder(bfield) # this plots
+            pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+            index_pocket, field_pocket = pocket[0], pocket[1]
 
-        x_r = distance[p_r]
-        B_r = bfield[p_r]
-        n_r = numb_density[p_r]
+            min_den_cycle.append(min(numb_density))
+            
+            globalmax_index = global_info[0]
+            globalmax_field = global_info[1]
 
-        # finds index at which to insert p_r and be kept sorted
-        p_i = find_insertion_point(index_pocket, p_r)
+            x_r = distance[p_r]
+            B_r = bfield[p_r]
+            n_r = numb_density[p_r]
 
-        print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
+            # finds index at which to insert p_r and be kept sorted
+            p_i = find_insertion_point(index_pocket, p_r)
+
+            print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
         
-        """How to find index of Bl?"""
+            """How to find index of Bl?"""
 
-        print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+            print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+        #else: 
 
         try:
             # possible error is len(index_pocket) is only one or two elements
@@ -433,7 +443,6 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
             B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
             B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
             success = True  # Flag to track if try was successful
-
         except:
             R = 1
             reduction_factor.append(R)
