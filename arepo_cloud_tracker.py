@@ -253,6 +253,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     header_group = data['Header']
     time_value = header_group.attrs['Time']
     snap = filename.split('/')[1].split('.')[0]
+    print(snap)
     new_folder = os.path.join("histograms/" , 'ct_'+snap)
     Boxsize = data['Header'].attrs['BoxSize']
     # Directly convert and cast to desired dtype
@@ -300,7 +301,7 @@ for fileno, filename in enumerate(file_list[::-1]):
         CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
         with open("cloud_trajectory.txt", "a") as file:
-            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+            file.write(f"{fileno}, {np.round(time_value,5)},{np.round(CloudCord[0],5)}, {np.round(CloudCord[1],5)}, {np.round(CloudCord[2],5)}, {np.round(CloudVelocity[0],5)}, {np.round(CloudVelocity[1],5)}, {np.round(CloudVelocity[2],5)}\n")
     print(CloudCord, delta_time_seconds, filename)
     prev_time = time_value
 
