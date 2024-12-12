@@ -24,6 +24,8 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
+# python3 arepo_cloud_tracker.py 5_000 0.3 500 2
+
 if len(sys.argv)>4:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
@@ -40,6 +42,7 @@ cycle = 0
 
 reduction_factor = []
 prev_time = 0.0
+
 """  B. Jesus Velazquez """
 
 def get_along_lines(x_init):
@@ -242,7 +245,7 @@ def get_along_lines(x_init):
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
 file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
-print(file_list)
+
 if len(file_list) == 0:
     print("No files to process.")
     exit()
@@ -254,7 +257,7 @@ for fileno, filename in enumerate(file_list[::-1]):
     time_value = header_group.attrs['Time']
     snap = filename.split('/')[1].split('.')[0]
     print(snap)
-    new_folder = os.path.join("histograms/" , 'ct_'+snap)
+    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+snap)
     Boxsize = data['Header'].attrs['BoxSize']
     # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
@@ -275,8 +278,6 @@ for fileno, filename in enumerate(file_list[::-1]):
     yc = Pos[:, 1]
     zc = Pos[:, 2]
     region_radius = 5
-    print(Pos[np.argmax(Density),:])
-    print(Velocities.shape)
 
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
@@ -316,7 +317,7 @@ for fileno, filename in enumerate(file_list[::-1]):
         'z', 
         ('gas', 'density'), 
         center=[CloudCord[0], CloudCord[1], CloudCord[2]],
-        width = 5
+        width = 2*rloc_boundary
     )
 
     # Annotate the plot with a marker at CloudCord
@@ -332,15 +333,13 @@ for fileno, filename in enumerate(file_list[::-1]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
-
-    continue 
-
+    """
     for dim in range(3):  # Loop over x, y, z
         pos_from_center = Pos[:, dim]
         boundary_mask = pos_from_center > Boxsize / 2
         Pos[boundary_mask, dim] -= Boxsize
         VoronoiPos[boundary_mask, dim] -= Boxsize
-
+    """
     rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
     nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
     npix  = 12 * nside ** 2
