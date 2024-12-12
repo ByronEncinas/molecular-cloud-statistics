@@ -250,7 +250,7 @@ if len(file_list) == 0:
     print("No files to process.")
     exit()
 
-for fileno, filename in enumerate(file_list[::-1]):
+for fileno, filename in enumerate(file_list[::-1][0:20]):
     
     data = h5py.File(filename, 'r')
     header_group = data['Header']
