@@ -289,7 +289,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         with open("cloud_trajectory.txt", "w") as file:
-            file.write(f"{snap}, {fileno}, {time_value}, {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]}\n")
+            file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(0.0,8)}, {np.round(0.0,8)}, {np.round(0.0,8)}\n")
     else:
         # isolate values surrounding cloud
         cloud_sphere = ((xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius)
@@ -305,7 +305,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
         CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
         with open("cloud_trajectory.txt", "a") as file:
-            file.write(f"{fileno}, {np.round(time_value,5)},{np.round(CloudCord[0],5)}, {np.round(CloudCord[1],5)}, {np.round(CloudCord[2],5)}, {np.round(CloudVelocity[0],5)}, {np.round(CloudVelocity[1],5)}, {np.round(CloudVelocity[2],5)}\n")
+            file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
     
     print(CloudCord, delta_time_seconds, filename)
     
@@ -338,6 +338,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
+    continue
     
     VoronoiPos-=CloudCord
     Pos-=CloudCord
