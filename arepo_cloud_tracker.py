@@ -262,7 +262,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
     time_value = header_group.attrs['Time']
     snap = filename.split('/')[1].split('.')[0]
     print(snap)
-    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+snap)
+    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+filename)
     Boxsize = data['Header'].attrs['BoxSize']
     # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
