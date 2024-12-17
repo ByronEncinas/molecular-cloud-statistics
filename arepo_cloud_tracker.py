@@ -338,7 +338,6 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
-    continue
     
     VoronoiPos-=CloudCord
     Pos-=CloudCord
