@@ -256,7 +256,7 @@ if len(file_list) == 0:
     print("No files to process.")
     exit()
 
-for fileno, filename in enumerate(file_list[::-1]):
+for fileno, filename in enumerate(file_list[::-1][0:50]):
     
     data = h5py.File(filename, 'r')
     header_group = data['Header']
@@ -339,8 +339,13 @@ for fileno, filename in enumerate(file_list[::-1]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
-    continue
     
+    VoronoiPos-=CloudCord
+    Pos-=CloudCord
+
+    Pos[xc > Boxsize/2,0]       -= Boxsize
+    VoronoiPos[xc > Boxsize/2,0] -= Boxsize
+    """ those this is different from whats commented?
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
@@ -349,7 +354,7 @@ for fileno, filename in enumerate(file_list[::-1]):
         boundary_mask = pos_from_center > Boxsize / 2
         Pos[boundary_mask, dim] -= Boxsize
         VoronoiPos[boundary_mask, dim] -= Boxsize
-
+    """
     rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
     nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
     npix  = 12 * nside ** 2

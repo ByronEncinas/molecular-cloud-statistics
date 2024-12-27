@@ -204,6 +204,7 @@ for filename in files:
         pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
         molecular_weight = 1 # for atomic hydrogen
         temp = (pressure/mass_dens)*molecular_weight*boltzmann_constant_cgs
+        mass = 0.0
 
         mass_shell_cumulative = 4 * np.pi * dens * (rad**2) * (dx_vec * parsec_to_cm3) * parsec_to_cm3
         phi_grav = grav_constant_cgs*Mass
@@ -234,6 +235,8 @@ for filename in files:
             vol[un_masked] = 0
 
             non_zero = vol > 0
+            if len(vol[non_zero]) == 0:
+                break
 
             dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3)) # make sure to cover the shell in all directions at the same pace
 
@@ -247,7 +250,7 @@ for filename in files:
             densities[k+1,:] = dens
 
             # Line of Sight 
-            rad      = np.linalg.norm(x[0], axis=1)
+            rad      = np.linalg.norm(x[:,:], axis=1)
             surface_area = 4*np.pi*rad**2
             avg_den  = np.mean(mass_dens)
             
@@ -323,51 +326,74 @@ for filename in files:
         
         cut = threshold[i]
 
-        if True:
-            # Create a figure and axes for the subplot layout
-            fig, axs = plt.subplots(2, 2, figsize=(8, 6))
-            
-            axs[0,0].plot(trajectory[:cut,i], magnetic_fields[:cut,i], linestyle="--", color="m")
-            axs[0,0].scatter(trajectory[:cut,i], magnetic_fields[:cut,i], marker="+", color="m")
-            axs[0,0].set_xlabel("s (cm)")
-            axs[0,0].set_ylabel("$B(s)$ Gauss (cgs)")
-            axs[0,0].set_title("Magnetic FIeld")
-            axs[0,0].grid(True)
-            
-            axs[0,1].plot(trajectory[:cut,i], radius_to_origin[:cut,i], linestyle="--", color="m")
-            axs[0,1].scatter(trajectory[:cut,i], radius_to_origin[:cut,i], marker="+", color="m")
-            axs[0,1].set_xlabel("s (cm)")
-            axs[0,1].set_ylabel("$log_{10}n_g(s) (gr/cm^3))$  (cgs)")
-            axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
-            axs[0,1].grid(True)
+    if True:
+        # Define a mosaic layout for 6 plots
+        mosaic = """
+        ABC
+        DEF
+        """
+        
+        # Create a figure with the mosaic layout
+        fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8))
+        
+        # Energy plot 1: Gravitational Energy
+        axs['A'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="green")
+        axs['A'].scatter(trajectory[:cut, i], energy_grav[:cut, i], marker="o", color="green", s=10)
+        axs['A'].set_xlabel("s (cm)")
+        axs['A'].set_ylabel("Energy (ergs)")
+        axs['A'].set_title("Gravitational Energy")
+        axs['A'].grid(True)
+        
+        # Energy plot 2: Magnetic Energy
+        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="blue")
+        axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="blue", s=10)
+        axs['B'].set_xlabel("s (cm)")
+        axs['B'].set_ylabel("Energy (ergs)")
+        axs['B'].set_title("Magnetic Energy")
+        axs['B'].grid(True)
+        
+        # Energy plot 3: Thermal Energy
+        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red")
+        axs['C'].scatter(trajectory[:cut, i], energy_thermal[:cut, i], marker="o", color="red", s=10)
+        axs['C'].set_xlabel("s (cm)")
+        axs['C'].set_ylabel("Energy (ergs)")
+        axs['C'].set_title("Thermal Energy")
+        axs['C'].grid(True)
+        
+        # Energy plot 4: Combined Energies
+        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="green", label="Gravitational")
+        axs['D'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic")
+        axs['D'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal")
+        axs['D'].set_yscale('log')
+        axs['D'].set_xlabel("s (cm)")
+        axs['D'].set_ylabel("Energy (ergs)")
+        axs['D'].set_title("Log Scale Energies")
+        axs['D'].legend()
+        axs['D'].grid(True)
+        
+        # Energy plot 5: Energy Ratio 1
+        axs['E'].plot(trajectory[:cut, i], energy_grav[:cut, i] / energy_thermal[:cut, i], linestyle="--", color="purple")
+        axs['E'].set_xlabel("s (cm)")
+        axs['E'].set_ylabel("Grav/Thermal Ratio")
+        axs['E'].set_title("Gravitational vs Thermal")
+        axs['E'].grid(True)
+        
+        # Energy plot 6: Energy Ratio 2
+        axs['F'].plot(trajectory[:cut, i], energy_magnetic[:cut, i] / energy_thermal[:cut, i], linestyle="--", color="orange")
+        axs['F'].set_xlabel("s (cm)")
+        axs['F'].set_ylabel("Magnetic/Thermal Ratio")
+        axs['F'].set_title("Magnetic vs Thermal")
+        axs['F'].grid(True)
+        
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
 
-            axs[1,0].plot(trajectory[:cut,i], numb_densities[:cut,i], linestyle="--", color="m")
-            axs[1,0].scatter(trajectory[:cut,i], numb_densities[:cut,i], marker="+", color="m")
-            axs[1,0].set_xscale('log')
-            axs[1,0].set_yscale('log')
-            axs[1,0].set_xlabel("s (cm)")
-            axs[1,0].set_ylabel("$log_{10}n_g(s) (gr/cm^3))$  (cgs)")
-            axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
-            axs[1,0].grid(True)
-            
-            axs[1,1].plot(trajectory[:cut,i], energy_grav[:cut,i], linestyle="--", color="green")
-            axs[1,1].plot(trajectory[:cut,i], energy_magnetic[:cut,i], linestyle="--", color="blue")
-            axs[1,1].plot(trajectory[:cut,i], energy_thermal[:cut,i], linestyle="--", color="red")
-            axs[1,1].set_yscale('log')
-            axs[1,1].set_xlabel("steps")
-            axs[1,1].set_ylabel("$V(s)$ cm^3 (cgs)")
-            axs[1,1].set_title("Cells Volume along Path")
-            axs[1,1].grid(True)
+        # Save the figure
+        plt.savefig(f"{directory_path}/energies_mosaic_{i}.png")
 
-            # Adjust layout to prevent overlap
-            plt.tight_layout()
+        # Close the plot
+        plt.close(fig)
 
-            # Save the figure
-            plt.savefig(f"{directory_path}/energies_shapes_{i}.png")
-
-            # Close the plot
-            plt.close(fig)
-            
     if True:
         ax = plt.figure().add_subplot(projection='3d')
         dens_min = np.log10(np.min(numb_densities))
