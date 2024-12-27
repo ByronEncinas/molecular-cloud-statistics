@@ -1,0 +1,182 @@
+* [33mfc4f285[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m cloud tracker unwanted halt
+* [33m53c4f8c[m how_many variable
+* [33m8739804[m cloud_tracker spacing reinstalled
+* [33m9f5dba2[m cloud_tracker ------
+* [33m000cd58[m cloud_tracker only tracjetory of cloud
+* [33m45bd1b8[m density profile snap=480
+* [33m4c9476d[m density profile snap=480
+* [33m1ce3b3f[m cloudtracker statistics 2 | library update
+* [33m0e2d70f[m cloudtracker statistics 2 | new_folder variable didnt update correctly, now ct + filename
+* [33m3b99388[m cloudtracker statistics 2 | new_folder variable didnt update correctly, now ct + filename
+* [33m04c50b6[m cloudtracker statistics 1.5 | sliceplot issue along with cloudcord issue
+* [33m9d5c217[m cloudtracker statistics 1 | centered around cloud in all 3 dims; Saving velocities and coordinates
+* [33me1167f9[m cloudtracker statistics 0 | spacing 1 but reduced data set only last for fileno, filename in enumerate(file_list[::-1][0:20]):
+* [33m909ac1a[m cloudtracker statistics 0 | spacing 1 but reduced data set only last for fileno, filename in enumerate(file_list[::-1][0:20]):
+* [33mf3783e0[m cloudtracker test 25 | radius_region = 5
+* [33md6156b5[m cloudtracker test 24 | save cloud velocity
+* [33me09f264[m cloudtracker test 23 | sliceplot width = 5 pc
+* [33mc7e7fb2[m cloudtracker test 22 | CloudVel sign
+* [33m14bb756[m cloudtracker test 21 | CloudVel
+* [33ma465a32[m cloudtracker test 20 | 2.0*CloudVel
+* [33m4f3c8d9[m cloudtracker test 20 | 2.0*CloudVel
+* [33mda16912[m cloudtracker test 19 | follow cloud, not densest region, not weighted
+* [33m7288979[m cloudtracker test 19 | follow cloud, not densest region, not weighted
+* [33m4b3e08d[m cloudtracker test 18 | follow cloud, not densest region
+* [33m307339e[m cloudtracker test 17 | region_radius from 50 to 10
+* [33m7285a91[m cloudtracker test 16 | Center of Mass Velocity Instead (np.newaxis)
+* [33mac07dab[m cloudtracker test 16 | Center of Mass Velocity Instead
+* [33m97ee7e5[m cloudtracker test 15 | non-centering restored r = 10
+* [33mcf04e08[m cloudtracker test 15 | non-centering restored r = 50
+* [33m0408fe6[m cloudtracker test 15 | non-centering restored
+* [33m3c27ff5[m cloudtracker test 15 | centering whole box in the previous cloud coordinate
+* [33m4567eb5[m cloudtracker test 15 | centering whole box in the previous cloud coordinate
+* [33m6012224[m cloudtracker test 14 | tracking every file inside ideal_mhd/ added abs(delta time) no velocity tracking
+* [33m14a1a9e[m cloudtracker test 14 | tracking every file inside ideal_mhd/ added abs(delta time)
+* [33m49a5552[m cloudtracker test 14 | tracking every file inside ideal_mhd/
+* [33m379fe24[m cloudtracker test 13 | tracking in reverse test with wieghted velocity & radius 5
+* [33md6fe294[m cloudtracker test 13 | tracking in reverse test with wieghted 0.5*velocity & radius 20
+* [33med9a026[m cloudtracker test 13 | tracking in reverse test with wieghted 0.5*velocity & radius 20
+* [33mb84eb2e[m cloudtracker test 12 | tracking test with wieghted velocity, undid translation & radius 20
+* [33m21726db[m cloudtracker test 12 | tracking test with velocity zero & radius 10
+* [33m0e5afbe[m cloudtracker test 11 | tracking test with wieghted velocity & radius 20
+* [33mab37663[m cloudtracker test 11 | tracking test with wieghted velocity & radius 5 pc
+* [33m5873f76[m cloudtracker test 11 | tracking test with wieghted velocity
+* [33mbaa0a3e[m cloudtracker test 10 | tracking test with velocity
+* [33me4ec886[m cloudtracker test 9 | tracking test
+* [33m6cead13[m cloudtracker test 9 | remove unnecesary prints
+* [33mdcc9d2f[m cloudtracker test 8 | delta_time_seconds
+* [33ma497d59[m cloudtracker test 8 | ideal_mhd test
+* [33mc542268[m cloudtracker test 7
+* [33m92e10a7[m cloudtracker test 6
+* [33m4c5a6c3[m cloudtracker test 5
+* [33m75e0eef[m cloudtracker test 4
+* [33m5336350[m cloudtracker test 3
+* [33m6894825[m cloudtracker test
+* [33m97e2ce0[m cloudtracker test
+* [33m2c8ada7[m cloudtracker test
+* [33ma9ac462[m observe snap_000 for initial conditions B_0
+* [33m9d5bb45[m Push to JAKAR to get 100 npys
+* [33m2782e79[m ---
+* [33mb655fd4[m NO_ID name deprecated, sys.argv[-1] is the ID_name
+* [33m5247bd4[m to CAS
+* [33m2d2f8a3[m os.join = os.path.join
+* [33m83201ba[m 489 line error os.join
+* [33m7fd52de[m info output contains densities in N/cm3 and Time of the snapshot
+* [33m7939df3[m README 2.0
+* [33m56df01e[m README 2.0
+* [33m06c55b6[m new files for post processing in optimal form
+* [33m2b36369[m spongelike input prepared with ID
+* [33ma9a9591[m pos_red dictionary key format changed
+* [33mb92420e[m lines/reductionfactor/percentualerror ready for HPC
+* [33m8a76049[m convergence test and long lines isolation treatment
+* [33mca0ae6b[m to CAS | density profiles with 50 snapshots interval | get lines with threshold active
+* [33m322c5eb[m density profile post processing to slice all lines at threshold
+* [33ma485913[m to JAKAR with cutoff of lines that are below the threshold
+* [33mcf40589[m density_profiles reduction_factor with density threshold
+* [33m0c6fa0b[m get_field_lines.py to JAKAR to calculate ionizations with density threshold
+* [33m5ecac15[m to CAS lines 66 to be modified for run outside of CAS
+* [33m582a7e9[m to CAS lines 66 to be modified for run outside of CAS
+* [33m52d1769[m  ec{R})$ cm (cgs) parse error corrected
+* [33mde683e8[m den profile with repeated values after threshold
+* [33m0546058[m constants declared as transform between units - necessary!
+* [33m180362e[m den profile with repeated values after threshold
+* [33m56c6e6c[m density_profile threshold test into jakar
+* [33ma3b8f52[m density_profile threshold test into jakar
+* [33m68a7687[m re duction_factor.py has been modified to avoid R=0.0 / n_g = 0.0 since both are virtually  not possible; if closest_values contains less than two elements then conclusion is that R=1 else Bl and Bh exist and R follows the formula | plot_histograms.py also receibed a counter to observe if this occurrence happens.
+* [33m79b2cab[m python3 arepo_reduction_factor_colors.py [No. Steps/2] [R in Pc] [simult lines] [No. file] [output ID]
+* [33m57eeec9[m run density_profiles and reduction factor in CAS
+* [33mcb5b657[m new plot_histograms.py from a series of json files and working | arepo_density running for threshold of density 10^2 N/cm3 and ready to run for all snaps > 300 in CAS | reduction_factor.py working and returning expected distribution for R |
+* [33m8a27961[m new plot_histograms.py from a series of json files and working | arepo_density running for threshold of density 10^2 N/cm3 and ready to run for all snaps > 300 in CAS | reduction_factor.py working and returning expected distribution for R |
+* [33me850df8[m profiles Counter mention erased
+* [33m8a2dcf6[m density profiles statement => if int(snap) < 300: # approx 2 Myrs past the Supernova blasts
+* [33me669827[m arepo_redution_factor works python3 file.py [steps in each direction] [radius of generation in parsec] [simultaneus lines] | get_lines.py uses same arguments | adensity_profiles.py only need number of steps as argument]
+* [33mb5d50f3[m arepo_redution_factor works python3 file.py [steps in each direction] [radius of generation in parsec] [simultaneus lines] | get_lines.py uses same arguments | adensity_profiles.py only need number of steps as argument]
+* [33m01569ae[m TypeError: list_files() missing 1 required positional argument: 'ext' at line 38
+* [33m3555eae[m discontinuities in arepo_get_field_lines successfully fixedgit add .git add .
+* [33m47054b5[m created density_profile.npy for all available hdf5 | numb_density > 100 as a conditions for the reach of the simulatio
+* [33mb347abb[m rloc_center is no longer an argument in sys.argv
+* [33mb2d00f4[m *_reduction_factor_colors.py contructs reduction_factor list and histograms as expected for args=[150,1,1,110]
+* [33m9f1d316[m *_reduction_factor_colors.py contructs reduction_factor list and histograms as expected for args=[150,1,1,110]
+* [33m36d7e3b[m *json file is not correctly created by *_reduction_factor_colors.py
+* [33m7f848fc[m deleted repeated loop in *reduction_factor_colors.py | INPROGRESS
+* [33mf6675d8[m Dont plt.show()
+* [33m2c444fd[m if structure for evaluation of reduction factor
+* [33me3fdbda[m to JAKAR
+* [33m88e6590[m to JAKAR
+* [33m46ea65b[m To JAKAR
+* [33m7107bf3[m *_stat_npy.py working, for one random point in each line | *_reduction_factor_issue with saving json files : INPROGRESS
+* [33m0f92cbf[m upload _colors to CLUSTER
+* [33mf8ea869[m upload _colors to CLUSTER
+* [33m15e2a22[m upload _colors to CLUSTER
+* [33m2e43b20[m _colors.py and stats_npy created and in progress | _colors perform better with MThreading thatn MP and SEQ implementations
+* [33m3062d08[m line return lmn, line[0, 0, :], magnetic_fields[0, 0],...=>return lmn, line[0, :], magnetic_fields[0],
+* [33md00c04f[m scale ready | arepo_stats_noy use generated npys to perform bias statistics
+* [33mcfb6db9[m randomized selection of points was compromised, it continually decreased, added new statement to obtain really random sample
+* [33m2ab8d91[m to jakar to time arepo_fieldlines/reductionfactor.py
+* [33m55cac3e[m to jakar to time arepo_fieldlines/reductionfactor.py
+* [33m2fa878c[m  back and forth propagation following field lines bug, corrected in this version | added reduction factor inside of parralelization section
+* [33m47190ca[m to Jakar
+* [33m283c1f7[m to Jakar
+* [33m3f07bfd[m uncomment lines [298-300] to allow randomized 12*max_cyles**2 points in inner sphere
+* [33mcd4a400[m uncomment lines [298-300] to allow randomized 12*max_cyles**2 points in inner sphere
+* [33mba78e60[m parallel and sequential get_field_lines file | pockets fixed if global_max is found in flat region, choose one and scale it 0.001
+* [33m95171b6[m parallel and sequential get_field_lines file | pockets fixed if global_max is found in flat region, choose one and scale it 0.001
+* [33m6707b9c[m parallel and sequential get_field_lines file | pockets fixed if global_max is found in flat region, choose one and scale it 0.001
+* [33m2c84e2f[m parallel and sequential get_field_lines file
+* [33m6210078[m library pockets issue
+* [33m5b8422b[m pocket_finder update to CAS and JAKAR
+* [33ma9cd883[m update into jakar
+* [33m361b777[m units Parsec/SolarMass/Second => cm/gram/second in arepo_get_field_lines
+* [33m08bc2e3[m scope: in case of np.argmax multiple occurrence, we will separate the field lines in two region (corresponding with left and right to the first ocurrence of np.argmax) so that each if they are both local maxima, then they will be stored as such, in the case were its just one repeated value with no valleys, only the first will be stored
+* [33m734641e[m TypeError: query() got an unexpected keyword argument 'workers'; argument is optional so I removed it
+* [33m1efc2bb[m corresponding peak with direction it was found, defintely messed up by not making them the same inn the first place
+* [33ma30c570[m undo line 372 in arepo_reduction_factor file
+* [33mc4e8c35[m multiple ocurrence of maximum field caused double count of this value - prototype solution chossing one of the occurrences and taking it as the whole representative of the region (without deleting any value from bfield array)
+* [33m700ad5b[m line_rev = line_rev[1:,:,:] type lines added to avoid double presence of initial point
+* [33m85d8801[m sbatch of get_field_lines to be able to perform postprocessing on saved data
+* [33mc5bf9bd[m sbatch of get_field_lines to be able to perform postprocessing on saved data
+* [33mf5ce179[m workers = cpu_count
+* [33m2952afc[m to CAS
+* [33m2d792cf[m double argmax peak caused issues with local maxima identification | 9 minutes for 2 values of R at 40 steps
+* [33m1b0b676[m to CAS
+* [33md74e412[m x_init<=>B_init as condition to obtain index position | to CAS
+* [33me9dc0e3[m x_init as output from get_lines()| to CAS
+* [33m3d219cd[m use all cpu's available os.cpu_count() | also get_lines retrieves x_init & B_init | exit() => continue
+* [33mf8fcb9d[m use all cpu's available os.cpu_count() | also get_lines retrieves x_init & B_init
+* [33m267fae1[m to CAS | run tests for x_init and p_r issues
+* [33me9d838b[m json zero values addressed to run on CAS on single core
+* [33mff6a6a6[m in code units | fix.py to test and resolve issues with pocker_finder
+* [33m443e2f7[m minor adjustsments: new output folder for histograms | find pocket=>broken
+* [33m8cd2091[m annotations on units | reduction_factor array is now appended in each cycle
+* [33m1ab419f[m python3 arepo_reduction_factor.py [No. Steps] [Outer Radius] [Inner Radius] [# Reduction Factors] [sufix to JSON output] format updated
+* [33m4b9752d[m f-string with .2f format
+* [33m520f804[m for test in CAS | json named distiguinshability
+* [33m968261e[m for N=100 in CAs
+* [33m5a41755[m to CAS
+* [33m48d8f73[m to CAS
+* [33mbfe3d4b[m multiprocess minimal arguments test
+* [33ma090cab[m get_field_lines appended into reduction_factor | pool.map() implemented for 6 cores
+* [33m3661e13[m max_cycles: str => int
+* [33m42a1150[m rename output graphs | emptied obsolete folders & graphs
+* [33m393bdfb[m if True => line pp[0] == 'p'
+* [33m97e1090[m to CAS
+* [33m81467b2[m m=1
+* [33me101ae4[m to CAS
+* [33mba5df6f[m Parameters Printed correctly | code limited to one line per run to improve time management while doing statistics
+* [33m0c7894c[m Parameters Printed out of __name__=='__main__'
+* [33m5f645d9[m to CAS
+* [33m048931d[m to CAS
+* [33meec943c[m to CAS
+* [33m6ef67df[m to CAS
+* [33md1ec0e4[m to CAS
+* [33ma9a8eab[m to CAS
+* [33maf3ed53[m to CAS
+* [33m4d63b43[m to CAS
+* [33md17c71b[m to CAS
+* [33ma9a3fa6[m to CAS
+* [33ma9f2323[m to CAS
+* [33mc020849[m python 3.7 subprocess capture_output => subprocess.PIPE
+* [33mf0f448d[m share data with jakar
+* [33m5b49f1b[m one_field_lines_ata_time
+* [33m154227e[m one_field_lines_ata_time
+* [33m397ddd3[m first commit
