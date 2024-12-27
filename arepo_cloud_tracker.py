@@ -256,7 +256,7 @@ if len(file_list) == 0:
     print("No files to process.")
     exit()
 
-for fileno, filename in enumerate(file_list[::-1][0:20]):
+for fileno, filename in enumerate(file_list[::-1]):
     
     data = h5py.File(filename, 'r')
     header_group = data['Header']
@@ -326,11 +326,11 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
         width = 0.5
     )
 
-    # Annotate the plot with a marker at CloudCord
     sp.annotate_marker(
-        [CloudCord[0], CloudCord[1], CloudCord[2]], 
-        marker='x', 
-        plot_args={'color': 'red', 's': 100}
+        [CloudCord[0], CloudCord[1], CloudCord[2]],
+        marker='x',
+        color='red',
+        s=100
     )
 
     # Annotate the plot with timestamp and scale
