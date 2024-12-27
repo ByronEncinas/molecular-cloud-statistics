@@ -36,12 +36,12 @@ if len(sys.argv)>4:
 	max_cycles   =int(sys.argv[3])
 	spacing = int(sys.argv[4])
 else:
-    N             =10_000
+    N             =4_000
     rloc_boundary =0.5
     max_cycles    =20
     spacing      = 1
 
-print(*sys.argv)
+print(sys.argv[1:])
 cycle = 0 
 
 reduction_factor = []
@@ -250,6 +250,7 @@ def get_along_lines(x_init):
 
 #/ideal_mhd
 file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
+#file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
     print("No files to process.")
@@ -338,6 +339,7 @@ for fileno, filename in enumerate(file_list[::-1][0:20]):
 
     # Save the plot as a PNG file
     sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
+    continue
     
     VoronoiPos-=CloudCord
     Pos-=CloudCord
