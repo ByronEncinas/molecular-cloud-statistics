@@ -71,18 +71,18 @@ Parameters
 FloatType = np.float64
 IntType = np.int32
 
-if len(sys.argv)>=2:
-	N             = int(sys.argv[-1])
+if len(sys.argv)>2:
+    N             = int(sys.argv[1])
 else:
-    N            = 1000
+    N            = 4_000
 
 """  B. Jesus Velazquez    """
 
-directory_path = "arepo_data/"
+directory_path = "arepo_data/ideal_mhd/"
 files = list_files(directory_path, '.hdf5')
 
 total_files = len(files)
-num_to_pick = total_files // 2
+num_to_pick = 10
 
 # Generate 20 evenly spaced indices
 indices = np.linspace(0, total_files - 1, num_to_pick, dtype=int)
@@ -95,8 +95,6 @@ print(selected_files)
 
 for filename in files:
     snap = filename.split(".")[0][-3:]
-    if snap != "430":
-        continue
 
     # Create the directory path
     directory_path = os.path.join("density_profiles", snap)
