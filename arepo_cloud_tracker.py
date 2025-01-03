@@ -283,7 +283,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 5
+    region_radius = 10
 
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)

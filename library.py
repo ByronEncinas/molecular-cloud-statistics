@@ -61,7 +61,7 @@ def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
 	return local_fields, abs_local_fields, local_densities, cells
 	
-def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
+def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdirection = None):
     local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
     CellVol = Volume[cells]
@@ -73,6 +73,8 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
 
     unito = 2*(local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
     x_final = x + 0.5 * dx[:, np.newaxis] * unito
+
+    bdirection = 0.5*(local_fields_1 + local_fields_2)
     
     return x_final, abs_local_fields_1, local_densities, CellVol
 

@@ -13,8 +13,6 @@ import time
 start_time = time.time()
 
 """  
-Using Margo Data
-
 Analysis of reduction factor
 
 $$N(s) 1 - \sqrt{1-B(s)/B_l}$$
@@ -50,9 +48,9 @@ if len(sys.argv)>2:
 	max_cycles   =int(sys.argv[3])
 	num_file = str(sys.argv[4])
 else:
-    N            =100
-    rloc_boundary=256   # rloc_boundary for boundary region of the cloud
-    max_cycles   =1
+    N            =2000
+    rloc_boundary=1   # rloc_boundary for boundary region of the cloud
+    max_cycles   =10
     num_file = '430'
 
 """  B. Jesus Velazquez """
@@ -119,12 +117,14 @@ def get_along_lines(x_init):
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
+    bfieldvec = np.zeros((N+1,m,3))
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
     threshold = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
+    bfieldvec_rev = np.zeros((N+1,m,3))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
     threshold_rev = np.zeros((m,)).astype(int) # one value for each
@@ -145,6 +145,8 @@ def get_along_lines(x_init):
     mask = dens > 100 # True if not finished
     un_masked = np.logical_not(mask)
 
+    unito = None
+
     while np.any(mask):
 
         # Create a mask for values that are 10^2 N/cm^3 above the threshold
@@ -153,7 +155,7 @@ def get_along_lines(x_init):
 
         aux = x[un_masked]
 
-        x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
@@ -172,6 +174,7 @@ def get_along_lines(x_init):
         # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
+        bfieldvec[k+1,:,:]= unito
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
@@ -218,7 +221,7 @@ def get_along_lines(x_init):
 
         aux = x[un_masked_rev]
 
-        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask_rev.astype(int)
@@ -235,6 +238,7 @@ def get_along_lines(x_init):
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
+        bfieldvec_rev[k+1,:,:]= unito
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens 
@@ -263,18 +267,21 @@ def get_along_lines(x_init):
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
     line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
+    bfieldvec = bfieldvec[:, updated_mask, :]  # Mask applied to the second dimension (m)
     volumes = volumes[:, updated_mask]  # Assuming volumes has shape (m,)
     bfields = bfields[:, updated_mask]  # Mask applied to second dimension (m)
     densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
 
     # Apply to the reverse arrays in the same way
     line_rev = line_rev[:, updated_mask, :]
+    bfieldvec_rev = bfieldvec_rev[:, updated_mask, :]  # Mask applied to the second dimension (m)
     volumes_rev = volumes_rev[:, updated_mask]
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
     radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
+    magnetic_field_vectors = np.append(bfieldvec_rev[::-1, :, :],  bfieldvec, axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
@@ -313,7 +320,7 @@ def get_along_lines(x_init):
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3)                           # in Parsec^3
 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
+    return bfields[0,:], radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
 if sys.argv[-1] == "input":
 
@@ -398,7 +405,7 @@ x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.01082023, -0.02556539, -0.00694829],
                    [-0.19161783,  0.10030747,  0.14942809]])
 """
-__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
+__, radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
 
 m = magnetic_fields.shape[1]
 
@@ -414,6 +421,7 @@ for i in range(m):
     print(f"{_from} - {_to}")
 
     mag_field    = magnetic_fields[_from:_to,i]
+    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]
     pos_vector   = radius_vector[_from:_to,i,:]
     s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i]
     numb_density = numb_densities[_from:_to,i]
@@ -486,7 +494,37 @@ for i in range(m):
 
         # Close the plot
         plt.close(fig)
-		
+    
+    if True:
+
+        # Normalize the vectors
+        norm_vectors = mag_field_vectors / np.linalg.norm(mag_field_vectors, axis=1, keepdims=True)
+
+        # Compute angular changes
+        angles = []
+        for i in range(len(norm_vectors) - 1):
+            cos_theta = np.clip(np.dot(norm_vectors[i], norm_vectors[i+1]), -1.0, 1.0)
+            angles.append(np.arccos(cos_theta))
+
+        # Plot angular changes
+        import matplotlib.pyplot as plt
+        plt.plot(angles, label='Angular Change (radians)')
+        plt.xlabel('Index')
+        plt.ylabel('Angle (radians)')
+        plt.legend()
+        plt.show()
+
+        # Analyze alignment with a reference vector
+        reference_vector = np.array([1, 0, 0])  # Example reference
+        alignment = np.dot(norm_vectors, reference_vector)
+
+        # Plot alignment
+        plt.plot(alignment, label='Alignment with Reference')
+        plt.xlabel('Index')
+        plt.ylabel('Dot Product (Alignment)')
+        plt.legend()
+        plt.show()
+        
 if False:
         
     from matplotlib import cm
