@@ -1,22 +1,29 @@
-#
+# Ignore all directories starting with "arepo_"
 arepo_*/
+
+# Ignore specific directories
 field_shapes/
-pytest/
-*.png
-colors.py
-rs_output
-random*
-*.gif
-localvenv
-*generated
-histograms
-__*
-.ipynb*
-multiprocessing_test.py
+pytests/
 cluster_outputs/
 discontinuities/
 density_profiles/
+jsonfiles/
+output
+
+# Ignore all directories or files with these patterns
+*/
+random*
+*generated
+__*
+*.png
+*.gif
 *json
 *.out
-output
-jsonfiles/
+.ipynb*
+
+# Ignore specific files
+colors.py
+rs_output
+histograms
+multiprocessing_test.py
+localvenv

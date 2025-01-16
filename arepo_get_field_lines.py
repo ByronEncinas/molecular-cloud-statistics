@@ -55,11 +55,14 @@ else:
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/*.hdf5')
+file_list = glob.glob('arepo_data/ideal_mhd/*.hdf5')
 
 for f in file_list:
     if num_file in f:
         filename = f
+
+new_folder = os.path.join("getLines/" , 'ct_'+f)
+os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -95,19 +98,18 @@ Name: PartType0/Velocities
 Name: PartType0/MagneticField
 """
 
-#Center= 0.5 * Boxsize * np.ones(3) # Center
-#Center = np.array( [91,       -110,          -64.5]) #117
-#Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
 Center = Pos[np.argmax(Density),:] #430
 CloudCord = Center.copy()
 print("Center before Centering", Center)
 
-VoronoiPos-=Center
-Pos-=Center
+VoronoiPos-=CloudCord
+Pos-=CloudCord
 
-xPosFromCenter = Pos[:,0]
-Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
-VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
+for dim in range(3):  # Loop over x, y, z
+    pos_from_center = Pos[:, dim]
+    boundary_mask = pos_from_center > Boxsize / 2
+    Pos[boundary_mask, dim] -= Boxsize
+    VoronoiPos[boundary_mask, dim] -= Boxsize
 
 def get_along_lines(x_init):
 

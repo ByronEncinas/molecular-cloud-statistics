@@ -264,6 +264,8 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     snap = filename.split('/')[1].split('.')[0]
     print(snap)
     new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+filename)
+    os.makedirs(new_folder, exist_ok=True)
+
     Boxsize = data['Header'].attrs['BoxSize']
     # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
@@ -283,13 +285,13 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 10
+    region_radius = 8
 
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
-        with open("cloud_trajectory.txt", "w") as file:
+        with open("cloud_tracker_slices/cloud_trajectory.txt", "w") as file:
             file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(0.0,8)}, {np.round(0.0,8)}, {np.round(0.0,8)}\n")
     else:
         # isolate values surrounding cloud
@@ -305,7 +307,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
         CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
-        with open("cloud_trajectory.txt", "a") as file:
+        with open("cloud_tracker_slices/cloud_trajectory.txt", "a") as file:
             file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
     
     print(CloudCord, delta_time_seconds, filename)
@@ -337,15 +339,15 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     sp.annotate_timestamp(redshift=False)
     sp.annotate_scale()
 
-    # Save the plot as a PNG file
-    sp.save(f"{fileno}-{filename.split('/')[-1]}_slice_z.png")
-    
+    # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
+    sp.save(os.path.join(new_folder,f"{filename.split('_')[0]}_{filename.split("_")[-3][:3]}_slice_z.png"))
+    """
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
     Pos[xc > Boxsize/2,0]       -= Boxsize
     VoronoiPos[xc > Boxsize/2,0] -= Boxsize
-    """ those this is different from whats commented?
+    """
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
@@ -354,7 +356,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         boundary_mask = pos_from_center > Boxsize / 2
         Pos[boundary_mask, dim] -= Boxsize
         VoronoiPos[boundary_mask, dim] -= Boxsize
-    """
+    
     rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
     nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
     npix  = 12 * nside ** 2
@@ -378,7 +380,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     print("Cores Used          : ", os.cpu_count())
     print("Steps in Simulation : ", 2*N)
     print("rloc_boundary       : ", rloc_boundary)
-    print("rloc_center         : ", rloc_center)
+    print("x_init              : ", x_init)
     print("max_cycles          : ", max_cycles)
     print("Boxsize             : ", Boxsize) # 256
     print("Center              : ", CloudCord) # 256
@@ -391,9 +393,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
-
-    # Create the new arepo_npys directory
-    os.makedirs(new_folder, exist_ok=True)
 
     # flow control to repeat calculations in no peak situations
 
@@ -418,6 +417,8 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         distance = trajectory[_from:_to,cycle]
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+
+
         
         if len(bfield) != 0:
             
@@ -565,7 +566,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     plt.savefig(os.path.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
 
     # Show the plot
-    #plt.show()
+    plt.close(fig)
 
     if False:
 
