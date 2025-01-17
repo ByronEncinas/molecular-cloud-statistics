@@ -55,13 +55,13 @@ else:
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/ideal_mhd/*.hdf5')
+file_list = glob.glob('arepo_data/*.hdf5')
 
 for f in file_list:
     if num_file in f:
         filename = f
 
-new_folder = os.path.join("getLines/" , 'ct_'+f)
+new_folder = os.path.join("getLines/" , num_file)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -171,7 +171,7 @@ def get_along_lines(x_init):
         
         x[un_masked] = aux
         
-        print(bfield)
+        print(dens.shape)
         #
         # print(max_threshold, unique_unmasked_max_threshold)
 
@@ -188,7 +188,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{num_file}.dat', 'a') as file: 
+                with open(os.path.join(new_folder, f'init_vectors_{num_file}.dat'), 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -236,7 +236,7 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
-        print(bfield)
+        print(dens.shape)
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
@@ -252,7 +252,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'lone_run_radius_vectors{num_file}.dat', 'a') as file: 
+                with open(os.path.join(new_folder, f'init_vectors_{num_file}.dat'), 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -293,6 +293,7 @@ def get_along_lines(x_init):
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
+    column_densities = np.zeros_like(magnetic_fields)
 
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
@@ -300,7 +301,7 @@ def get_along_lines(x_init):
 
     m = magnetic_fields.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
-
+    
     for _n in range(m):  # Iterate over the second dimension
         start_idx = (magnetic_fields.shape[0] - threshold_rev[_n]).astype(int) 
         prev = radius_vector[0, _n, :]
@@ -309,8 +310,10 @@ def get_along_lines(x_init):
             cur = radius_vector[k, _n, :]
             diff_rj_ri = np.linalg.norm(cur - prev)  # Calculate the difference between consecutive points
             if k == 0:
+                column_densities[k,_n] = 0.0
                 trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
             else:
+                column_densities[k,_n] = column_densities[k-1,_n] + numb_densities[k-1,_n]*diff_rj_ri
                 trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
             prev = cur  # Update `prev` to the current point
             print("Trajectory at step", k, ":", trajectory[k, _n])
@@ -322,7 +325,7 @@ def get_along_lines(x_init):
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3)                           # in Parsec^3
 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
+    return radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column_densities
 
 if sys.argv[-1] == "input":
 
@@ -392,6 +395,7 @@ else:
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
 print("rloc_boundary      : ", rloc_boundary)
+print("x_init             : ", x_init)
 print("max_cycles         : ", max_cycles)
 print("Boxsize            : ", Boxsize) # 256
 print("Center             : ", CloudCord) # 256
@@ -400,6 +404,7 @@ print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
+
 """
 x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.08827144,  0.07445224, -0.01678605],
@@ -407,7 +412,7 @@ x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.01082023, -0.02556539, -0.00694829],
                    [-0.19161783,  0.10030747,  0.14942809]])
 """
-__, radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
+radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init)
 
 m = magnetic_fields.shape[1]
 
@@ -422,29 +427,33 @@ for i in range(m):
     _to   = N+1 + threshold[i]
     print(f"{_from} - {_to}")
 
+    column_dens  = cd[_from:_to,i]
     mag_field    = magnetic_fields[_from:_to,i]
     mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]
     pos_vector   = radius_vector[_from:_to,i,:]
     s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i]
     numb_density = numb_densities[_from:_to,i]
     volume       = volumes[_from:_to,i]
-    """ 
-    where = (magnetic_fields[:,i] != 0.0)
 
-    mag_field    = magnetic_fields[where,i]
-    pos_vector   = radius_vector[where,i,:]
-    s_coordinate = trajectory[where,i]
-    numb_density = numb_densities[where,i]
-    volume       = volumes[where,i]
-    """    
+    print("column_dens shape:", column_dens.shape)
+    print("mag_field shape:", mag_field.shape)
+    print("mag_field_vectors shape:", mag_field_vectors.shape)
+    print("pos_vector shape:", pos_vector.shape)
+    print("s_coordinate shape:", s_coordinate.shape)
+    print("numb_density shape:", numb_density.shape)
+    print("volume shape:", volume.shape)
+
     pocket, global_info = pocket_finder(mag_field, i, plot=False) # this plots
 
-    np.save(f"arepo_npys/ArePositions{i}.npy", pos_vector)
-    np.save(f"arepo_npys/ArepoTrajectory{i}.npy", s_coordinate)
-    np.save(f"arepo_npys/ArepoNumberDensities{i}.npy", numb_density)
-    np.save(f"arepo_npys/ArepoMagneticFields{i}.npy", mag_field)
+    np.save(os.path.join(new_folder, f"AreColumnDensity{i}.npy"), column_dens)
+    np.save(os.path.join(new_folder, f"ArePositions{i}.npy"), pos_vector)
+    np.save(os.path.join(new_folder, f"ArepoTrajectory{i}.npy"), s_coordinate)
+    np.save(os.path.join(new_folder, f"ArepoNumberDensities{i}.npy"), numb_density)
+    np.save(os.path.join(new_folder, f"ArepoMagneticFields{i}.npy"), mag_field)
+    np.save(os.path.join(new_folder, f"ArepoMagneticFieldVectors{i}.npy"), mag_field_vectors)
+    np.save(os.path.join(new_folder, f"ArepoVolumes{i}.npy"), volume)
+
 	
-    
     print(f"finished line {i+1}/{max_cycles}",(time.time()-start_time)/60)
 
     if True:
@@ -488,19 +497,15 @@ for i in range(m):
         # Adjust layout to prevent overlap
         plt.tight_layout()
 
-        # Save the figure
-        if sys.argv[-1] == 'input':
-            plt.savefig(f"long_llines/shapes_{i}.png")
-        else:
-            plt.savefig(f"field_lines/shapes_{i}.png")
-
+        plt.savefig(os.path.join(new_folder,"mosaic.png"))
+        
         # Close the plot
         plt.close(fig)
     
-    if True:
+    if False:
 
         # Normalize the vectors
-        norm_vectors = mag_field_vectors / np.linalg.norm(mag_field_vectors, axis=1, keepdims=True)
+        norm_vectors = mag_field_vectors / np.linalg.norm(mag_field_vectors, axis=0, keepdims=True)
 
         # Compute angular changes
         angles = []
@@ -525,7 +530,8 @@ for i in range(m):
         plt.xlabel('Index')
         plt.ylabel('Dot Product (Alignment)')
         plt.legend()
-        plt.show()
+        plt.savefig(os.path.join(new_folder,"direction_changes.png"))
+        plt.close(fig)
         
 if False:
         

@@ -1,7 +1,7 @@
 from library import *
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+import sys, os
 
 """
 # Reduction Factor Along Field Lines (R vs S)
@@ -11,15 +11,47 @@ import sys
 #pocket_finder(bmag, cycle=0, plot =False):
 import glob
 
-cycle = '10'
+cycle = '2'
 
-radius_vector  = np.array(np.load(f"arepo_npys/ArePositions{cycle}.npy", mmap_mode='r'))
-distance       = np.array(np.load(f"arepo_npys/ArepoTrajectory{cycle}.npy", mmap_mode='r'))
-bfield         = np.array(np.load(f"arepo_npys/ArepoMagneticFields{cycle}.npy", mmap_mode='r'))
-numb_density   = np.array(np.load(f"arepo_npys/ArepoNumberDensities{cycle}.npy", mmap_mode='r'))
+origin_folder = 'getLines/430'
+
+
+radius_vector  = np.array(np.load(os.path.join(origin_folder, f'ArePositions{cycle}.npy'), mmap_mode='r'))
+distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{cycle}.npy'), mmap_mode='r'))
+bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{cycle}.npy'), mmap_mode='r'))
+numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{cycle}.npy'), mmap_mode='r'))
+volume         = np.array(np.load(os.path.join(origin_folder, f'ArepoVolumes{cycle}.npy'), mmap_mode='r'))
+
+print(radius_vector.shape)
+print(distance.shape)
+print(bfield.shape)
+print(numb_density.shape)
 
 print(" Data Successfully Loaded")
 
+import matplotlib.pyplot as plt
+
+magnitudes = np.linalg.norm(radius_vector, axis=-1)  # Displacement magnitudes
+plt.scatter(magnitudes, volume)
+plt.xlabel("Displacement Magnitude")
+plt.ylabel("Volume")
+plt.title("Displacement Magnitude vs. Volume")
+plt.show()
+
+""" Calculate Maximum and Minimum Column Densities """
+
+# assuming the particle already travelled 10e19 to get to the core
+column = 1.0e19
+z = 0
+for i, si in enumerate(distance):
+    if i==0:
+        ds = 0.0
+    else:
+        ds = si - z
+    column += numb_density[i]*(abs(si-z))
+    z = si
+
+exit()
 """ Parameters """
 
 Ei = 1.0e+0
@@ -56,12 +88,11 @@ Estar = 1.0e+6
 
 size = distance.shape[0]
 
-
 mu_ism = np.flip(np.logspace(-3,0,50))
 
 print(size, len(mu_ism))
 
-Nforward  = np.zeros((len(mu_ism), size))
+Nforward  = np.zeros((len(mu_ism), size))+1.0e19
 
 B_ism     = bfield[0]
 
@@ -69,13 +100,17 @@ for i, mui_ism in enumerate(mu_ism):
 
     for j in range(size):
 
+        print(mui_ism)
         n_g = numb_density[j]
+        print(n_g)
         Bsprime = bfield[j]
+        print(Bsprime)        
         deno = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
-
+        print()
         deno_mu_local = 1 - (bfield[j]/bfield[0])*(1 - mui_ism**2)
+        
 
-        if deno < 0 or deno_mu_local < 0:
+        if (deno < 0) or (deno_mu_local < 0):
             """ 
             1 - (Bsprime/B_ism) * (1 - muj_ism**2) < 0 
             or 
@@ -88,9 +123,9 @@ for i, mui_ism in enumerate(mu_ism):
 
 size = distance.shape[0]
 
-mu_ism = np.flip(np.logspace(-1,0,10))
+mu_ism = np.flip(np.logspace(-1,0,50))
 
-Nbackward  = np.zeros((len(mu_ism), size))
+Nbackward  = np.zeros((len(mu_ism), size))+1.0e19
 
 rev_numb_density = numb_density[::-1]
 rev_bfield        = bfield[::-1]

@@ -418,8 +418,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-
-        
         if len(bfield) != 0:
             
             #index_peaks, global_info = pocket_finder(bfield) # this plots
@@ -486,7 +484,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-    with open(os.path.join(new_folder, 'output'), 'w') as file:
+    with open(os.path.join(new_folder, 'PARAMETERS'), 'w') as file:
         file.write(f"{filename}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Snap Time (Myr): {time_value}\n")
@@ -523,7 +521,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         json.dump(numb_density_at, json_file)
 
     # Specify the file path
-    file_path = os.path.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
+    file_path = os.path.join(new_folder,f'position_reduction{sys.argv[-1]}')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
@@ -531,16 +529,12 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
     """# Graphs"""
 
-    #plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
-
     bins=len(reduction_factor)//10 
 
     if bins == 0:
         bins=1
 
     inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
-
-    # try plt.stairs(*np.histogram(inverse_reduction_factor, 50), fill=True, color='skyblue')
 
     # Create a figure and axes objects
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
@@ -562,7 +556,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     plt.tight_layout()
 
     # Save the figure
-    #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
     plt.savefig(os.path.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
 
     # Show the plot
