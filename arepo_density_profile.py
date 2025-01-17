@@ -78,22 +78,24 @@ else:
 
 """  B. Jesus Velazquez    """
 
-directory_path = "arepo_data/ideal_mhd/"
+directory_path = "arepo_data/"
 files = list_files(directory_path, '.hdf5')
 
 total_files = len(files)
 num_to_pick = 10
 
 # Generate 20 evenly spaced indices
-indices = np.linspace(0, total_files - 1, num_to_pick, dtype=int)
+#indices = np.linspace(0, total_files - 1, num_to_pick, dtype=int)
 
 # Select the files using the generated indices
-selected_files = [files[i] for i in indices]
+#selected_files = [files[i] for i in indices]
 
 # Print the selected files
-print(selected_files)
+#print(selected_files)
 
+print(files)
 for filename in files:
+    print(filename)
     snap = filename.split(".")[0][-3:]
 
     # Create the directory path
@@ -218,17 +220,18 @@ for filename in files:
         un_masked = np.logical_not(mask)
 
         while np.any((mask)):
-
-            # Create a mask for values that are 10^2 N/cm^3 above the threshold
-            mask = dens > 100 # True if continue
+            # Update mask for values that are 10^2 N/cm^3 above the threshold
+            mask = dens > 100  # True if continue
             un_masked = np.logical_not(mask)
-            
-            # Only update values where mask is True
-            _, bfield, dens, vol, ke, ie, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
-            mass_dens *=code_units_to_gr_cm3
+            # Perform Heun step and update values
+            _, bfield, dens, vol, ke, ie, pressure = Heun_step(
+                x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
+            )
+            
+            mass_dens *= code_units_to_gr_cm3
             pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
-            dens *= gr_cm3_to_nuclei_cm3 
+            dens *= gr_cm3_to_nuclei_cm3
             
             vol[un_masked] = 0
 
@@ -236,30 +239,43 @@ for filename in files:
             if len(vol[non_zero]) == 0:
                 break
 
-            dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3)) # make sure to cover the shell in all directions at the same pace
+            dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
             x += dx_vec * directions
 
-            line[k+1,:,:]    = x
-            volumes[k+1,:]   = vol
-            bfields[k+1,:]   = bfield
-            densities[k+1,:] = dens
+            line[k + 1, :, :] = x
+            volumes[k + 1, :] = vol
+            bfields[k + 1, :] = bfield
+            densities[k + 1, :] = dens
 
-            # Line of Sight 
-            rad      = np.linalg.norm(x[:,:], axis=1)
-            surface_area = 4*np.pi*rad**2
-            avg_den  = np.mean(mass_dens)
-            
-            mass_shell_cumulative += 4*np.pi*dens*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3) # adding concentric shells with density 'dens'
-            mass += 4*np.pi*np.average(dens)*(rad*rad*parsec_to_cm3*parsec_to_cm3)*(dx_vec*parsec_to_cm3)
-            grav_potential += -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
+            # Compute radial positions
+            rad = np.linalg.norm(x[:, :], axis=1)
 
-            energy_grav[k+1,:] = grav_potential
-            energy_magnetic[k+1,:] = bfield*bfield/(8*np.pi)*vol 
-            energy_thermal[k+1,:] = (3/2)*boltzmann_constant_cgs*temp
-            eff_column_densities[k+1,:] = dens*dx_vec
+            # Update cumulative shell mass
+            mass_shell_cumulative += 4 * np.pi * dens * (rad ** 2 * parsec_to_cm3 ** 2) * (dx_vec * parsec_to_cm3)
+            mass += 4 * np.pi * np.average(dens) * (rad ** 2 * parsec_to_cm3 ** 2) * (dx_vec * parsec_to_cm3)
+
+            # Gravitational potential contribution
+            grav_potential += -(4 * np.pi) ** 2 * (dens ** 2) * (rad * parsec_to_cm3) ** 4 * (dx_vec * parsec_to_cm3)
+
+            # Compute cumulative mass for gravitational potential
+            M_r = np.cumsum(4 * np.pi * dens * rad ** 2 * dx_vec * parsec_to_cm3)
+
+            # Gravitational potential: φ(r)
+            phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
+
+            # Gravitational energy
+            grav_energy_density = 4 * np.pi * rad ** 2 * dens * phi
+            energy_grav[k + 1, :] = np.cumsum(grav_energy_density * dx_vec)
+
+            # Magnetic and thermal energy
+            energy_magnetic[k + 1, :] = bfield * bfield / (8 * np.pi) * vol
+            energy_thermal[k + 1, :] = (3 / 2) * boltzmann_constant_cgs * temp
+
+            # Effective column densities
+            eff_column_densities[k + 1, :] = dens * dx_vec
 
             if np.all(un_masked):
                 print("All values are False: means all density < 10^2")
@@ -268,6 +284,8 @@ for filename in files:
             k += 1
 
         mean_column = np.mean(eff_column_densities[-1,:])
+        ratio_thermal = energy_thermal / energy_grav
+        ratio_magnetic = energy_magnetic / energy_grav
 
         threshold = threshold.astype(int)
         larger_cut = np.max(threshold)
@@ -305,7 +323,7 @@ for filename in files:
         magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
         trajectory[0,:]  = 0.0
 
-        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [energy_grav, energy_magnetic, energy_thermal]
+        return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, ratio_magnetic, ratio_thermal]
 
     print("Steps in Simulation: ", N)
     print("Boxsize            : ", Boxsize)
@@ -314,54 +332,48 @@ for filename in files:
     print(f"Smallest Density  : {Density[np.argmin(Density)]}")
     print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, energies = get_along_lines(x_init)
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, col_energies = get_along_lines(x_init)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-    for i in range(m):
+import matplotlib.pyplot as plt
 
-        energy_grav, energy_magnetic, energy_thermal = energies
-        
-        cut = threshold[i]
+for i in range(m):
+
+    mean_column, ratio_magnetic, ratio_thermal = col_energies
+    
+    cut = threshold[i]
 
     if True:
-        # Define a mosaic layout for 6 plots
+        # Define a mosaic layout for 5 plots (removed one for gravitational energy)
         mosaic = """
         ABC
         DEF
+        G
         """
         
         # Create a figure with the mosaic layout
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8))
         
-        # Energy plot 1: Gravitational Energy
-        axs['A'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="green")
-        axs['A'].scatter(trajectory[:cut, i], energy_grav[:cut, i], marker="o", color="green", s=10)
-        axs['A'].set_xlabel("s (cm)")
-        axs['A'].set_ylabel("Energy (ergs)")
-        axs['A'].set_title("Gravitational Energy")
-        axs['A'].grid(True)
-        
-        # Energy plot 2: Magnetic Energy
-        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="blue")
-        axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="blue", s=10)
+        # Energy plot 1: Magnetic Energy
+        axs['B'].plot(trajectory[:cut, i], magnetic_fields[:cut, i], linestyle="--", color="blue")
+        axs['B'].scatter(trajectory[:cut, i], magnetic_fields[:cut, i], marker="o", color="blue", s=5)
         axs['B'].set_xlabel("s (cm)")
         axs['B'].set_ylabel("Energy (ergs)")
         axs['B'].set_title("Magnetic Energy")
         axs['B'].grid(True)
         
-        # Energy plot 3: Thermal Energy
-        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red")
-        axs['C'].scatter(trajectory[:cut, i], energy_thermal[:cut, i], marker="o", color="red", s=10)
+        # Energy plot 2: Thermal Energy
+        axs['C'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="red")
+        axs['C'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="red", s=5)
         axs['C'].set_xlabel("s (cm)")
         axs['C'].set_ylabel("Energy (ergs)")
         axs['C'].set_title("Thermal Energy")
         axs['C'].grid(True)
         
-        # Energy plot 4: Combined Energies
-        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="green", label="Gravitational")
-        axs['D'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic")
-        axs['D'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal")
+        # Energy plot 3: Combined Energies
+        axs['D'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic")
+        axs['D'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal")
         axs['D'].set_yscale('log')
         axs['D'].set_xlabel("s (cm)")
         axs['D'].set_ylabel("Energy (ergs)")
@@ -369,20 +381,24 @@ for filename in files:
         axs['D'].legend()
         axs['D'].grid(True)
         
-        # Energy plot 5: Energy Ratio 1
-        axs['E'].plot(trajectory[:cut, i], energy_grav[:cut, i] / energy_thermal[:cut, i], linestyle="--", color="purple")
+        # Combined Energy Ratio Plot: Gravitational/Thermal and Magnetic/Thermal Ratios
+        axs['E'].plot(trajectory[:cut, i], volumes[:cut, i], linestyle="--", color="orange", label="Mag/Thermal")
         axs['E'].set_xlabel("s (cm)")
-        axs['E'].set_ylabel("Grav/Thermal Ratio")
-        axs['E'].set_title("Gravitational vs Thermal")
+        axs['E'].set_ylabel("Ratio")
+        axs['E'].set_title("Energy Ratios")
+        axs['E'].legend()
         axs['E'].grid(True)
         
-        # Energy plot 6: Energy Ratio 2
-        axs['F'].plot(trajectory[:cut, i], energy_magnetic[:cut, i] / energy_thermal[:cut, i], linestyle="--", color="orange")
-        axs['F'].set_xlabel("s (cm)")
-        axs['F'].set_ylabel("Magnetic/Thermal Ratio")
-        axs['F'].set_title("Magnetic vs Thermal")
-        axs['F'].grid(True)
+        # Add a table at the bottom
+        table_data = [
+            ['---', 'digits', 'order'],
+            ['mean_column', f'{mean_column:.3f}', '-'],
+            ['Mag/Thermal Ratio', f'{ratio_magnetic.mean():.3f}', '-']
+        ]
+        table = axs['G'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.2, 0.2, 0.2])
         
+        axs['G'].axis('off')  # Hide the axis for the table plot
+
         # Adjust layout to prevent overlap
         plt.tight_layout()
 

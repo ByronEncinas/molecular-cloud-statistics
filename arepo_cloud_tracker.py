@@ -340,14 +340,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     sp.annotate_scale()
 
     # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
-    sp.save(os.path.join(new_folder,f"{filename.split('_')[0]}_{filename.split("_")[-3][:3]}_slice_z.png"))
-    """
-    VoronoiPos-=CloudCord
-    Pos-=CloudCord
-
-    Pos[xc > Boxsize/2,0]       -= Boxsize
-    VoronoiPos[xc > Boxsize/2,0] -= Boxsize
-    """
+    sp.save(os.path.join(new_folder, f"{filename.split('_')[0]}_{filename.split('_')[-3][:3]}_slice_z.png"))
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
@@ -484,7 +477,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-    with open(os.path.join(new_folder, 'PARAMETERS'), 'w') as file:
+    with open(os.path.join(new_folder, f'PARAMETERS_{random_string}'), 'w') as file:
         file.write(f"{filename}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Snap Time (Myr): {time_value}\n")
@@ -503,25 +496,31 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
+    import random
+    import string
+
+    # Generate a random string of 4 characters
+    random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+
     # Print elapsed time
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
     # Specify the file path
-    file_path = os.path.join(new_folder, f'random_distributed_reduction_factor{sys.argv[-1]}.json')
+    file_path = os.path.join(new_folder, f'random_distributed_reduction{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(reduction_factor, json_file)
 
     # Specify the file path
-    file_path = os.path.join(new_folder,f'random_distributed_numb_density{sys.argv[-1]}.json')
+    file_path = os.path.join(new_folder,f'random_distributed_density{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(numb_density_at, json_file)
 
     # Specify the file path
-    file_path = os.path.join(new_folder,f'position_reduction{sys.argv[-1]}')
+    file_path = os.path.join(new_folder,f'position_reduction{random_string}_{sys.argv[-1]}')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
@@ -556,7 +555,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     plt.tight_layout()
 
     # Save the figure
-    plt.savefig(os.path.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
+    plt.savefig(os.path.join(new_folder,f"{random_string}hist={len(reduction_factor)}bins={bins}.png"))
 
     # Show the plot
     plt.close(fig)
