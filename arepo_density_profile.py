@@ -95,6 +95,8 @@ num_to_pick = 10
 
 print(files)
 for filename in files:
+    if sys.argv[-1] not in filename:
+        continue
     print(filename)
     snap = filename.split(".")[0][-3:]
 
@@ -199,15 +201,12 @@ for filename in files:
         dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
 
         rad = np.linalg.norm(x, axis=1)
-        ie = InternalEnergy[cells]
-        ke = 0.5*Mass[cells]*np.linalg.norm(Velocities[cells], axis=1)**2
         pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
         molecular_weight = 1 # for atomic hydrogen
         temp = (pressure/mass_dens)*molecular_weight*boltzmann_constant_cgs
         mass = 0.0
 
         mass_shell_cumulative = 4 * np.pi * dens * (rad**2) * (dx_vec * parsec_to_cm3) * parsec_to_cm3
-        phi_grav = grav_constant_cgs*Mass
         grav_potential = -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
         
         energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
@@ -239,7 +238,8 @@ for filename in files:
             if len(vol[non_zero]) == 0:
                 break
 
-            dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
+            #dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
+            dx_vec = np.min(((4 / 3) * vol / np.pi) ** (1 / 3))  # Increment step size
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
@@ -306,8 +306,6 @@ for filename in files:
     
         for _n in range(m):  # Iterate over the first dimension
 
-            cut = threshold[_n] - 1
-
             prev = radius_vector[0, _n, :]
             
             for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
@@ -336,106 +334,113 @@ for filename in files:
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
 
-for i in range(m):
+    for i in range(m):
 
-    mean_column, ratio_magnetic, ratio_thermal = col_energies
-    
-    cut = threshold[i]
-
-    if True:
-        # Define a mosaic layout for 5 plots (removed one for gravitational energy)
-        mosaic = """
-        ABC
-        DEF
-        G
-        """
+        mean_column, ratio_magnetic, ratio_thermal = col_energies
         
-        # Create a figure with the mosaic layout
-        fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8))
-        
-        # Energy plot 1: Magnetic Energy
-        axs['B'].plot(trajectory[:cut, i], magnetic_fields[:cut, i], linestyle="--", color="blue")
-        axs['B'].scatter(trajectory[:cut, i], magnetic_fields[:cut, i], marker="o", color="blue", s=5)
-        axs['B'].set_xlabel("s (cm)")
-        axs['B'].set_ylabel("Energy (ergs)")
-        axs['B'].set_title("Magnetic Energy")
-        axs['B'].grid(True)
-        
-        # Energy plot 2: Thermal Energy
-        axs['C'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="red")
-        axs['C'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="red", s=5)
-        axs['C'].set_xlabel("s (cm)")
-        axs['C'].set_ylabel("Energy (ergs)")
-        axs['C'].set_title("Thermal Energy")
-        axs['C'].grid(True)
-        
-        # Energy plot 3: Combined Energies
-        axs['D'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic")
-        axs['D'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal")
-        axs['D'].set_yscale('log')
-        axs['D'].set_xlabel("s (cm)")
-        axs['D'].set_ylabel("Energy (ergs)")
-        axs['D'].set_title("Log Scale Energies")
-        axs['D'].legend()
-        axs['D'].grid(True)
-        
-        # Combined Energy Ratio Plot: Gravitational/Thermal and Magnetic/Thermal Ratios
-        axs['E'].plot(trajectory[:cut, i], volumes[:cut, i], linestyle="--", color="orange", label="Mag/Thermal")
-        axs['E'].set_xlabel("s (cm)")
-        axs['E'].set_ylabel("Ratio")
-        axs['E'].set_title("Energy Ratios")
-        axs['E'].legend()
-        axs['E'].grid(True)
-        
-        # Add a table at the bottom
-        table_data = [
-            ['---', 'digits', 'order'],
-            ['mean_column', f'{mean_column:.3f}', '-'],
-            ['Mag/Thermal Ratio', f'{ratio_magnetic.mean():.3f}', '-']
-        ]
-        table = axs['G'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.2, 0.2, 0.2])
-        
-        axs['G'].axis('off')  # Hide the axis for the table plot
+        cut = threshold[i]
 
-        # Adjust layout to prevent overlap
-        plt.tight_layout()
+        if True:
+            # Define a mosaic layout for 5 plots (removed one for gravitational energy)
+            mosaic = """
+            AB
+            CD
+            E..
+            """
 
-        # Save the figure
-        plt.savefig(f"{directory_path}/energies_mosaic_{i}.png")
+            # Create a figure with the mosaic layout (3 rows, 3 columns)
+            fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8), dpi=300)
 
-        # Close the plot
-        plt.close(fig)
+            # Plot 1: Magnetic Energy
+            axs['A'].plot(trajectory[:cut, i], magnetic_fields[:cut, i], linestyle="--", color="blue")
+            axs['A'].scatter(trajectory[:cut, i], magnetic_fields[:cut, i], marker="o", color="blue", s=5)
+            axs['A'].set_xlabel("s (cm) along LOS")
+            axs['A'].set_ylabel("Energy (ergs)")
+            axs['A'].set_title("Magnetic Energy (LOS)")
+            axs['A'].grid(True)
 
-    if True:
-        ax = plt.figure().add_subplot(projection='3d')
-        dens_min = np.log10(np.min(numb_densities))
-        dens_max = np.log10(np.max(numb_densities))
+            # Plot 2: Thermal Energy
+            axs['B'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="red")
+            axs['B'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="red", s=5)
+            axs['B'].set_xlabel("s (cm) along LOS")
+            axs['B'].set_ylabel("Energy (ergs)")
+            axs['B'].set_title("Thermal Energy (LOS)")
+            axs['B'].grid(True)
 
-        dens_diff = dens_max - dens_min
+            # Plot 3: Energies as a Fraction of Gravitational Energy
+            axs['C'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational (LOS)")
+            axs['C'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational (LOS)")
+            axs['C'].set_yscale('log')
+            axs['C'].set_xlabel("s (cm) along LOS")
+            axs['C'].set_ylabel("Energy Ratio")
+            axs['C'].set_title("Energies Relative to Gravitational Energy (LOS)")
+            axs['C'].legend()
+            axs['C'].grid(True)
 
-        for k in range(m):
-            x=radius_vector[:,k,0]/ 3.086e+18                                # from Parsec to cm
-            y=radius_vector[:,k,1]/ 3.086e+18                                # from Parsec to cm
-            z=radius_vector[:,k,2]/ 3.086e+18                                # from Parsec to cm
-            
-            for l in range(len(radius_vector[:,0,0])):
-                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color='m',linewidth=0.3)
+            # Plot 4: Energy Volume Ratios
+            axs['D'].plot(trajectory[:cut, i], volumes[:cut, i], linestyle="--", color="orange", label="Volume (LOS)")
+            axs['D'].set_xlabel("s (cm) along LOS")
+            axs['D'].set_ylabel("Ratio")
+            axs['D'].set_title("Volume Ratios (LOS)")
+            axs['D'].legend()
+            axs['D'].grid(True)
+
+            # Add a table with summary data at the bottom of the figure
+            table_data = [
+                ['---', 'Value', 'Note'],
+                ['Mean Column Density (LOS)', f'{mean_column:.3f}', '-'],
+                ['Mean Magnetic/Thermal Ratio (LOS)', f'{ratio_magnetic.mean():.3f}', '-'],
+                ['Steps in Simulation (LOS)', str(N), '-'],
+                ['Boxsize (LOS)', f'{Boxsize:.3f}', '-'],
+                ['Smallest Volume (LOS)', f'{Volume[np.argmin(Volume)]:.3e}', '-'],
+                ['Biggest Volume (LOS)', f'{Volume[np.argmax(Volume)]:.3e}', '-'],
+                ['Smallest Density (LOS)', f'{Density[np.argmin(Density)]:.3e}', '-'],
+                ['Biggest Density (LOS)', f'{Density[np.argmax(Density)]:.3e}', '-']
+            ]
+            table = axs['E'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
+
+            axs['E'].axis('off')  # Hide axis for the table plot
+
+            # Adjust the layout to avoid overlap between plots
+            plt.tight_layout()
+
+            # Save the generated figure as a PNG file
+            plt.savefig(f"{directory_path}/energies_mosaic_{i}.png", dpi=300)
+
+            # Close the plot to release resources
+            plt.close(fig)
+
+
+        if True:
+            ax = plt.figure().add_subplot(projection='3d')
+            dens_min = np.log10(np.min(numb_densities))
+            dens_max = np.log10(np.max(numb_densities))
+
+            dens_diff = dens_max - dens_min
+
+            for k in range(m):
+                x=radius_vector[:,k,0]/ 3.086e+18                                # from Parsec to cm
+                y=radius_vector[:,k,1]/ 3.086e+18                                # from Parsec to cm
+                z=radius_vector[:,k,2]/ 3.086e+18                                # from Parsec to cm
                 
-            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+                for l in range(len(radius_vector[:,0,0])):
+                    ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color='m',linewidth=0.3)
+                    
+                ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+                ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+                
+            zoom = np.max(radius_to_origin)
             
-        zoom = np.max(radius_to_origin)
-        
-        ax.set_xlim(-zoom,zoom)
-        ax.set_ylim(-zoom,zoom)
-        ax.set_zlim(-zoom,zoom)
-        
-        ax.set_xlabel('x [Pc]')
-        ax.set_ylabel('y [Pc]')
-        ax.set_zlabel('z [Pc]')
+            ax.set_xlim(-zoom,zoom)
+            ax.set_ylim(-zoom,zoom)
+            ax.set_zlim(-zoom,zoom)
+            
+            ax.set_xlabel('x [Pc]')
+            ax.set_ylabel('y [Pc]')
+            ax.set_zlabel('z [Pc]')
 
-        ax.set_title('Magnetic field morphology')
-        
-        plt.savefig(f"{directory_path}/MagneticFieldTopology.png", bbox_inches='tight')
+            ax.set_title('Magnetic field morphology')
+            
+            plt.savefig(f"{directory_path}/MagneticFieldTopology.png", bbox_inches='tight')
