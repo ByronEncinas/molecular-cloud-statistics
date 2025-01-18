@@ -263,7 +263,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     time_value = header_group.attrs['Time']
     snap = filename.split('/')[1].split('.')[0]
     print(snap)
-    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+ snap)
+    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+snap)
     os.makedirs(new_folder, exist_ok=True)
 
     Boxsize = data['Header'].attrs['BoxSize']

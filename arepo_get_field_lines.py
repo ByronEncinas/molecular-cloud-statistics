@@ -375,7 +375,7 @@ else:
 
     lmn = N
 
-    with open('output', 'w') as file:
+    with open(os.path.join(new_folder, 'PARAMETERS'), 'w') as file:
         file.write(f"{filename}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Steps in Simulation: {2 * N}\n")
