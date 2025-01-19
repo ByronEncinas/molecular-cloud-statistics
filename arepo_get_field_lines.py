@@ -57,10 +57,12 @@ else:
 
 file_list = glob.glob('arepo_data/*.hdf5')
 
+filename = None
+
 for f in file_list:
     if num_file in f:
         filename = f
-
+    
 new_folder = os.path.join("getLines/" , num_file)
 os.makedirs(new_folder, exist_ok=True)
 

@@ -477,6 +477,8 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
     # Generate a random string of 4 characters
+    import random
+    import string
     random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
 
     with open(os.path.join(new_folder, f'PARAMETERS_{random_string}'), 'w') as file:
@@ -497,9 +499,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
         file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-
-    import random
-    import string
 
     # Print elapsed time
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")

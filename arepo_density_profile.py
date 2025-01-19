@@ -202,16 +202,14 @@ for filename in files:
 
         rad = np.linalg.norm(x, axis=1)
         pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
-        molecular_weight = 1 # for atomic hydrogen
-        temp = (pressure/mass_dens)*molecular_weight*boltzmann_constant_cgs
-        mass = 0.0
+        m_H = 1.0079 # for atomic hydrogen
+        mu = 1.0
+        temperature = (pressure * mu * m_H) / (mass_dens * boltzmann_constant_cgs)
+        grav_potential = 0.0
 
-        mass_shell_cumulative = 4 * np.pi * dens * (rad**2) * (dx_vec * parsec_to_cm3) * parsec_to_cm3
-        grav_potential = -(4*np.pi)**2 * (dens**2) * (rad*parsec_to_cm3)**4*(dx_vec*parsec_to_cm3)
-        
-        energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)
-        energy_thermal[0,:]  = (3/2)*boltzmann_constant_cgs*temp* (4*np.pi*dens*vol)
-        energy_grav[0,:]     = grav_potential
+        energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)*vol
+        energy_thermal[0,:]  = (3 / 2) * pressure * (4*np.pi*rad**2*dx_vec)
+        energy_grav[0,:]     = 0.0
         
         k=0
 
@@ -239,7 +237,7 @@ for filename in files:
                 break
 
             #dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
-            dx_vec = np.min(((4 / 3) * vol / np.pi) ** (1 / 3))  # Increment step size
+            dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
 
             threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
@@ -253,10 +251,6 @@ for filename in files:
             # Compute radial positions
             rad = np.linalg.norm(x[:, :], axis=1)
 
-            # Update cumulative shell mass
-            mass_shell_cumulative += 4 * np.pi * dens * (rad ** 2 * parsec_to_cm3 ** 2) * (dx_vec * parsec_to_cm3)
-            mass += 4 * np.pi * np.average(dens) * (rad ** 2 * parsec_to_cm3 ** 2) * (dx_vec * parsec_to_cm3)
-
             # Gravitational potential contribution
             grav_potential += -(4 * np.pi) ** 2 * (dens ** 2) * (rad * parsec_to_cm3) ** 4 * (dx_vec * parsec_to_cm3)
 
@@ -268,14 +262,13 @@ for filename in files:
 
             # Gravitational energy
             grav_energy_density = 4 * np.pi * rad ** 2 * dens * phi
-            energy_grav[k + 1, :] = np.cumsum(grav_energy_density * dx_vec)
 
-            # Magnetic and thermal energy
-            energy_magnetic[k + 1, :] = bfield * bfield / (8 * np.pi) * vol
-            energy_thermal[k + 1, :] = (3 / 2) * boltzmann_constant_cgs * temp
+            energy_grav[k + 1, :]     = np.cumsum(grav_energy_density * dx_vec)
+            energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*rad**2*dx_vec)
+            energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*rad**2*dx_vec)
 
             # Effective column densities
-            eff_column_densities[k + 1, :] = dens * dx_vec
+            eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * dx_vec
 
             if np.all(un_masked):
                 print("All values are False: means all density < 10^2")
