@@ -325,7 +325,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         'z', 
         ('gas', 'density'), 
         center=[CloudCord[0], CloudCord[1], CloudCord[2]],
-        width = 0.5
+        width = 25
     )
 
     sp.annotate_marker(
@@ -341,6 +341,9 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
     # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
     sp.save(os.path.join(new_folder, f"{filename.split('_')[0]}_{filename.split('_')[-3][:3]}_slice_z.png"))
+
+    continue
+
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
