@@ -30,16 +30,18 @@ IntType = np.int32
 
 # python3 arepo_cloud_tracker.py 5_000 0.3 500 2
 
-if len(sys.argv)>4:
+if len(sys.argv)>5:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	spacing = int(sys.argv[4])
+	how_many = int(sys.argv[5])
 else:
     N             =4_000
     rloc_boundary =0.5
     max_cycles    =20
     spacing      = 1
+    how_many     = 50
 
 print(sys.argv[1:])
 cycle = 0 
@@ -256,7 +258,7 @@ if len(file_list) == 0:
     print("No files to process.")
     exit()
 
-for fileno, filename in enumerate(file_list[::-1][0:50]):
+for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     
     data = h5py.File(filename, 'r')
     header_group = data['Header']
@@ -265,9 +267,7 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
     print(snap)
     new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+snap)
     os.makedirs(new_folder, exist_ok=True)
-
     Boxsize = data['Header'].attrs['BoxSize']
-    # Directly convert and cast to desired dtype
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
     Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
@@ -416,7 +416,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
 
         if len(bfield) != 0:
             
-            #index_peaks, global_info = pocket_finder(bfield) # this plots
             pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
             index_pocket, field_pocket = pocket[0], pocket[1]
 
@@ -429,7 +428,6 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
             B_r = bfield[p_r]
             n_r = numb_density[p_r]
 
-            # finds index at which to insert p_r and be kept sorted
             p_i = find_insertion_point(index_pocket, p_r)
 
             print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
@@ -437,23 +435,20 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
             """How to find index of Bl?"""
 
             print("Maxima Values related to pockets: ", len(index_pocket), p_i)
-        #else: 
 
         try:
-            # possible error is len(index_pocket) is only one or two elements
             closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
             B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
             B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-            success = True  # Flag to track if try was successful
+            success = True
         except:
             R = 1
             reduction_factor.append(R)
             numb_density_at.append(n_r)
             pos_red[tupi] = R
-            success = False  # Set flag to False if there's an exception
+            success = False
             continue
 
-        # Only execute this block if try was successful
         if success:
             if B_r / B_l < 1:
                 R = 1 - np.sqrt(1 - B_r / B_l)
@@ -473,13 +468,12 @@ for fileno, filename in enumerate(file_list[::-1][0:50]):
         if B_r/B_l < 1:
             print(" B_r/B_l =", B_r/B_l, "< 1 ") 
         else:
-            # this statement won't reach cycle += 1 so the cycle will continue again.
             print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
     counter = Counter(reduction_factor)
 
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
-    # Generate a random string of 4 characters
+
     import random
     import string
     random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
