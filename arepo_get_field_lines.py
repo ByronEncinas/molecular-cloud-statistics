@@ -55,7 +55,7 @@ else:
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/*.hdf5')
+file_list = glob.glob('arepo_data/ideal*.hdf5')
 
 filename = None
 
