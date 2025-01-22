@@ -74,11 +74,11 @@ IntType = np.int32
 if len(sys.argv)>2:
     N             = int(sys.argv[1])
     typpe         = str(sys.argv[2]) #ideal/amb
-    file          = str(sys.argv[3]) 
+    num_file          = str(sys.argv[3]) 
 else:
     N            = 4_000
     typpe        = 'ideal'
-    file         = '430'
+    num_file         = '430'
 
 """  B. Jesus Velazquez    """
 
@@ -87,12 +87,8 @@ if typpe == 'ideal':
 elif typpe == 'amb':
     subdirectory = 'ambipolar_diffusion'
 else:
-    raise ValueError("Invalid value for 'typpe'. Must be 'ideal' or 'amb'.")
+    subdirectory= ''
 
-import glob
-
-directory_path = f"arepo_data/{subdirectory}"
-files = glob.glob(f"{directory_path}/*.hdf5")
 trajectory_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
 
 import csv
@@ -121,18 +117,26 @@ with open(file_path, mode='r') as file:
         snap.append(int(row[0]))  # First column is snap
         time_value.append(float(row[1]))  # Second column is time_value
         if file == int(row[0]):
-             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
+            Center = np.array([float(row[2]),float(row[3]),float(row[4])])
 
 # Convert lists to numpy arrays
 snap_array = np.array(snap)
 time_value_array = np.array(time_value)
 
+import glob
+
+# Get the list of files from the directory
+directory_path = f"arepo_data/{subdirectory}"
+file_list = glob.glob(f"{directory_path}/*.hdf5")
+
+# Print the first 5 files for debugging/inspection
+print(file_list[:5])
+
 filename = None
-print(files[:5])
-for f in files:
-    if file in f.name:  # Check if '405' is in the filename
-        filename = f.name
-        break  # Stop the loop once the matching file is found
+
+for f in file_list:
+    if num_file in f:
+        filename = f
 
 snap = filename.split(".")[0][-3:]
 
