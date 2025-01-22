@@ -100,12 +100,6 @@ file_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
 # Lists to store column data
 snap = []
 time_value = []
-cloud_cord_x = []
-cloud_cord_y = []
-cloud_cord_z = []
-cloud_vel_x = []
-cloud_vel_y = []
-cloud_vel_z = []
 
 # Open the file and read it using the CSV module
 with open(file_path, mode='r') as file:
@@ -116,8 +110,10 @@ with open(file_path, mode='r') as file:
     for row in csv_reader:
         snap.append(int(row[0]))  # First column is snap
         time_value.append(float(row[1]))  # Second column is time_value
-        if num_file == int(row[0]):
+        if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
+
+print(Center)
 
 # Convert lists to numpy arrays
 snap_array = np.array(snap)
