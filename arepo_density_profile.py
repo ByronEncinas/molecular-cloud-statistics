@@ -128,7 +128,7 @@ snap_array = np.array(snap)
 time_value_array = np.array(time_value)
 
 filename = None
-
+print(files[:5])
 for f in files:
     if file in f:
         filename = f
