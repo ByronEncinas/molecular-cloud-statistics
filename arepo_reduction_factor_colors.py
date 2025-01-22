@@ -55,13 +55,15 @@ if len(sys.argv)>4:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
-	num_file = f'{sys.argv[4]}'
-	if len(sys.argv) < 5:
+	typpe = f'{sys.argv[4]}'
+	num_file = f'{sys.argv[5]}'
+	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
 else:
     N            =10_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
     max_cycles   =10
+    typpe = 'ideal'
     num_file = '430'
 
 print(*sys.argv)
@@ -75,27 +77,66 @@ reduction_factor = []
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/*.hdf5')
-print(file_list)
+if typpe == 'ideal':
+    subdirectory = 'ideal_mhd'
+elif typpe == 'amb':
+    subdirectory = 'ambipolar_diffusion'
+else:
+    subdirectory= ''
+
+trajectory_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+
+import csv
+import numpy as np
+
+# Path to the input file
+file_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+
+# Lists to store column data
+snap = []
+time_value = []
+
+# Open the file and read it using the CSV module
+with open(file_path, mode='r') as file:
+    csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
+    next(csv_reader)  # Skip the header row
+    
+    # Read each row of data
+    for row in csv_reader:
+        if num_file == str(row[0]):
+            Center = np.array([float(row[2]),float(row[3]),float(row[4])])
+            snap =str(row[0])
+            time_value = float(row[1])
+
+print(Center)
+
+# Convert lists to numpy arrays
+snap_array = np.array(snap)
+time_value_array = np.array(time_value)
+
+import glob
+
+# Get the list of files from the directory
+directory_path = f"arepo_data/{subdirectory}"
+file_list = glob.glob(f"{directory_path}/*.hdf5")
+
+# Print the first 5 files for debugging/inspection
+print(file_list[:5])
+
+filename = 'arepo_data/snap_430.hdf5'
 
 for f in file_list:
     if num_file in f:
         filename = f
 
-print(filename)
-
 data = h5py.File(filename, 'r')
 # Access the 'Header' group
 
 header_group = data['Header']
-
-# Retrieve the 'Time' attribute from the 'Header' group
-time_value = header_group.attrs['Time']
-
-snap = filename.split('/')[1].split('.')[0]
-
-new_folder = os.path.join("histograms/" , snap)
-
+parent_folder = "cloud_tracker_slices/"+ typpe 
+children_folder = os.path.join(parent_folder, 'ct_'+snap)
+print(children_folder)
+os.makedirs(children_folder, exist_ok=True)
 Boxsize = data['Header'].attrs['BoxSize'] #
 
 # Directly convert and cast to desired dtype
@@ -137,11 +178,10 @@ Name: PartType0/MagneticField
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-#Center= 0.5 * Boxsize * np.ones(3) # Center
-#Center = np.array( [91,       -110,          -64.5]) #117
-#Center = np.array( [96.6062303,140.98704002, 195.78020632]) #117
-Center = Pos[np.argmax(Density),:] #430
+Center = Pos[np.argmax(Density),:]
 CloudCord = Center.copy()
+
+# ideal/amb #snap #ocationOf
 
 # all positions are relative to the 'Center'
 VoronoiPos-=Center
@@ -373,7 +413,7 @@ x_init[:,2]      = rloc_center * zz
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
 print("rloc_boundary       : ", rloc_boundary)
-print("rloc_center         : ", rloc_center)
+print("x_init              : ", x_init)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
 print("Center              : ", Center) # 256
@@ -388,7 +428,7 @@ __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
 # Create the new arepo_npys directory
-os.makedirs(new_folder, exist_ok=True)
+os.makedirs(children_folder, exist_ok=True)
 
 # flow control to repeat calculations in no peak situations
 
@@ -472,19 +512,15 @@ for cycle in range(max_cycles):
     if B_r/B_l < 1:
         print(" B_r/B_l =", B_r/B_l, "< 1 ") 
     else:
-        # this statement won't reach cycle += 1 so the cycle will continue again.
         print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
 from collections import Counter
 
-#print(reduction_factor)
-#print(numb_density_at)
 counter = Counter(reduction_factor)
-#counter[0]
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-with open(os.path.join(new_folder, 'output'), 'w') as file:
+with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
@@ -507,21 +543,21 @@ with open(os.path.join(new_folder, 'output'), 'w') as file:
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
 # Specify the file path
-file_path = os.path.join(new_folder, f'random_distributed_reduction_factor{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'reduction_factor{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(reduction_factor, json_file)
 
 # Specify the file path
-file_path = os.path.join(new_folder,f'random_distributed_numb_density{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder,f'numb_density{sys.argv[-1]}.json')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
     json.dump(numb_density_at, json_file)
 
 # Specify the file path
-file_path = os.path.join(new_folder,f'position_vector_reduction{sys.argv[-1]}')
+file_path = os.path.join(children_folder,f'position_vector{sys.argv[-1]}')
 
 # Write the list data to a JSON file
 with open(file_path, 'w') as json_file:
@@ -561,7 +597,7 @@ plt.tight_layout()
 
 # Save the figure
 #plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
-plt.savefig(os.path.join(new_folder,f"hist={len(reduction_factor)}bins={bins}.png"))
+plt.savefig(os.path.join(children_folder,f"{typpe}_hist={len(reduction_factor)}bins={bins}.png"))
 
 # Show the plot
 #plt.show()
@@ -608,7 +644,7 @@ if True:
     # Add legend
     axs.legend()
 
-    plt.savefig(os.path.join(new_folder,f"mean_median.png"))
+    plt.savefig(os.path.join(children_folder,f"mean_median.png"))
     plt.close(fig)
     #plt.show()
 
@@ -638,7 +674,7 @@ if True:
     axs.legend(loc='center')
 
     # save figure
-    plt.savefig(os.path.join(new_folder,f"mirrored_histograms.png"))
+    plt.savefig(os.path.join(children_folder,f"mirrored_histograms.png"))
 
     # Show the plot
     plt.close(fig)
