@@ -51,7 +51,7 @@ prev_time = 0.0
 
 """  B. Jesus Velazquez """
 
-def get_along_lines(x_init):
+def get_along_lines(x_init, dir = ''):
 
     dx = 0.5
 
@@ -123,7 +123,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'{dir}iso_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -186,7 +186,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'{dir}iso_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -251,8 +251,8 @@ def get_along_lines(x_init):
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
 #/ideal_mhd
-#file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
-file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
+#file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
 #file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
@@ -294,8 +294,9 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
         # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
-        with open("cloud_tracker_slices/cloud_trajectory.txt", "w") as file:
-            file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(0.0,8)}, {np.round(0.0,8)}, {np.round(0.0,8)}\n")
+        with open(f"cloud_tracker_slices/{typpe}cloud_trajectory.txt", "w") as file:
+            file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z\n")
+            file.write(f"{snap},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(0.0,8)}, {np.round(0.0,8)}, {np.round(0.0,8)}\n")
     else:
         # isolate values surrounding cloud
         cloud_sphere = ((xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius)
@@ -310,8 +311,8 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
 
         CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :]
 
-        with open("cloud_tracker_slices/cloud_trajectory.txt", "a") as file:
-            file.write(f"{fileno},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
+        with open(f"cloud_tracker_slices/{typpe}cloud_trajectory.txt", "a") as file:
+            file.write(f"{snap},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
     
     print(CloudCord, delta_time_seconds, filename)
     
@@ -346,6 +347,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     sp.save(os.path.join(parent_folder, f"{typpe}_{snap}_slice_z.png"))
 
     continue
+
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
@@ -388,7 +390,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
     print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
+    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, children_folder)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
@@ -503,21 +505,21 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
     # Specify the file path
-    file_path = os.path.join(children_folder, f'random_distributed_reduction{random_string}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder, f'reduction{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(reduction_factor, json_file)
 
     # Specify the file path
-    file_path = os.path.join(children_folder,f'random_distributed_density{random_string}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder,f'density{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(numb_density_at, json_file)
 
     # Specify the file path
-    file_path = os.path.join(children_folder,f'position_reduction{random_string}_{sys.argv[-1]}')
+    file_path = os.path.join(children_folder,f'position{random_string}_{sys.argv[-1]}')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
