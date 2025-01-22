@@ -263,14 +263,10 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     data = h5py.File(filename, 'r')
     header_group = data['Header']
     time_value = header_group.attrs['Time']
-    snap = filename.split('/')[1].split('.')[0]
-    print(snap, filename)
-    if "amb" in snap:
-        typpe = "amb/"
-    else:
-        typpe = "ideal/"
+    snap = filename.split('/')[-1].split('.')[0][-3:]
+    typpe = filename.split('/')[-1].split('_')[0]
     parent_folder = "cloud_tracker_slices/"+typpe 
-    children_folder = os.path.join(parent_folder, 'ct_'+snap[-3:])
+    children_folder = os.path.join(parent_folder, 'ct_'+snap)
     print(children_folder)
     os.makedirs(children_folder, exist_ok=True)
     Boxsize = data['Header'].attrs['BoxSize']
@@ -346,7 +342,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     sp.annotate_scale()
 
     # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
-    sp.save(os.path.join(parent_folder, f"{typpe[:-1]}_{snap[-3:]}_slice_z.png"))
+    sp.save(os.path.join(parent_folder, f"{typpe}_{snap}_slice_z.png"))
 
     continue
     VoronoiPos-=CloudCord
