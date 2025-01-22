@@ -130,8 +130,8 @@ time_value_array = np.array(time_value)
 filename = None
 print(files[:5])
 for f in files:
-    if file in f:  # Check if '405' is in the filename
-        filename = f
+    if file in f.name:  # Check if '405' is in the filename
+        filename = f.name
         break  # Stop the loop once the matching file is found
 
 snap = filename.split(".")[0][-3:]
