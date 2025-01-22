@@ -128,6 +128,7 @@ time_value_array = np.array(time_value)
 filename = None
 
 for f in files:
+    f = f.split('.')[0][-3:]
     if file in f:
         filename = f
 
