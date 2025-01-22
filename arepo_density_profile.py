@@ -116,7 +116,7 @@ with open(file_path, mode='r') as file:
     for row in csv_reader:
         snap.append(int(row[0]))  # First column is snap
         time_value.append(float(row[1]))  # Second column is time_value
-        if file == int(row[0]):
+        if num_file == int(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
 
 # Convert lists to numpy arrays
