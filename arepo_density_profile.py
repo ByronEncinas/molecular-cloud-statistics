@@ -89,8 +89,10 @@ elif typpe == 'amb':
 else:
     raise ValueError("Invalid value for 'typpe'. Must be 'ideal' or 'amb'.")
 
+import glob
+
 directory_path = f"arepo_data/{subdirectory}"
-files = list_files(directory_path, '.hdf5')
+files = glob.glob(f"{directory_path}/*.hdf5")
 trajectory_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
 
 import csv
@@ -128,7 +130,6 @@ time_value_array = np.array(time_value)
 filename = None
 
 for f in files:
-    f = f.split('.')[0][-3:]
     if file in f:
         filename = f
 
