@@ -55,7 +55,7 @@ else:
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/ideal*.hdf5')
+file_list = glob.glob('arepo_data/amb*.hdf5')
 
 filename = None
 
@@ -63,7 +63,7 @@ for f in file_list:
     if num_file in f:
         filename = f
     
-new_folder = os.path.join("getLines/ideal/" , num_file)
+new_folder = os.path.join("getLines/amb/" , num_file)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
