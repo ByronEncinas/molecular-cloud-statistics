@@ -264,9 +264,15 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     header_group = data['Header']
     time_value = header_group.attrs['Time']
     snap = filename.split('/')[1].split('.')[0]
-    print(snap)
-    new_folder = os.path.join("cloud_tracker_slices/" , 'ct_'+snap)
-    os.makedirs(new_folder, exist_ok=True)
+    print(snap, filename)
+    if "amb" in snap:
+        typpe = "amb/"
+    else:
+        typpe = "ideal/"
+    parent_folder = "cloud_tracker_slices/"+typpe 
+    children_folder = os.path.join(parent_folder, 'ct_'+snap[-3:])
+    print(children_folder)
+    os.makedirs(children_folder, exist_ok=True)
     Boxsize = data['Header'].attrs['BoxSize']
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
@@ -340,8 +346,9 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     sp.annotate_scale()
 
     # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
-    sp.save(os.path.join(new_folder, f"{filename.split('_')[0]}_{filename.split('_')[-3][:3]}_slice_z.png"))
+    sp.save(os.path.join(parent_folder, f"{typpe[:-1]}_{snap[-3:]}_slice_z.png"))
 
+    continue
     VoronoiPos-=CloudCord
     Pos-=CloudCord
 
@@ -476,7 +483,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     import string
     random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
 
-    with open(os.path.join(new_folder, f'PARAMETERS_{random_string}'), 'w') as file:
+    with open(os.path.join(children_folder, f'PARAMETERS_{random_string}'), 'w') as file:
         file.write(f"{filename}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Snap Time (Myr): {time_value}\n")
@@ -499,21 +506,21 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
     # Specify the file path
-    file_path = os.path.join(new_folder, f'random_distributed_reduction{random_string}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder, f'random_distributed_reduction{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(reduction_factor, json_file)
 
     # Specify the file path
-    file_path = os.path.join(new_folder,f'random_distributed_density{random_string}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder,f'random_distributed_density{random_string}_{sys.argv[-1]}.json')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
         json.dump(numb_density_at, json_file)
 
     # Specify the file path
-    file_path = os.path.join(new_folder,f'position_reduction{random_string}_{sys.argv[-1]}')
+    file_path = os.path.join(children_folder,f'position_reduction{random_string}_{sys.argv[-1]}')
 
     # Write the list data to a JSON file
     with open(file_path, 'w') as json_file:
@@ -548,7 +555,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     plt.tight_layout()
 
     # Save the figure
-    plt.savefig(os.path.join(new_folder,f"{random_string}hist={len(reduction_factor)}bins={bins}.png"))
+    plt.savefig(os.path.join(children_folder,f"{random_string}hist={len(reduction_factor)}bins={bins}.png"))
 
     # Show the plot
     plt.close(fig)
@@ -592,7 +599,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
         # Add legend
         axs.legend()
 
-        plt.savefig(os.path.join(new_folder,f"mean_median.png"))
+        plt.savefig(os.path.join(children_folder,f"mean_median.png"))
         plt.close(fig)
         #plt.show()
 
@@ -622,7 +629,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
         axs.legend(loc='center')
 
         # save figure
-        plt.savefig(os.path.join(new_folder,f"mirrored_histograms.png"))
+        plt.savefig(os.path.join(children_folder,f"mirrored_histograms.png"))
 
         # Show the plot
         plt.close(fig)
