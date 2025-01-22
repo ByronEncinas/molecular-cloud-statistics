@@ -372,12 +372,11 @@ for i in range(m):
 
     if True:
         # Define a mosaic layout for 5 plots (removed one for gravitational energy)
-        mosaic = """
-        AB
-        CD
-        E..
-        """
-
+        mosaic = [
+            ['A', 'B'],
+            ['E', '.', '.'],  # This row now has 3 elements (same length as the first row)
+            ['C', 'D']
+        ]
         # Create a figure with the mosaic layout (3 rows, 3 columns)
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8), dpi=300)
 
