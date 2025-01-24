@@ -308,7 +308,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
 
         UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
 
-        cloud_sphere = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
+        #cloud_sphere = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
 
         CloudCord = Pos[np.argmax(Density[cloud_sphere]), :] #UpdatedCord.copy() 
 
