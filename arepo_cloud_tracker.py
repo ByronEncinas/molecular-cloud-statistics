@@ -288,7 +288,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 5
+    region_radius = 3
         
     if fileno == 0:
         # Initialize CloudCord based on the max density position
