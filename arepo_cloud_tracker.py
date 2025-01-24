@@ -288,7 +288,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 8
+    region_radius = 2.5
 
     if fileno == 0:
         # Open the file for the first time (when fileno = 0)
@@ -308,15 +308,14 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
 
         UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
 
-        #cloud_sphere = (xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius
+        cloud_sphere = ((xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius)
 
         CloudCord = Pos[np.argmax(Density[cloud_sphere]), :] #UpdatedCord.copy() 
+        print(CloudCord, filename)
 
         #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
         with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
             file.write(f"{snap},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
-    
-    print(CloudCord, delta_time_seconds, filename)
     
     prev_time = time_value
 
