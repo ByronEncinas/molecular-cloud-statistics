@@ -251,8 +251,8 @@ def get_along_lines(x_init, dir = ''):
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
 #/ideal_mhd
-#file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
-file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
+#file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
 #file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
