@@ -320,12 +320,11 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
             CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
         else:
             print(f"Warning: No particles found within updated region_radius of {region_radius} around UpdatedCord.")
-
+        print(CloudCord)
         # Save trajectory data
         #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
         with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
             file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},{CloudVelocity[0]},{CloudVelocity[1]},{CloudVelocity[2]}\n")
-
 
     prev_time = time_value
 
