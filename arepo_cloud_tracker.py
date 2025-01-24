@@ -289,34 +289,44 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     yc = Pos[:, 1]
     zc = Pos[:, 2]
     region_radius = 2.5
-
+        
     if fileno == 0:
-        # Open the file for the first time (when fileno = 0)
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
         #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
         with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "w") as file:
             file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z\n")
-            file.write(f"{snap},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(0.0,8)}, {np.round(0.0,8)}, {np.round(0.0,8)}\n")
+            file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},0.0,0.0,0.0\n")
     else:
-        # isolate values surrounding cloud
-        cloud_sphere = ((xc-CloudCord[0])**2 + (yc-CloudCord[1])**2 + (zc-CloudCord[2])**2 < region_radius)
+        # Isolate values surrounding CloudCord
+        cloud_sphere = ((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2 < region_radius**2)
         
-        CloudVelocity = np.sum(Momentums[cloud_sphere, :], axis=0)/np.sum(Mass[cloud_sphere])
+        # Find the density peak within the sphere
+        if np.any(cloud_sphere):  # Ensure there are particles within the region
+            CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
+        else:
+            print(f"Warning: No particles found within region_radius of {region_radius} around CloudCord.")
+        
+        # Compute CloudVelocity
+        CloudVelocity = np.sum(Momentums[cloud_sphere], axis=0) / np.sum(Mass[cloud_sphere])
 
-        delta_time_seconds = abs(time_value-prev_time) * seconds_in_myr
-
+        # Update CloudCord based on velocity and elapsed time
+        delta_time_seconds = abs(time_value - prev_time) * seconds_in_myr
         UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
 
-        cloud_sphere = ((xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius)
+        # Recompute cloud sphere around UpdatedCord and find the new density peak
+        cloud_sphere = ((xc - UpdatedCord[0])**2 + (yc - UpdatedCord[1])**2 + (zc - UpdatedCord[2])**2 < region_radius**2)
+        if np.any(cloud_sphere):
+            CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
+        else:
+            print(f"Warning: No particles found within updated region_radius of {region_radius} around UpdatedCord.")
 
-        CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :] #
-        print(CloudCord, filename)
-
+        # Save trajectory data
         #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
         with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
-            file.write(f"{snap},{np.round(time_value,5)},{np.round(CloudCord[0],8)},{np.round(CloudCord[1],8)},{np.round(CloudCord[2],8)},{np.round(CloudVelocity[0],8)}, {np.round(CloudVelocity[1],8)}, {np.round(CloudVelocity[2],8)}\n")
-    
+            file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},{CloudVelocity[0]},{CloudVelocity[1]},{CloudVelocity[2]}\n")
+
+
     prev_time = time_value
 
     ds = yt.load(filename)
