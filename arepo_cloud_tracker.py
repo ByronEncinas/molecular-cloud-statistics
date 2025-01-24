@@ -293,8 +293,8 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     if fileno == 0:
         # Initialize CloudCord based on the max density position
         CloudCord = Pos[np.argmax(Density), :]
-        #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
-        with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "w") as file:
+        with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "w") as file:
+        #with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "w") as file:
             file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z\n")
             file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},0.0,0.0,0.0\n")
     else:
@@ -322,8 +322,8 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
             print(f"Warning: No particles found within updated region_radius of {region_radius} around UpdatedCord.")
         print(CloudCord)
         # Save trajectory data
-        #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
-        with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
+        with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
+        #with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
             file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},{CloudVelocity[0]},{CloudVelocity[1]},{CloudVelocity[2]}\n")
 
     prev_time = time_value
