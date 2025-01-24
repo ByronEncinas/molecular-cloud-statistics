@@ -288,7 +288,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 2.5
+    region_radius = 5
         
     if fileno == 0:
         # Initialize CloudCord based on the max density position
@@ -315,7 +315,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
         UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
 
         # Recompute cloud sphere around UpdatedCord and find the new density peak
-        cloud_sphere = ((xc - UpdatedCord[0])**2 + (yc - UpdatedCord[1])**2 + (zc - UpdatedCord[2])**2 < region_radius**2)
+        #cloud_sphere = ((xc - UpdatedCord[0])**2 + (yc - UpdatedCord[1])**2 + (zc - UpdatedCord[2])**2 < region_radius**2)
         if np.any(cloud_sphere):
             CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
         else:
