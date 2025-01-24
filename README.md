@@ -24,7 +24,7 @@
    U = \frac{3}{2} \sum_i P(r_i) \cdot \left( 4 \pi r_i^2 \Delta r \right)
    $$
 
-5. **Thermal Energy \( U \)**:
+5. **Magnetic Energy \( U \)**:
 $$
 E_{\text{magnetic}} = \sum_{i=0}^{N} \frac{B_i^2}{8 \pi} \cdot \left( 4 \pi r_i^2 \Delta r_i \right)
 $$

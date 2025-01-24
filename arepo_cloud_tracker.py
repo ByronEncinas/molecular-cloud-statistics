@@ -310,7 +310,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
 
         cloud_sphere = ((xc-UpdatedCord[0])**2 + (yc-UpdatedCord[1])**2 + (zc-UpdatedCord[2])**2 < region_radius)
 
-        CloudCord = Pos[np.argmax(Density[cloud_sphere]), :] #UpdatedCord.copy() 
+        CloudCord = UpdatedCord.copy() #Pos[np.argmax(Density[cloud_sphere]), :] #
         print(CloudCord, filename)
 
         #with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
