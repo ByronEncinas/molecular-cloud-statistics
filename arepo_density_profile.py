@@ -89,13 +89,13 @@ elif typpe == 'amb':
 else:
     subdirectory= ''
 
-trajectory_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+trajectory_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
 import csv
 import numpy as np
 
 # Path to the input file
-file_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+file_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
 # Lists to store column data
 snap = []
@@ -122,7 +122,7 @@ time_value_array = np.array(time_value)
 import glob
 
 # Get the list of files from the directory
-directory_path = f"arepo_data/{subdirectory}"
+directory_path = f"arepo_data/{typpe}/{subdirectory}"
 file_list = glob.glob(f"{directory_path}/*.hdf5")
 
 # Print the first 5 files for debugging/inspection

@@ -84,13 +84,13 @@ elif typpe == 'amb':
 else:
     subdirectory= ''
 
-trajectory_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+trajectory_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
 import csv
 import numpy as np
 
 # Path to the input file
-file_path = f'cloud_tracker_slices/{typpe}cloud_trajectory.txt'
+file_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
 # Lists to store column data
 snap = []
@@ -100,7 +100,6 @@ time_value = []
 with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
-    
     # Read each row of data
     for row in csv_reader:
         if num_file == str(row[0]):
@@ -173,12 +172,11 @@ Name: PartType0/Masses
 Name: PartType0/Velocities
     Attribute: to_cgs = 100_000.0
 Name: PartType0/MagneticField
-
 """
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Center = Pos[np.argmax(Density),:]
+#Center = Pos[np.argmax(Density),:]
 CloudCord = Center.copy()
 
 # ideal/amb #snap #ocationOf
