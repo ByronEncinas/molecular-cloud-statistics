@@ -122,7 +122,7 @@ time_value_array = np.array(time_value)
 import glob
 
 # Get the list of files from the directory
-directory_path = f"arepo_data/{typpe}/{subdirectory}"
+directory_path = f"arepo_data/{subdirectory}"
 file_list = glob.glob(f"{directory_path}/*.hdf5")
 
 # Print the first 5 files for debugging/inspection
