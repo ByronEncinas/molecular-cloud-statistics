@@ -431,12 +431,13 @@ for i in range(m):
     print(f"{_from} - {_to}")
 
     column_dens  = cd[_from:_to,i]
-    mag_field    = magnetic_fields[_from:_to,i]
-    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]
-    pos_vector   = radius_vector[_from:_to,i,:]
-    s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i]
-    numb_density = numb_densities[_from:_to,i]
-    volume       = volumes[_from:_to,i]
+    mag_field    = magnetic_fields[_from:_to,i]*gauss_code_to_gauss_cgs
+    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]*gauss_code_to_gauss_cgs
+    pos_vector   = radius_vector[_from:_to,i,:] # stays in Pc
+    s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i] # stays in Pc
+    mass_density = numb_densities[_from:_to,i] /gr_cm3_to_nuclei_cm3
+    numb_density = numb_densities[_from:_to,i] 
+    volume       = volumes[_from:_to,i]*(parsec_to_cm3**3)
 
     print("column_dens shape:", column_dens.shape)
     print("mag_field shape:", mag_field.shape)

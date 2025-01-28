@@ -312,8 +312,8 @@ def get_along_lines(x_init):
         k += 1
 
     mean_column = np.mean(eff_column_densities[-1,:])
-    ratio_thermal = energy_thermal / energy_grav
-    ratio_magnetic = energy_magnetic / energy_grav
+    #ratio_thermal = energy_thermal / energy_grav
+    #ratio_magnetic = energy_magnetic / energy_grav
 
     threshold = threshold.astype(int)
     larger_cut = np.max(threshold)
@@ -349,7 +349,7 @@ def get_along_lines(x_init):
     magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
     trajectory[0,:]  = 0.0
 
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, ratio_magnetic, ratio_thermal, energy_grav]
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, energy_magnetic, energy_thermal, energy_grav]
 
 print("Steps in Simulation: ", N)
 print("Boxsize            : ", Boxsize)
@@ -369,7 +369,7 @@ os.makedirs(output_path, exist_ok=True)
 
 if True:
     for i in range(m):
-        mean_column, ratio_magnetic, ratio_thermal, energy_grav = col_energies
+        mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
 
         # Define mosaic layout
@@ -381,24 +381,24 @@ if True:
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
         # Plot Magnetic Energy
-        axs['A'].plot(trajectory[:cut, i], magnetic_fields[:cut, i], linestyle="--", color="blue")
-        axs['A'].scatter(trajectory[:cut, i], magnetic_fields[:cut, i], marker="o", color="blue", s=5)
+        axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
+        axs['A'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="blue", s=5)
         axs['A'].set_xlabel("s (cm) along LOS")
         axs['A'].set_ylabel("Energy (ergs)")
         axs['A'].set_title("Magnetic Energy (LOS)")
         axs['A'].grid(True)
 
         # Plot Thermal Energy
-        axs['B'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="red")
-        axs['B'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="red", s=5)
+        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
+        #axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="red", s=5)
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
         axs['B'].set_title("Thermal Energy (LOS)")
         axs['B'].grid(True)
 
         # Energies Relative to Gravitational Energy
-        axs['C'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
-        axs['C'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational")
+        #axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
+        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational")
         axs['C'].set_yscale('log')
         axs['C'].set_xlabel("s (cm) along LOS")
         axs['C'].set_ylabel("Energy Ratio")
@@ -418,7 +418,8 @@ if True:
         table_data = [
             ['---', 'Value', 'Note'],
             ['Mean Column Density (LOS)', f'{mean_column:.3f}', '-'],
-            ['Mean Magnetic/Thermal Ratio (LOS)', f'{ratio_magnetic.mean():.3f}', '-'],
+            ['Mean Magnetic (LOS)', f'{energy_magnetic.mean():.3f}', '-'],
+            ['Mean Thermal (LOS)', f'{energy_thermal.mean():.3f}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
             ['Smallest Volume (LOS)', f'{Volume.min():.3e}', '-'],
             ['Biggest Volume (LOS)', f'{Volume.max():.3e}', '-'],
@@ -432,6 +433,7 @@ if True:
         plt.tight_layout()
         plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
         plt.close(fig)
+
     if True:
         ax = plt.figure().add_subplot(projection='3d')
         dens_min = np.log10(np.min(numb_densities))
