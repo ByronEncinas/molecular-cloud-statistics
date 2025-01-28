@@ -375,7 +375,7 @@ if True:
         # Define mosaic layout
         mosaic = [
             ['A', 'B'],
-            ['E', '.', '.'],
+            ['E', '.'],
             ['C', 'D']
         ]
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
