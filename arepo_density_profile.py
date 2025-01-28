@@ -78,7 +78,7 @@ if len(sys.argv)>2:
 else:
     N            = 4_000
     typpe        = 'ideal'
-    num_file         = '430'
+    num_file     = '430'
 
 """  B. Jesus Velazquez    """
 
@@ -137,14 +137,14 @@ for f in file_list:
 snap = filename.split(".")[0][-3:]
 
 # Create the directory path
-directory_path = os.path.join(f"density_profiles/{typpe}/", snap)
+output_path = os.path.join(f"./density_profiles/{typpe}/", snap)
 
 # Check if the directory exists, if not create it
-if not os.path.exists(directory_path):
+if not os.path.exists(output_path):
     os.makedirs(directory_path, exist_ok=True)
-    print(f"Directory {directory_path} created.")
+    print(f"Directory {output_path} created.")
 else:
-    print(f"Directory {directory_path} already exists.")
+    print(f"Directory {output_path} already exists.")
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -364,23 +364,23 @@ print("Elapsed Time: ", (time.time() - start_time)/60.)
 
 import matplotlib.pyplot as plt
 
-for i in range(m):
+# Ensure output directory exists
+os.makedirs(output_path, exist_ok=True)
 
-    mean_column, ratio_magnetic, ratio_thermal, energy_grav = col_energies
-    
-    cut = threshold[i]
+if True:
+    for i in range(m):
+        mean_column, ratio_magnetic, ratio_thermal, energy_grav = col_energies
+        cut = threshold[i]
 
-    if True:
-        # Define a mosaic layout for 5 plots (removed one for gravitational energy)
+        # Define mosaic layout
         mosaic = [
             ['A', 'B'],
-            ['E', '.', '.'],  # This row now has 3 elements (same length as the first row)
+            ['E', '.', '.'],
             ['C', 'D']
         ]
-        # Create a figure with the mosaic layout (3 rows, 3 columns)
-        fig, axs = plt.subplot_mosaic(mosaic, figsize=(10, 8), dpi=300)
+        fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
-        # Plot 1: Magnetic Energy
+        # Plot Magnetic Energy
         axs['A'].plot(trajectory[:cut, i], magnetic_fields[:cut, i], linestyle="--", color="blue")
         axs['A'].scatter(trajectory[:cut, i], magnetic_fields[:cut, i], marker="o", color="blue", s=5)
         axs['A'].set_xlabel("s (cm) along LOS")
@@ -388,7 +388,7 @@ for i in range(m):
         axs['A'].set_title("Magnetic Energy (LOS)")
         axs['A'].grid(True)
 
-        # Plot 2: Thermal Energy
+        # Plot Thermal Energy
         axs['B'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="red")
         axs['B'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="red", s=5)
         axs['B'].set_xlabel("s (cm) along LOS")
@@ -396,9 +396,9 @@ for i in range(m):
         axs['B'].set_title("Thermal Energy (LOS)")
         axs['B'].grid(True)
 
-        # Plot 3: Energies as a Fraction of Gravitational Energy
-        axs['C'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational (LOS)")
-        axs['C'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational (LOS)")
+        # Energies Relative to Gravitational Energy
+        axs['C'].plot(trajectory[:cut, i], ratio_magnetic[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
+        axs['C'].plot(trajectory[:cut, i], ratio_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational")
         axs['C'].set_yscale('log')
         axs['C'].set_xlabel("s (cm) along LOS")
         axs['C'].set_ylabel("Energy Ratio")
@@ -406,39 +406,32 @@ for i in range(m):
         axs['C'].legend()
         axs['C'].grid(True)
 
-        # Plot 4: Energy Volume Ratios
-        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut,i], linestyle="--", color="orange", label="Grav Energy (LOS)")
+        # Gravitational Energy
+        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}$")
         axs['D'].set_title("Gravitational Energy (LOS)")
         axs['D'].legend()
         axs['D'].grid(True)
 
-        # Add a table with summary data at the bottom of the figure
+        # Table Data
         table_data = [
             ['---', 'Value', 'Note'],
             ['Mean Column Density (LOS)', f'{mean_column:.3f}', '-'],
             ['Mean Magnetic/Thermal Ratio (LOS)', f'{ratio_magnetic.mean():.3f}', '-'],
-            ['Steps in Simulation (LOS)', str(N), '-'],
-            ['Smallest Volume (LOS)', f'{Volume[np.argmin(Volume)]:.3e}', '-'],
-            ['Biggest Volume (LOS)', f'{Volume[np.argmax(Volume)]:.3e}', '-'],
-            ['Smallest Density (LOS)', f'{Density[np.argmin(Density)]:.3e}', '-'],
-            ['Biggest Density (LOS)', f'{Density[np.argmax(Density)]:.3e}', '-']
+            ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
+            ['Smallest Volume (LOS)', f'{Volume.min():.3e}', '-'],
+            ['Biggest Volume (LOS)', f'{Volume.max():.3e}', '-'],
+            ['Smallest Density (LOS)', f'{Density.min():.3e}', '-'],
+            ['Biggest Density (LOS)', f'{Density.max():.3e}', '-']
         ]
         table = axs['E'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
+        axs['E'].axis('off')
 
-        axs['E'].axis('off')  # Hide axis for the table plot
-
-        # Adjust the layout to avoid overlap between plots
+        # Adjust Layout and Save Figure
         plt.tight_layout()
-
-        # Save the generated figure as a PNG file
-        plt.savefig(f"{directory_path}/energies_mosaic_{i}.png", dpi=300)
-
-        # Close the plot to release resources
+        plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
         plt.close(fig)
-
-
     if True:
         ax = plt.figure().add_subplot(projection='3d')
         dens_min = np.log10(np.min(numb_densities))
@@ -469,4 +462,4 @@ for i in range(m):
 
         ax.set_title('Magnetic field morphology')
         
-        plt.savefig(f"{directory_path}/MagneticFieldTopology.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/MagneticFieldTopology.png", bbox_inches='tight')
