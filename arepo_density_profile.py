@@ -344,7 +344,7 @@ def get_along_lines(x_init):
             if k == 0:
                 trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
             else:
-                trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
+                trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri*parsec_to_cm3
             prev = cur  # Update `prev` to the current point
             print("Trajectory at step", k, ":", trajectory[k, _n])
 
@@ -477,7 +477,7 @@ if True:
         axs['C'].grid(True)
 
         # Gravitational Energy
-        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
+        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i]/mean_grav, linestyle="--", color="orange", label="Gravitational Energy")
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}/\hbar{E_grav}$")
         axs['D'].set_title("Scaled Gravitational Binding Energy (LOS)")
