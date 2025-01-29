@@ -223,7 +223,6 @@ def get_along_lines(x_init):
     energy_magnetic   = np.zeros((N+1,m))
     energy_grav   = np.zeros((N+1,m))
     energy_thermal   = np.zeros((N+1,m))
-
     eff_column_densities   = np.zeros((N+1,m))
     
     line[0,:,:]     = x_init
@@ -239,11 +238,10 @@ def get_along_lines(x_init):
     pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
     m_H = 1.0079 # for atomic hydrogen
     mu = 1.0
-    temperature = (pressure * mu * m_H) / (mass_dens * boltzmann_constant_cgs)
     grav_potential = 0.0
 
-    energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)*vol
-    energy_thermal[0,:]  = (3 / 2) * pressure * (4*np.pi*rad**2*dx_vec)
+    energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)*(vol*parsec_to_cm3**3)
+    energy_thermal[0,:]  = (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
     energy_grav[0,:]     = 0.0
     
     k=0
@@ -302,7 +300,7 @@ def get_along_lines(x_init):
         binding_energy = -np.sum((grav_constant_cgs * M_r / (rad*parsec_to_cm3)) * 4 * np.pi * (rad*parsec_to_cm3)**2 * mass_dens * dx_vec*parsec_to_cm3)
 
         energy_grav[k + 1, :]     = binding_energy
-        energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*rad**2*dx_vec)
+        energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
         energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3))**2*(dx_vec*parsec_to_cm3)
 
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
