@@ -307,7 +307,7 @@ def get_along_lines(x_init):
 
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
 
-        print(f"Eff. Column Densities: {eff_column_densities[k + 1, 0]:3e}")
+        print(f"Eff. Column Densities: {eff_column_densities[k + 1, 0]:5e}")
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
@@ -369,7 +369,7 @@ if True:
     for i in range(m):
         eff_column_densities, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-        mean_column_over_radius = np.mean(eff_column_densities[:cut,i], axis=1)
+        mean_column_over_radius = np.mean(eff_column_densities[:cut-1,i], axis=1)
         print(mean_column_over_radius[-1])
 
         # Define mosaic layout
