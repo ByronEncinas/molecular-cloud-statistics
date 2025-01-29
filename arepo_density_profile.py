@@ -307,7 +307,7 @@ def get_along_lines(x_init):
 
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * dx_vec
 
-        print(f"Eff. Column Densities: {eff_column_densities[k + 1, :].e}")
+        print(f"Eff. Column Densities: {eff_column_densities[k + 1, :].3e}")
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
@@ -420,7 +420,7 @@ if True:
         axs['D'].set_xscale('log')
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}$")
-        axs['D'].set_title("Gravitational Energy (LOS)")
+        axs['D'].set_title("Gravitational Binding Energy (LOS)")
         axs['D'].legend()
         axs['D'].grid(True)
 
@@ -428,13 +428,14 @@ if True:
         table_data = [
             ['---', 'Value', 'Note'],
             ['Mean Column Density (LOS)', f'{mean_column:.3e}', '-'],
-            ['Mean Magnetic (LOS)', f'{energy_magnetic.mean():.5e}', '-'],
-            ['Mean Thermal (LOS)', f'{energy_thermal.mean():.5e}', '-'],
+            ['Magnetic Energy', f'{energy_magnetic[-1,i]:.5e}', '-'],
+            ['Thermal Energy', f'{energy_thermal[-1,i]:.5e}', '-'],
+            ['Grav Binding Energy', f'{energy_grav[-1,i]:.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
-            ['Smallest Volume (LOS)', f'{Volume.min():.3e}', '-'],
-            ['Biggest Volume (LOS)', f'{Volume.max():.3e}', '-'],
-            ['Smallest Density (LOS)', f'{Density.min():.3e}', '-'],
-            ['Biggest Density (LOS)', f'{Density.max():.3e}', '-']
+            ['Smallest Volume (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-'],
+            ['Biggest Volume (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-'],
+            ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut,i]):.3e}', '-'],
+            ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-']
         ]
         table = axs['E'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
         axs['E'].axis('off')
