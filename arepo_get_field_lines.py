@@ -306,7 +306,6 @@ def get_along_lines(x_init):
     print("Surviving lines: ", m, "out of: ", max_cycles)
     
     for _n in range(m):  # Iterate over the second dimension
-        start_idx = (magnetic_fields.shape[0] - threshold_rev[_n]).astype(int) 
         prev = radius_vector[0, _n, :]
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
             radius_to_origin[k, _n] = np.linalg.norm(radius_vector[k, _n, :])

@@ -9,22 +9,17 @@
    M(r) = \sum_{i=0}^{N} 4 \pi r_i^2 \rho(r_i) \Delta r_i
    $$
 
-2. **Gravitational Potential \( $\phi(r)$ \)**:
+2. **Gravitational Energy \( $E_{\text{grav}}$ \)**:
    $$
-   \phi(r) = \frac{GM(R)}{R} - \sum_{i=j}^N \frac{GM(r_i)}{r_i^2} \Delta r_i
-    $$
-
-3. **Gravitational Energy \( $E_{\text{grav}}$ \)**:
-   $$
-   E_{\text{grav}} = \sum_{i=0}^{N} 4 \pi r_i^2 \rho(r_i) \phi(r_i) \Delta r_i
+   E_{\text{grav}}(r) = \sum_{i=0}^{r_N} 4 \pi r_i^2 \rho(r_i) \frac{GM(r_i)}{r_i} \Delta r_i
    $$
 
-4. **Thermal Energy \( U \)**:
+3. **Thermal Energy \( U \)**:
    $$
    U = \frac{3}{2} \sum_i P(r_i) \cdot \left( 4 \pi r_i^2 \Delta r \right)
    $$
 
-5. **Magnetic Energy \( U \)**:
+4. **Magnetic Energy \( E_B \)**:
 $$
 E_{\text{magnetic}} = \sum_{i=0}^{N} \frac{B_i^2}{8 \pi} \cdot \left( 4 \pi r_i^2 \Delta r_i \right)
 $$

@@ -290,20 +290,24 @@ def get_along_lines(x_init):
         grav_potential += -(4 * np.pi) ** 2 * (dens ** 2) * (rad * parsec_to_cm3) ** 4 * (dx_vec * parsec_to_cm3)
 
         # Compute cumulative mass for gravitational potential
-        M_r = np.cumsum(4 * np.pi * dens * rad ** 2 * dx_vec * parsec_to_cm3)
+        M_r = np.cumsum(4 * np.pi * mass_dens * (rad* parsec_to_cm3) ** 2 * dx_vec * parsec_to_cm3)
 
-        # Gravitational potential: φ(r)
-        phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
-
+        # Gravitational potential: phi(r)
+        #phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
+        #phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
         # Gravitational energy
-        grav_energy_density = 4 * np.pi * rad ** 2 * dens * phi
+        #grav_energy_density = 4 * np.pi * rad ** 2 * dens * phi
+        # Gravitational binding energy
+        
+        binding_energy = -np.sum((grav_constant_cgs * M_r / (rad*parsec_to_cm3)) * 4 * np.pi * (rad*parsec_to_cm3)**2 * mass_dens * dx_vec*parsec_to_cm3)
 
-        energy_grav[k + 1, :]     = np.cumsum(grav_energy_density * dx_vec)
+        energy_grav[k + 1, :]     = binding_energy
         energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*rad**2*dx_vec)
         energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*rad**2*dx_vec)
 
-        # Effective column densities
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * dx_vec
+
+        print(f"Eff. Column Densities: {eff_column_densities[k + 1, :].e}")
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
@@ -311,7 +315,6 @@ def get_along_lines(x_init):
 
         k += 1
 
-    mean_column = np.mean(eff_column_densities[-1,:])
     #ratio_thermal = energy_thermal / energy_grav
     #ratio_magnetic = energy_magnetic / energy_grav
 
@@ -319,10 +322,11 @@ def get_along_lines(x_init):
     larger_cut = np.max(threshold)
     
     # cut all of them to standard
-    radius_vector   = line[:larger_cut+1,:,:]
-    magnetic_fields = bfields[:larger_cut+1,:]
+    radius_vector    = line[:larger_cut+1,:,:]
+    magnetic_fields  = bfields[:larger_cut+1,:]
     numb_densities   = densities[:larger_cut+1,:]
-    volumes         = volumes[:larger_cut+1,:]
+    volumes          = volumes[:larger_cut+1,:]
+    column_densities = np.zeros_like(magnetic_fields)
 
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
@@ -332,22 +336,22 @@ def get_along_lines(x_init):
     print("Radius vector shape:", radius_vector.shape)
     print("Numb densities shape:", numb_densities.shape)
 
-    for _n in range(m):  # Iterate over the first dimension
-
+    for _n in range(m):  # Iterate over the second dimensio
         prev = radius_vector[0, _n, :]
-        
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
-
-            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
+            radius_to_origin[k, _n] = np.linalg.norm(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur, prev)
-            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
-            prev = radius_vector[k, _n, :]
+            diff_rj_ri = np.linalg.norm(cur - prev)  # Calculate the difference between consecutive points
+            if k == 0:
+                column_densities[k,_n] = 0.0
+                trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
+            else:
+                column_densities[k,_n] = column_densities[k-1,_n] + numb_densities[k-1,_n]*diff_rj_ri
+                trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
+            prev = cur  # Update `prev` to the current point
+            print("Trajectory at step", k, ":", trajectory[k, _n])
 
-    radius_vector   *= 1.0* parsec_to_cm3
-    trajectory      *= 1.0* parsec_to_cm3
-    magnetic_fields *= 1.0* gauss_code_to_gauss_cgs
-    trajectory[0,:]  = 0.0
+    mean_column = np.mean(column_densities[-1,:])
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, energy_magnetic, energy_thermal, energy_grav]
 
@@ -383,31 +387,37 @@ if True:
         # Plot Magnetic Energy
         axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
         axs['A'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="blue", s=5)
+        axs['A'].set_yscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
-        axs['A'].set_ylabel("Energy (ergs)")
-        axs['A'].set_title("Magnetic Energy (LOS)")
+        axs['A'].set_ylabel("$n_g(s)$")
+        axs['A'].set_title("Number Density (LOS)")
         axs['A'].grid(True)
 
         # Plot Thermal Energy
         axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
         #axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="red", s=5)
+        axs['B'].set_yscale('log')
+        axs['B'].set_xscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
-        axs['B'].set_title("Thermal Energy (LOS)")
+        axs['B'].set_title("Magnetic Energy (LOS)")
         axs['B'].grid(True)
 
         # Energies Relative to Gravitational Energy
         #axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
-        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal/Gravitational")
+        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal Energy")
         axs['C'].set_yscale('log')
+        axs['C'].set_xscale('log')
         axs['C'].set_xlabel("s (cm) along LOS")
-        axs['C'].set_ylabel("Energy Ratio")
-        axs['C'].set_title("Energies Relative to Gravitational Energy (LOS)")
+        axs['C'].set_ylabel("Energy")
+        axs['C'].set_title("Thermal Energy (LOS)")
         axs['C'].legend()
         axs['C'].grid(True)
 
         # Gravitational Energy
         axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
+        axs['D'].set_yscale('log')
+        axs['D'].set_xscale('log')
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}$")
         axs['D'].set_title("Gravitational Energy (LOS)")
@@ -417,9 +427,9 @@ if True:
         # Table Data
         table_data = [
             ['---', 'Value', 'Note'],
-            ['Mean Column Density (LOS)', f'{mean_column:.3f}', '-'],
-            ['Mean Magnetic (LOS)', f'{energy_magnetic.mean():.3f}', '-'],
-            ['Mean Thermal (LOS)', f'{energy_thermal.mean():.3f}', '-'],
+            ['Mean Column Density (LOS)', f'{mean_column:.3e}', '-'],
+            ['Mean Magnetic (LOS)', f'{energy_magnetic.mean():.5e}', '-'],
+            ['Mean Thermal (LOS)', f'{energy_thermal.mean():.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
             ['Smallest Volume (LOS)', f'{Volume.min():.3e}', '-'],
             ['Biggest Volume (LOS)', f'{Volume.max():.3e}', '-'],
