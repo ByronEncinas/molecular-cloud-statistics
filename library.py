@@ -123,6 +123,16 @@ def process_line(line):
     
 """ Energies """
 
+def fibonacci_sphere(samples=1000):
+    phi = np.pi * (3. - np.sqrt(5.))  # Golden angle
+    y = np.linspace(1 - 1/samples, -1 + 1/samples, samples)  # Even spacing in y
+    radius = np.sqrt(1 - y**2)  # Compute radius for each point
+    theta = phi * np.arange(samples)  # Angle increment
+
+    x = radius * np.cos(theta)
+    z = radius * np.sin(theta)
+    return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
+
 def temperature(KE, N):
     return (2./3.)*KE/(N*boltzmann_constant_cgs)
 

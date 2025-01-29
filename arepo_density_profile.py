@@ -198,6 +198,8 @@ unit_diagonals = diagonals / np.linalg.norm(diagonals[0])
 # Combine both arrays
 directions= np.vstack((axis, unit_diagonals))
 
+directions = fibonacci_sphere(14)
+
 m = directions.shape[0]
 
 x_init = np.zeros((m,3))
@@ -345,10 +347,8 @@ def get_along_lines(x_init):
                 trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
             prev = cur  # Update `prev` to the current point
             print("Trajectory at step", k, ":", trajectory[k, _n])
-    
-    mean_column = np.mean(eff_column_densities[-1,:])
 
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, energy_magnetic, energy_thermal, energy_grav]
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [eff_column_densities, energy_magnetic, energy_thermal, energy_grav]
 
 print("Steps in Simulation: ", N)
 print("Boxsize            : ", Boxsize)
@@ -367,11 +367,11 @@ import matplotlib.pyplot as plt
 os.makedirs(output_path, exist_ok=True)
 if True:
     for i in range(m):
-        mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
+        eff_column_densities, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-        
-        print(mean_column)
-        
+        mean_column_over_radius = np.mean(eff_column_densities[:cut,i], axis=1)
+        print(mean_column_over_radius[-1])
+
         # Define mosaic layout
         mosaic = [
             ['A', 'B'],
@@ -415,7 +415,7 @@ if True:
         # Table Data
         table_data = [
             ['---', 'Value', 'Note'],
-            ['Mean Column Density (LOS)', f'{mean_column:.3e}', '-'],
+            ['Mean Column Density (LOS)', f'{mean_column_over_radius[-1]:.5e}', '-'],
             ['Magnetic Energy', f'{energy_magnetic[-1,i]:.5e}', '-'],
             ['Thermal Energy', f'{energy_thermal[-1,i]:.5e}', '-'],
             ['Grav Binding Energy', f'{energy_grav[-1,i]:.5e}', '-'],
@@ -435,7 +435,59 @@ if True:
         
         # Save column density values to a text file after plotting
         with open("column_density_values.txt", "a") as file:  # Open in append mode to avoid overwriting
-            file.write(f"{mean_column:.3e}\n")
+            file.write(f"{mean_column_over_radius[-1]:.3e}\n")
+
+if True:
+    for i in range(m):
+        mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
+        cut = threshold[i]
+        
+        print(mean_column[-1])
+        mean_grav = np.mean(energy_grav[:cut,i])
+        
+        # Define mosaic layout
+        mosaic = [
+            ['A', 'B'],
+            ['C', 'D']
+        ]
+        fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
+
+        # Plot Magnetic Energy
+        axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
+        axs['A'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="blue", s=5)
+        axs['A'].set_yscale('log')
+        axs['A'].set_xlabel("s (cm) along LOS")
+        axs['A'].set_ylabel("$n_g(s)$")
+        axs['A'].set_title("Number Density (LOS)")
+        axs['A'].grid(True)
+
+        # Plot Thermal Energy
+        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i]/mean_grav, linestyle="--", color="red")
+        axs['B'].set_xlabel("s (cm) along LOS")
+        axs['B'].set_ylabel("ratio")
+        axs['B'].set_title("$E_{mag}/\hbar{E_grav}$ Energy Ratio (LOS)")
+        axs['B'].grid(True)
+
+        # Energies Relative to Gravitational Energy
+        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i]/mean_grav, linestyle="--", color="red", label="Thermal Energy")
+        axs['C'].set_xlabel("s (cm) along LOS")
+        axs['C'].set_ylabel("ratio")
+        axs['C'].set_title("$E_{thermal}/\hbar{E_grav}$ Energy Ratio (LOS)")
+        axs['C'].legend()
+        axs['C'].grid(True)
+
+        # Gravitational Energy
+        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
+        axs['D'].set_xlabel("s (cm) along LOS")
+        axs['D'].set_ylabel("$E_{grav}/\hbar{E_grav}$")
+        axs['D'].set_title("Scaled Gravitational Binding Energy (LOS)")
+        axs['D'].legend()
+        axs['D'].grid(True)
+
+        # Adjust Layout and Save Figure
+        plt.tight_layout()
+        plt.savefig(f"{output_path}/ratios_mosaic_{i}.png", dpi=300)
+        plt.close(fig)
 
     if True:
         ax = plt.figure().add_subplot(projection='3d')
