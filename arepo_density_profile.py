@@ -307,7 +307,7 @@ def get_along_lines(x_init):
 
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
 
-        print("Eff. Column Densities:", np.array2string(eff_column_densities[k + 1, :], formatter={'float_kind': lambda x: f"{x:.3e}"}))
+        print(f"Eff. Column Densities: {eff_column_densities[k + 1, :]:3e}")
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
