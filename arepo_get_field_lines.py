@@ -12,6 +12,49 @@ import time
 
 start_time = time.time()
 
+def get_magnetic_field_at_points(x, Bfield, rel_pos):
+	n = len(rel_pos[:,0])
+	local_fields = np.zeros((n,3))
+	for  i in range(n):
+		local_fields[i,:] = Bfield[i,:]
+	return local_fields
+
+def get_density_at_points(x, Density, Density_grad, rel_pos):
+	n = len(rel_pos[:,0])	
+	local_densities = np.zeros(n)
+	for  i in range(n):
+		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
+	return local_densities
+
+def find_points_and_relative_positions(x, Pos, VoronoiPos):
+	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
+	rel_pos = VoronoiPos[cells] - x
+	return dist, cells, rel_pos
+
+def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
+	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
+	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
+	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
+	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
+	return local_fields, abs_local_fields, local_densities, cells
+	
+def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdirection = None):
+    local_fields_1, abs_local_fields_1, local_densities, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    local_fields_1 = local_fields_1 / np.tile(abs_local_fields_1,(3,1)).T
+    CellVol = Volume[cells]
+    dx *= ((3/4)*Volume[cells]/np.pi)**(1/3)  
+    x_tilde = x + dx[:, np.newaxis] * local_fields_1
+    local_fields_2, abs_local_fields_2, local_densities, cells = find_points_and_get_fields(x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2,(3,1)).T	
+    abs_sum_local_fields = np.sqrt(np.sum((local_fields_1 + local_fields_2)**2,axis=1))
+
+    unito = 2*(local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
+    x_final = x + 0.5 * dx[:, np.newaxis] * unito
+
+    bdirection = 0.5*(local_fields_1 + local_fields_2)
+    
+    return x_final, abs_local_fields_1, local_densities, CellVol, bdirection
+
 """  
 Analysis of reduction factor
 
@@ -160,7 +203,7 @@ def get_along_lines(x_init):
 
         aux = x[un_masked]
 
-        x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
+        x, bfield, dens, vol, bvect = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
@@ -179,7 +222,7 @@ def get_along_lines(x_init):
         # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
-        bfieldvec[k+1,:,:]= unito
+        bfieldvec[k+1,:,:]= bvect
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
@@ -226,7 +269,7 @@ def get_along_lines(x_init):
 
         aux = x[un_masked_rev]
 
-        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
+        x, bfield, dens, vol, bvect = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask_rev.astype(int)
@@ -243,7 +286,7 @@ def get_along_lines(x_init):
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
-        bfieldvec_rev[k+1,:,:]= unito
+        bfieldvec_rev[k+1,:,:]= bvect
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens 

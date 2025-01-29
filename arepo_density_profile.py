@@ -261,7 +261,7 @@ def get_along_lines(x_init):
             x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
         )
         
-        mass_dens *= code_units_to_gr_cm3
+        mass_dens = dens * code_units_to_gr_cm3
         pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
         dens *= gr_cm3_to_nuclei_cm3
         
@@ -303,9 +303,9 @@ def get_along_lines(x_init):
 
         energy_grav[k + 1, :]     = binding_energy
         energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*rad**2*dx_vec)
-        energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*rad**2*dx_vec)
+        energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3))**2*(dx_vec*parsec_to_cm3)
 
-        eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * dx_vec
+        eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
 
         print("Eff. Column Densities:", np.array2string(eff_column_densities[k + 1, :], formatter={'float_kind': lambda x: f"{x:.3e}"}))
 
@@ -326,7 +326,6 @@ def get_along_lines(x_init):
     magnetic_fields  = bfields[:larger_cut+1,:]
     numb_densities   = densities[:larger_cut+1,:]
     volumes          = volumes[:larger_cut+1,:]
-    column_densities = np.zeros_like(magnetic_fields)
 
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory      = np.zeros_like(magnetic_fields)
@@ -343,15 +342,13 @@ def get_along_lines(x_init):
             cur = radius_vector[k, _n, :]
             diff_rj_ri = np.linalg.norm(cur - prev)  # Calculate the difference between consecutive points
             if k == 0:
-                column_densities[k,_n] = 0.0
                 trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
             else:
-                column_densities[k,_n] = column_densities[k-1,_n] + numb_densities[k-1,_n]*diff_rj_ri
                 trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
             prev = cur  # Update `prev` to the current point
             print("Trajectory at step", k, ":", trajectory[k, _n])
-
-    mean_column = np.mean(column_densities[-1,:])
+    
+    mean_column = np.mean(eff_column_densities[-1,:])
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [mean_column, energy_magnetic, energy_thermal, energy_grav]
 
@@ -375,7 +372,9 @@ if True:
     for i in range(m):
         mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-
+        
+        print(mean_column)
+        
         # Define mosaic layout
         mosaic = [
             ['A', 'B'],
@@ -396,8 +395,8 @@ if True:
         # Plot Thermal Energy
         axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
         #axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="red", s=5)
-        axs['B'].set_yscale('log')
-        axs['B'].set_xscale('log')
+        #axs['B'].set_yscale('log')
+        #axs['B'].set_xscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
         axs['B'].set_title("Magnetic Energy (LOS)")
@@ -406,8 +405,8 @@ if True:
         # Energies Relative to Gravitational Energy
         #axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
         axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal Energy")
-        axs['C'].set_yscale('log')
-        axs['C'].set_xscale('log')
+        #axs['C'].set_yscale('log')
+        #axs['C'].set_xscale('log')
         axs['C'].set_xlabel("s (cm) along LOS")
         axs['C'].set_ylabel("Energy")
         axs['C'].set_title("Thermal Energy (LOS)")
@@ -416,8 +415,8 @@ if True:
 
         # Gravitational Energy
         axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
-        axs['D'].set_yscale('log')
-        axs['D'].set_xscale('log')
+        #axs['D'].set_yscale('log')
+        #axs['D'].set_xscale('log')
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}$")
         axs['D'].set_title("Gravitational Binding Energy (LOS)")
