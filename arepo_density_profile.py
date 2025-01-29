@@ -198,7 +198,7 @@ unit_diagonals = diagonals / np.linalg.norm(diagonals[0])
 # Combine both arrays
 directions= np.vstack((axis, unit_diagonals))
 
-#directions = fibonacci_sphere(14)
+directions = fibonacci_sphere(14)
 
 m = directions.shape[0]
 
