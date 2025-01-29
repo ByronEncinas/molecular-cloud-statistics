@@ -367,7 +367,6 @@ import matplotlib.pyplot as plt
 
 # Ensure output directory exists
 os.makedirs(output_path, exist_ok=True)
-
 if True:
     for i in range(m):
         mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
@@ -394,19 +393,13 @@ if True:
 
         # Plot Thermal Energy
         axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
-        #axs['B'].scatter(trajectory[:cut, i], energy_magnetic[:cut, i], marker="o", color="red", s=5)
-        #axs['B'].set_yscale('log')
-        #axs['B'].set_xscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
         axs['B'].set_title("Magnetic Energy (LOS)")
         axs['B'].grid(True)
 
         # Energies Relative to Gravitational Energy
-        #axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="blue", label="Magnetic/Gravitational")
         axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal Energy")
-        #axs['C'].set_yscale('log')
-        #axs['C'].set_xscale('log')
         axs['C'].set_xlabel("s (cm) along LOS")
         axs['C'].set_ylabel("Energy")
         axs['C'].set_title("Thermal Energy (LOS)")
@@ -415,8 +408,6 @@ if True:
 
         # Gravitational Energy
         axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
-        #axs['D'].set_yscale('log')
-        #axs['D'].set_xscale('log')
         axs['D'].set_xlabel("s (cm) along LOS")
         axs['D'].set_ylabel("$E_{grav}$")
         axs['D'].set_title("Gravitational Binding Energy (LOS)")
@@ -431,8 +422,8 @@ if True:
             ['Thermal Energy', f'{energy_thermal[-1,i]:.5e}', '-'],
             ['Grav Binding Energy', f'{energy_grav[-1,i]:.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
-            ['Smallest Volume (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-'],
-            ['Biggest Volume (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-'],
+            ['Smallest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
+            ['Biggest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
             ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut,i]):.3e}', '-'],
             ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-']
         ]
@@ -443,6 +434,10 @@ if True:
         plt.tight_layout()
         plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
         plt.close(fig)
+        
+        # Save column density values to a text file after plotting
+        with open("column_density_values.txt", "a") as file:  # Open in append mode to avoid overwriting
+            file.write(f"{mean_column:.3e}\n")
 
     if True:
         ax = plt.figure().add_subplot(projection='3d')
