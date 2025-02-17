@@ -1,18 +1,14 @@
 from collections import defaultdict
-from multiprocessing import Pool
-import random
 import matplotlib.pyplot as plt
-from scipy import spatial
-import healpy as hp
 import numpy as np
-import random
+from scipy import stats
+import seaborn as sns
+from library import *
 import glob
 import os
 import h5py
 import json
 import sys
-from library import *
-
 import time
 
 start_time = time.time()
@@ -25,27 +21,27 @@ Analysis of reduction factor
 
 $$N(s) 1 - \sqrt{1-B(s)/B_l}$$
 
-Where $B_l$ corresponds with (in region of randomly choosen point) the lowest between the highest peak at both left and right.
-where $s$ is a random chosen point at original 256x256x256 grid.
-
-1.- Randomly select a point in the 3D Grid. 
-2.- Follow field lines until finding B_l, if non-existent then change point.
-3.- Repeat 10k times
-4.- Plot into a histogram.
-
-contain results using at least 20 boxes that contain equally spaced intervals for the reduction factor.
-
-# Calculating Histogram for Reduction Factor in Randomized Positions in the 128**3 Cube 
-
-"""
-
-"""
 Parameters
 
 - [N] default is 50 as the total number of steps in the simulation
-- [dx] default 4/N of the rloc_boundary (radius of spherical region of interest) variable
 
+Units:
+
+Attribute: UnitLength_in_cm = 3.086e+18
+Attribute: UnitMass_in_g = 1.99e+33
+Attribute: UnitVelocity_in_cm_per_s = 100000.0
+
+Name: PartType0/Coordinates
+    Attribute: to_cgs = 3.086e+18
+Name: PartType0/Density
+    Attribute: to_cgs = 6.771194847794873e-23
+Name: PartType0/Masses
+    Attribute: to_cgs = 1.99e+33
+Name: PartType0/Velocities
+    Attribute: to_cgs = 100_000.0
+Name: PartType0/MagneticField
 """
+
 FloatType = np.float64
 IntType = np.int32
 
@@ -60,19 +56,17 @@ if len(sys.argv)>4:
 	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
 else:
-    N            =10_000
+    N            =5_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
-    max_cycles   =10
+    max_cycles   =50
     typpe = 'ideal'
     num_file = '430'
 
 print(*sys.argv)
 
-# flow control to repeat calculations in no peak situations
+
 cycle = 0 
-
 reduction_factor_at_numb_density = defaultdict()
-
 reduction_factor = []
 
 """  B. Jesus Velazquez """
@@ -153,27 +147,6 @@ Density_grad = np.zeros((len(Density), 3))
 # Print the time
 print(f"Time: {time_value} Myr")
 
-# printing relevant info about the data
-# 1 Parsec  = 3.086e+18 cm
-# 1 Solar M = 1.9885e33 gr
-# 1 Km/s    = 100000 cm/s
-
-"""  
-Attribute: UnitLength_in_cm = 3.086e+18
-Attribute: UnitMass_in_g = 1.99e+33
-Attribute: UnitVelocity_in_cm_per_s = 100000.0
-
-Name: PartType0/Coordinates
-    Attribute: to_cgs = 3.086e+18
-Name: PartType0/Density
-    Attribute: to_cgs = 6.771194847794873e-23
-Name: PartType0/Masses
-    Attribute: to_cgs = 1.99e+33
-Name: PartType0/Velocities
-    Attribute: to_cgs = 100_000.0
-Name: PartType0/MagneticField
-"""
-
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
 #Center = Pos[np.argmax(Density),:]
@@ -188,8 +161,21 @@ Pos-=Center
 xPosFromCenter = Pos[:,0]
 Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
+xPosFromCenter = Pos[:,1]
+Pos[xPosFromCenter > Boxsize/2,1]       -= Boxsize
+VoronoiPos[xPosFromCenter > Boxsize/2,1] -= Boxsize
+xPosFromCenter = Pos[:,2]
+Pos[xPosFromCenter > Boxsize/2,2]       -= Boxsize
+VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 
-def get_along_lines(x_init):
+# obtain width of cloud to set up radius
+# calculate the a gaussian for the
+rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+Radius = np.linalg.norm(Pos, axis=1)
+in_sphere = (Radius < rloc_boundary)
+above_threshold = (Density[in_sphere]*gr_cm3_to_nuclei_cm3 > 100)
+
+def get_along_lines(x_init=None):
 
     dx = 0.5
 
@@ -388,29 +374,36 @@ def get_along_lines(x_init):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
-nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-npix  = 12 * nside ** 2
-ipix_center       = np.arange(npix)
-xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
+def generate_vectors_in_sphere(max_cycles, rloc):
+    # List to store valid vectors
+    valid_vectors = []
 
-xx = np.array(random.sample(list(xx), max_cycles))
-yy = np.array(random.sample(list(yy), max_cycles))
-zz = np.array(random.sample(list(zz), max_cycles))
+    # Generate points until we get 'max_cycles' valid ones
+    while len(valid_vectors) < max_cycles:
+        # Generate random points inside a cube with side 2*rloc
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
 
-m = len(zz) # amount of values that hold which_up_down
+        # Calculate the distance of each point from the origin
+        distances = np.linalg.norm(points, axis=1)
 
-print("Values of reduction factor to be generated: ",m)
+        # Filter points inside the sphere (distance <= rloc)
+        valid_points = points[distances <= rloc]
 
-x_init = np.zeros((m,3))
+        # Append valid points to the list
+        valid_vectors.extend(valid_points)
 
-x_init[:,0]      = rloc_center * xx
-x_init[:,1]      = rloc_center * yy
-x_init[:,2]      = rloc_center * zz
+        # Stop if we have enough valid points
+        if len(valid_vectors) >= max_cycles:
+            break
+
+    # Only return the first 'max_cycles' vectors
+    return np.array(valid_vectors[:max_cycles])
+
+x_init = generate_vectors_in_sphere(max_cycles, rloc_boundary)
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
-print("rloc_boundary       : ", rloc_boundary)
+print("rloc                : ", rloc_boundary)
 print("x_init              : ", x_init)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
@@ -522,8 +515,7 @@ with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
-    file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
-    file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
+    file.write(f"rloc (Pc) : {rloc_boundary}\n")
     file.write(f"x_init (Pc)        :\n {x_init}\n")
     file.write(f"max_cycles         : {max_cycles}\n")
     file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
@@ -594,14 +586,7 @@ axs[1].set_ylabel('Frequency')
 plt.tight_layout()
 
 # Save the figure
-#plt.savefig("c_output_data/histogramdata={len(reduction_factor)}bins={bins}"+name+".png")
 plt.savefig(os.path.join(children_folder,f"{typpe}_hist={len(reduction_factor)}bins={bins}.png"))
-
-# Show the plot
-#plt.show()
-
-from scipy import stats
-import seaborn as sns
 
 if True:
 

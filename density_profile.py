@@ -198,6 +198,8 @@ unit_diagonals = diagonals / np.linalg.norm(diagonals[0])
 # Combine both arrays
 directions= np.vstack((axis, unit_diagonals))
 
+#directions=np.swapaxes(directions)
+
 directions = fibonacci_sphere(14)
 
 m = directions.shape[0]
@@ -231,15 +233,15 @@ def get_along_lines(x_init):
     x = x_init
     dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
     vol = Volume[cells]
+
     mass_dens = dens * code_units_to_gr_cm3
     dens = dens* gr_cm3_to_nuclei_cm3
+    
     densities[0,:] = dens
     dx_vec = 0.3 * ((4 / 3) * vol / np.pi) ** (1 / 3)
 
     rad = np.linalg.norm(x, axis=1)
     pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
-    m_H = 1.0079 # for atomic hydrogen
-    mu = 1.0
     grav_potential = 0.0
 
     energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)*(vol*parsec_to_cm3**3)
@@ -271,7 +273,6 @@ def get_along_lines(x_init):
         if len(vol[non_zero]) == 0:
             break
 
-        #dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
         dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
@@ -292,13 +293,6 @@ def get_along_lines(x_init):
         # Compute cumulative mass for gravitational potential
         M_r = np.cumsum(4 * np.pi * mass_dens * (rad* parsec_to_cm3) ** 2 * dx_vec * parsec_to_cm3)
 
-        # Gravitational potential: phi(r)
-        #phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
-        #phi = (grav_constant_cgs * M_r[-1] / rad[-1]) - np.cumsum(grav_constant_cgs * M_r / rad ** 2)
-        # Gravitational energy
-        #grav_energy_density = 4 * np.pi * rad ** 2 * dens * phi
-        # Gravitational binding energy
-        
         binding_energy = -np.sum((grav_constant_cgs * M_r / (rad*parsec_to_cm3)) * 4 * np.pi * (rad*parsec_to_cm3)**2 * mass_dens * dx_vec*parsec_to_cm3)
 
         energy_grav[k + 1, :]     = binding_energy
@@ -314,9 +308,6 @@ def get_along_lines(x_init):
             break
 
         k += 1
-
-    #ratio_thermal = energy_thermal / energy_grav
-    #ratio_magnetic = energy_magnetic / energy_grav
 
     threshold = threshold.astype(int)
     larger_cut = np.max(threshold)
@@ -435,7 +426,7 @@ if True:
         
         # Save column density values to a text file after plotting
         with open("column_density_values.txt", "a") as file:  # Open in append mode to avoid overwriting
-            file.write(f"{mean_column_over_radius[-1]:.3e}\n")
+            file.write(f"{mean_column_over_radius[-1]:.5e}\n")
 
 if True:
     for i in range(m):

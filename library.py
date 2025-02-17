@@ -158,7 +158,10 @@ def pocket_finder(bfield, cycle=0, plot=False):
     baseline = np.min(bfield)
     upline = np.max(bfield)
     index_global_max = np.where(bfield == upline)[0]
-    idx = index_global_max[0]
+    try:
+        idx = index_global_max[0]
+    except:
+        idx = index_global_max
     upline == bfield[idx]
     ijk = np.argmax(bfield)
     bfield[ijk] = bfield[ijk]*1.001 # if global_max is found in flat region, choose one and scale it 0.001
@@ -207,12 +210,82 @@ def pocket_finder(bfield, cycle=0, plot=False):
         # Adjust layout to prevent overlap
         plt.tight_layout()
         # Save the figure
-        plt.savefig(f"./arepo_pockets/field_shape{cycle}.png")
+        plt.savefig(f"./field_shape{cycle}.png")
         plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
 
-            
+def smooth_pocket_finder(bfield, cycle=0, plot=False):
+    """  
+    Finds peaks in a given magnetic field array.
+
+    Args:
+        bfield (array-like): Array or list of magnetic field magnitudes.
+        cycle (int, optional): Cycle number for saving the plot. Defaults to 0.
+        plot (bool, optional): Whether to plot the results. Defaults to False.
+
+    Returns:
+        tuple: Contains two tuples:
+            - (indexes, peaks): Lists of peak indexes and corresponding peak values.
+            - (index_global_max, upline): Indices and value of the global maximum.
+    """
+    bfield = np.array(bfield)  # Ensure input is a numpy array
+
+    baseline = np.min(bfield)
+    upline = np.max(bfield)
+    index_global_max = np.where(bfield == upline)[0]
+    upline == bfield[index_global_max]
+    ijk = np.argmax(bfield)
+    bfield[ijk] = bfield[ijk]*1.001 # if global_max is found in flat region, choose one and scale it 0.001
+
+    # Find left peaks
+    Bi = 0.0
+    lindex = []
+    lpeaks = []
+    for i, Bj in enumerate(bfield):
+        if Bj < Bi and (len(lpeaks) == 0 or Bi > lpeaks[-1]):  # if True, then we have a peak
+            lindex.append(i - 1)
+            lpeaks.append(Bi)
+        Bi = Bj
+
+    # Find right peaks
+    Bi = 0.0
+    rindex = []
+    rpeaks = []
+    for i, Bj in enumerate(reversed(bfield)):
+        if Bj < Bi and (len(rpeaks) == 0 or Bi > rpeaks[-1]):  # if True, then we have a peak
+            rindex.append(len(bfield) - i)
+            rpeaks.append(Bi)
+        Bi = Bj
+
+    peaks = lpeaks +  list(reversed(rpeaks))[1:]
+    indexes = lindex + list(reversed(rindex))[1:]
+    
+    if plot:
+        # Create a figure and axes for the subplot layout
+        fig, axs = plt.subplots(1, 1, figsize=(8, 6))
+
+        axs.plot(bfield)
+        axs.plot(indexes, peaks, "x", color="green")
+        axs.plot(indexes, peaks, ":", color="green")
+        
+        axs.plot(np.ones_like(bfield) * baseline, "--", color="gray")
+        axs.set_xlabel("Index")
+        axs.set_ylabel("Field")
+        axs.set_title("Actual Field Shape")
+        axs.legend(["bfield", "all peaks", "index_global_max", "baseline"])
+        axs.grid(True)
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+        # Save the figure
+        plt.savefig(f"./field_shape{cycle}.png")
+        plt.close(fig)
+
+    return (indexes, peaks), (index_global_max, upline)
+
+
+
 def find_insertion_point(array, val):
 
     for i in range(len(array)):

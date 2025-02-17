@@ -82,9 +82,9 @@ for cycle in range(rounds):
 
             axs[2].plot(numb_density/np.max(numb_density), color='blue',label='Number Density')
             axs[2].plot(bfield/np.max(bfield), color='red',label='Magnetic Field')
-            axs[2].set_title('Profile Shape N/cm^3 (blue) & B(s) (red)')
+            axs[2].set_title('Nucleon/cm$^3$ (blue) & B(s) field (red)')
             axs[2].set_xlabel('Steps')
-            axs[2].set_ylabel('Arbitrary Units')
+            axs[2].set_ylabel('Normalized fields')
             axs[2].legend()
 
             plt.tight_layout()

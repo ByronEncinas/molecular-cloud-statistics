@@ -433,8 +433,8 @@ else:
         file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
         file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
         file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmin(Volume)]} \n")
-        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmax(Volume)]}\n")
+        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 print("Cores Used         : ", os.cpu_count())
@@ -473,13 +473,19 @@ for i in range(m):
     print(f"{_from} - {_to}")
 
     column_dens  = cd[_from:_to,i]
-    mag_field    = magnetic_fields[_from:_to,i]*gauss_code_to_gauss_cgs
-    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]*gauss_code_to_gauss_cgs
+    mag_field    = magnetic_fields[_from:_to,i]*gauss_code_to_gauss_cgs*10e+6 # microgauss (cgs)
+    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]*gauss_code_to_gauss_cgs*10e+6 # microgauss (cgs)
     pos_vector   = radius_vector[_from:_to,i,:] # stays in Pc
     s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i] # stays in Pc
     mass_density = numb_densities[_from:_to,i] /gr_cm3_to_nuclei_cm3
     numb_density = numb_densities[_from:_to,i] 
     volume       = volumes[_from:_to,i]*(parsec_to_cm3**3)
+
+    if len(trajectory) == 0:
+        # if density at starting point is less that 100/cm^3 ignore profiles
+        continue
+
+    # use volume to obtain dr_cell 
 
     print("column_dens shape:", column_dens.shape)
     print("mag_field shape:", mag_field.shape)
@@ -508,20 +514,21 @@ for i in range(m):
 
         #plt.ticklabel_format(axis='both', style='sci')
         
-        axs[0,0].plot(mag_field, linestyle="--", color="m")
+        axs[0,0].plot(s_coordinate*length_unit, mag_field, linestyle="--", color="m")
         #axs[0,0].scatter(trajectory[:,i], magnetic_fields[:,i], marker="+", color="m")
         #axs[0,0].scatter(trajectory[lmn,i], magnetic_fields[lmn,i], marker="x", color="black")
         axs[0,0].set_xlabel("s (cm)")
-        axs[0,0].set_ylabel("$B(s)$ $\mu$G (cgs)")
+        axs[0,0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
         axs[0,0].set_title("Magnetic FIeld")
         axs[0,0].grid(True)
 		
-        axs[0,1].plot(s_coordinate, linestyle="--", color="m")
+        axs[0,1].plot(s_coordinate*length_unit, linestyle="--", color="m")
         #axs[0,1].scatter(trajectory[:,i], marker="+", color="m")
         #axs[0,1].scatter(trajectory[lmn,i], radius_to_origin[lmn,i], marker="x", color="black")
-        axs[0,1].set_xlabel("s (cm)")
-        axs[0,1].set_ylabel("$r$ cm (cgs)")
-        axs[0,1].set_title("Distance Away of MaxDensityCoord $r$ ")
+        #axs[0,1].set_xlabel("s (cm)")
+        axs[0,1].set_xlabel("# steps")
+        axs[0,1].set_ylabel("$s$ cm")
+        axs[0,1].set_title("Distance Away of $n_g^{max}(r)$ ")
         axs[0,1].grid(True)
 
         axs[1,0].plot(numb_density, linestyle="--", color="m")
@@ -529,13 +536,13 @@ for i in range(m):
         #axs[1,0].scatter(trajectory[lmn,i], numb_densities[lmn,i], marker="x", color="black")
         axs[1,0].set_yscale('log')
         axs[1,0].set_xlabel("s (cm)")
-        axs[1,0].set_ylabel("$N_g(s)$ cm^-3 (cgs)")
+        axs[1,0].set_ylabel("$N_g(s)$ cm^-3")
         axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
         axs[1,0].grid(True)
 		
         axs[1,1].plot(volume, linestyle="-", color="black")
         axs[1,1].set_yscale('log')
-        axs[1,1].set_xlabel("steps")
+        axs[1,1].set_xlabel("# steps")
         axs[1,1].set_ylabel("$V(s) cm^3 $ (cgs)")
         axs[1,1].set_title("Cells Volume along Path")
         axs[1,1].grid(True)
@@ -543,7 +550,7 @@ for i in range(m):
         # Adjust layout to prevent overlap
         plt.tight_layout()
 
-        plt.savefig(os.path.join(new_folder,"mosaic.png"))
+        plt.savefig(os.path.join(new_folder,f"mosaic{i}.png"))
         
         # Close the plot
         plt.close(fig)
