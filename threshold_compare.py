@@ -416,181 +416,271 @@ print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Vol
 
 test_thresh = [100, 10, 50]
 
-__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, 100)
+for case in test_thresh:
 
-print("Elapsed Time: ", (time.time() - start_time)/60.)
+    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
-# Create the new arepo_npys directory
-os.makedirs(children_folder, exist_ok=True)
+    print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-# flow control to repeat calculations in no peak situations
+    # Create the new arepo_npys directory
+    os.makedirs(children_folder, exist_ok=True)
 
-m = magnetic_fields.shape[1]
+    # flow control to repeat calculations in no peak situations
 
-threshold, threshold_rev = th
+    m = magnetic_fields.shape[1]
 
-reduction_factor = list()
-numb_density_at  = list()
+    threshold, threshold_rev = th
 
-min_den_cycle = list()
+    reduction_factor = list()
+    numb_density_at  = list()
 
-pos_red = dict()
+    min_den_cycle = list()
 
-for cycle in range(max_cycles):
+    pos_red = dict()
 
-    _from = N+1 - threshold_rev[cycle]
-    _to   = N+1 + threshold[cycle]
-    #print(f"{_from} - {_to}")
-    p_r = N + 1 - _from
+    for cycle in range(max_cycles):
 
-    bfield    = magnetic_fields[_from:_to,cycle]
-    distance = trajectory[_from:_to,cycle]
-    numb_density = numb_densities[_from:_to,cycle]
-    tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+        _from = N+1 - threshold_rev[cycle]
+        _to   = N+1 + threshold[cycle]
+        #print(f"{_from} - {_to}")
+        p_r = N + 1 - _from
 
-    #index_peaks, global_info = pocket_finder(bfield) # this plots
-    pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
-    index_pocket, field_pocket = pocket[0], pocket[1]
+        bfield    = magnetic_fields[_from:_to,cycle]
+        distance = trajectory[_from:_to,cycle]
+        numb_density = numb_densities[_from:_to,cycle]
+        tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-    min_den_cycle.append(min(numb_density))
-    
-    globalmax_index = global_info[0]
-    globalmax_field = global_info[1]
+        #index_peaks, global_info = pocket_finder(bfield) # this plots
+        pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+        index_pocket, field_pocket = pocket[0], pocket[1]
 
-    x_r = distance[p_r]
-    B_r = bfield[p_r]
-    n_r = numb_density[p_r]
+        min_den_cycle.append(min(numb_density))
+        
+        globalmax_index = global_info[0]
+        globalmax_field = global_info[1]
 
-    # finds index at which to insert p_r and be kept sorted
-    p_i = find_insertion_point(index_pocket, p_r)
+        x_r = distance[p_r]
+        B_r = bfield[p_r]
+        n_r = numb_density[p_r]
 
-    print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
-    
-    """How to find index of Bl?"""
+        # finds index at which to insert p_r and be kept sorted
+        p_i = find_insertion_point(index_pocket, p_r)
 
-    print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+        print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
+        
+        """How to find index of Bl?"""
 
-    try:
-        # possible error is len(index_pocket) is only one or two elements
-        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
-        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-        success = True  # Flag to track if try was successful
+        print("Maxima Values related to pockets: ", len(index_pocket), p_i)
 
-    except:
-        R = 1
-        reduction_factor.append(R)
-        numb_density_at.append(n_r)
-        pos_red[tupi] = R
-        success = False  # Set flag to False if there's an exception
-        continue
+        try:
+            # possible error is len(index_pocket) is only one or two elements
+            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+            B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
+            B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+            success = True  # Flag to track if try was successful
 
-    # Only execute this block if try was successful
-    if success:
-        if B_r / B_l < 1:
-            R = 1 - np.sqrt(1 - B_r / B_l)
-            reduction_factor.append(R)
-            numb_density_at.append(n_r)
-            pos_red[tupi] = R
-        else:
+        except:
             R = 1
             reduction_factor.append(R)
             numb_density_at.append(n_r)
             pos_red[tupi] = R
+            success = False  # Set flag to False if there's an exception
+            continue
 
-    print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", B_r, "ns: ", n_r)
-    print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+        # Only execute this block if try was successful
+        if success:
+            if B_r / B_l < 1:
+                R = 1 - np.sqrt(1 - B_r / B_l)
+                reduction_factor.append(R)
+                numb_density_at.append(n_r)
+                pos_red[tupi] = R
+            else:
+                R = 1
+                reduction_factor.append(R)
+                numb_density_at.append(n_r)
+                pos_red[tupi] = R
 
-    if B_r/B_l < 1:
-        print(" B_r/B_l =", B_r/B_l, "< 1 ") 
-    else:
-        print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+        print("Closest local maxima 'p':", closest_values)
+        print("Bs: ", B_r, "ns: ", n_r)
+        print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
-from collections import Counter
+        if B_r/B_l < 1:
+            print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+        else:
+            print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
-counter = Counter(reduction_factor)
+    from collections import Counter
 
-pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
+    counter = Counter(reduction_factor)
 
-with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
-    file.write(f"{filename}\n")
-    file.write(f"Cores Used: {os.cpu_count()}\n")
-    file.write(f"Snap Time (Myr): {time_value}\n")
-    file.write(f"rloc (Pc) : {rloc_boundary}\n")
-    file.write(f"x_init (Pc)        :\n {x_init}\n")
-    file.write(f"max_cycles         : {max_cycles}\n")
-    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
-    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
-    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
-    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+    pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-# Print elapsed time
-print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
+    with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
+        file.write(f"{filename}\n")
+        file.write(f"Cores Used: {os.cpu_count()}\n")
+        file.write(f"Snap Time (Myr): {time_value}\n")
+        file.write(f"rloc (Pc) : {rloc_boundary}\n")
+        file.write(f"x_init (Pc)        :\n {x_init}\n")
+        file.write(f"max_cycles         : {max_cycles}\n")
+        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+        file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
+        file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+        file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+        file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+        file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+        file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
-# Specify the file path
-file_path = os.path.join(children_folder, f'reduction_factor{sys.argv[-1]}.json')
+    # Print elapsed time
+    print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
-# Write the list data to a JSON file
-with open(file_path, 'w') as json_file:
-    json.dump(reduction_factor, json_file)
+    # Specify the file path
+    file_path = os.path.join(children_folder, f'reduction_factor{case}_{sys.argv[-1]}.json')
 
-# Specify the file path
-file_path = os.path.join(children_folder,f'numb_density{sys.argv[-1]}.json')
+    # Write the list data to a JSON file
+    with open(file_path, 'w') as json_file:
+        json.dump(reduction_factor, json_file)
 
-# Write the list data to a JSON file
-with open(file_path, 'w') as json_file:
-    json.dump(numb_density_at, json_file)
+    # Specify the file path
+    file_path = os.path.join(children_folder,f'numb_density{case}_{sys.argv[-1]}.json')
 
-# Specify the file path
-file_path = os.path.join(children_folder,f'position_vector{sys.argv[-1]}')
+    # Write the list data to a JSON file
+    with open(file_path, 'w') as json_file:
+        json.dump(numb_density_at, json_file)
 
-# Write the list data to a JSON file
-with open(file_path, 'w') as json_file:
-    json.dump(pos_red, json_file) # [x,y,z] = R basicly a 3D stochastic functin
+    # Specify the file path
+    file_path = os.path.join(children_folder,f'position_vector{case}_{sys.argv[-1]}')
 
-"""# Graphs"""
+    # Write the list data to a JSON file
+    with open(file_path, 'w') as json_file:
+        json.dump(pos_red, json_file) # [x,y,z] = R basicly a 3D stochastic functin
 
-#plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
+    """# Graphs"""
 
-bins=len(reduction_factor)//10 
+    #plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
 
-if bins == 0:
-    bins=1
+    bins=len(reduction_factor)//10 
 
-inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
+    if bins == 0:
+        bins=1
 
-# try plt.stairs(*np.histogram(inverse_reduction_factor, 50), fill=True, color='skyblue')
+    inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 
-# Create a figure and axes objects
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    # try plt.stairs(*np.histogram(inverse_reduction_factor, 50), fill=True, color='skyblue')
 
-# Plot histograms on the respective axes
-axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black')
-axs[0].set_yscale('log')
-axs[0].set_title('Histogram of Reduction Factor (R)')
-axs[0].set_xlabel('Bins')
-axs[0].set_ylabel('Frequency')
+    # Create a figure and axes objects
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black')
-axs[1].set_yscale('log')
-axs[1].set_title('Histogram of Inverse Reduction Factor (1/R)')
-axs[1].set_xlabel('Bins')
-axs[1].set_ylabel('Frequency')
+    # Plot histograms on the respective axes
+    axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black')
+    axs[0].set_yscale('log')
+    axs[0].set_title('Histogram of Reduction Factor (R)')
+    axs[0].set_xlabel('Bins')
+    axs[0].set_ylabel('Frequency')
 
-# Adjust layout
-plt.tight_layout()
+    axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black')
+    axs[1].set_yscale('log')
+    axs[1].set_title('Histogram of Inverse Reduction Factor (1/R)')
+    axs[1].set_xlabel('Bins')
+    axs[1].set_ylabel('Frequency')
 
-# Save the figure
-plt.savefig(os.path.join(children_folder,f"{typpe}_hist={len(reduction_factor)}bins={bins}.png"))
+    # Adjust layout
+    plt.tight_layout()
 
-if True:
+    # Save the figure
+    plt.savefig(os.path.join(children_folder,f"{typpe}_{case}_hist={len(reduction_factor)}bins={bins}.png"))
+
+    reduction_data = reduction_factor.copy()
+    density_data = numb_density.copy()
+    log_density_data = np.log10(density_data)
+    max_log_den = np.max(log_density_data)
+
+    def stats(n, density_data, reduction_data):
+        sample_r = []
+        for i in range(0, len(density_data)):
+            if np.abs(np.log10(density_data[i]/n)) < 1:
+                sample_r.append(reduction_data[i])
+        sample_r.sort()
+        if len(sample_r) == 0:
+            mean = None
+            median = None
+            ten = None
+        else:
+            mean = sum(sample_r)/len(sample_r)
+            median = np.quantile(sample_r, .5)
+            ten = np.quantile(sample_r, .1)
+
+        return [mean, median, ten, len(sample_r)]
+
+    Npoints = len(reduction_data)
+    x_n = np.logspace(2, max_log_den, Npoints)
+    mean_vec = np.zeros(Npoints)
+    median_vec = np.zeros(Npoints)
+    ten_vec = np.zeros(Npoints)
+    sample_size = np.zeros(Npoints)
+    for i in range(0, Npoints):
+        s = stats(x_n[i], density_data, reduction_data)
+        mean_vec[i] = s[0]
+        median_vec[i] = s[1]
+        ten_vec[i] = s[2]
+        sample_size[i] = s[3]
+
+    num_bins = Npoints//10  # Define the number of bins as a variable
+
+    rdcut = []
+    for i in range(0, Npoints):
+        if density_data[i] > 100:
+            rdcut = rdcut + [reduction_data[i]]
+
+    fig = plt.figure(figsize = (18, 6))
+    ax1 = fig.add_subplot(131)
+    ax1.hist(rdcut, num_bins)  # Use the num_bins variable here
+    ax1.set_xlabel('Reduction factor', fontsize = 20)
+    ax1.set_ylabel('number', fontsize = 20)
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
+
+    ax2 = fig.add_subplot(132)
+    l1, = ax2.plot(x_n, mean_vec)
+    l2, = ax2.plot(x_n, median_vec)
+    l3, = ax2.plot(x_n, ten_vec)
+    plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
+    plt.xscale('log')
+    plt.ylim(0.25, 1.05)
+    ax2.set_ylabel(f'Reduction factor ({len(reduction_data)})', fontsize = 20)
+    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
+    plt.setp(ax2.get_xticklabels(), fontsize = 16)
+    plt.setp(ax2.get_yticklabels(), fontsize = 16)
+
+    # Add global mean and median lines
+    global_mean = np.mean(reduction_data)
+    global_median = np.median(reduction_data)
+
+    # Add text annotations for global mean and median
+    ax2.text(0.98, global_mean, f'Global_Mean = {global_mean:.3f}', ha='right', va='bottom', fontsize=12, color=l1.get_color())
+    ax2.text(0.98, global_median, f'Global_Median = {global_median:.3f}', ha='right', va='bottom', fontsize=12, color=l2.get_color())
+
+    ax3 = fig.add_subplot(133)
+    l0, = ax3.plot(x_n, sample_size)
+    #plt.legend(l0, ['sample size'], loc="lower right", prop={'size': 14.0}, ncol=1, numpoints=5, handlelength=3.5)
+    plt.xscale('log')
+    ax3.set_ylabel(f'Sample size', fontsize = 20)
+    ax3.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
+    plt.setp(ax3.get_xticklabels(), fontsize = 16)
+    plt.setp(ax3.get_yticklabels(), fontsize = 16)
+
+    fig.subplots_adjust(left = .1)
+    fig.subplots_adjust(bottom = .15)
+    fig.subplots_adjust(top = .98)
+    fig.subplots_adjust(right = .98)
+
+    # Save the figure
+    plt.savefig(f'./RvsN_{case}_snap{snap}.png')
+    plt.close(fig)
+
+if False:
 
     # Extract data from the dictionary
     x = np.log10(numb_density_at)   # log10(numb number density)
