@@ -358,11 +358,14 @@ import matplotlib.pyplot as plt
 os.makedirs(output_path, exist_ok=True)
 if True:
     for i in range(m):
+
         eff_column_densities, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-        mean_column_over_radius = np.mean(eff_column_densities[:cut-1,i], axis=1)
-        print(mean_column_over_radius[-1])
-
+        eff_column = eff_column_densities[-1,i]
+        
+        order_total_energy = np.log10(energy_magnetic[:cut, i] + energy_thermal[:cut, i] + energy_grav[:cut, i])
+        print(order_total_energy == 0) # if 
+        
         # Define mosaic layout
         mosaic = [
             ['A', 'B'],
@@ -384,6 +387,7 @@ if True:
         axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
+        axs['B'].set_yscale('log')
         axs['B'].set_title("Magnetic Energy (LOS)")
         axs['B'].grid(True)
 
@@ -392,13 +396,15 @@ if True:
         axs['C'].set_xlabel("s (cm) along LOS")
         axs['C'].set_ylabel("Energy")
         axs['C'].set_title("Thermal Energy (LOS)")
+        axs['C'].set_yscale('log')
         axs['C'].legend()
         axs['C'].grid(True)
 
         # Gravitational Energy
-        axs['D'].plot(trajectory[:cut, i], energy_grav[:cut, i], linestyle="--", color="orange", label="Gravitational Energy")
+        axs['D'].plot(trajectory[:cut, i], abs(energy_grav[:cut, i]), linestyle="--", color="orange", label="Gravitational Energy")
         axs['D'].set_xlabel("s (cm) along LOS")
-        axs['D'].set_ylabel("$E_{grav}$")
+        axs['D'].set_ylabel("$|E_{grav}|$")
+        axs['D'].set_yscale('log')
         axs['D'].set_title("Gravitational Binding Energy (LOS)")
         axs['D'].legend()
         axs['D'].grid(True)
@@ -406,10 +412,10 @@ if True:
         # Table Data
         table_data = [
             ['---', 'Value', 'Note'],
-            ['Mean Column Density (LOS)', f'{mean_column_over_radius[-1]:.5e}', '-'],
-            ['Magnetic Energy', f'{energy_magnetic[-1,i]:.5e}', '-'],
-            ['Thermal Energy', f'{energy_thermal[-1,i]:.5e}', '-'],
-            ['Grav Binding Energy', f'{energy_grav[-1,i]:.5e}', '-'],
+            ['Mean Column Density (LOS)', f'{eff_column:.5e}', '-'],
+            ['Magnetic Energy', f'{energy_magnetic[cut-1,i]:.5e}', '-'],
+            ['Thermal Energy', f'{energy_thermal[cut-1,i]:.5e}', '-'],
+            ['Grav Binding Energy', f'{energy_grav[cut-1,i]:.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
             ['Smallest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
             ['Biggest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
@@ -423,12 +429,8 @@ if True:
         plt.tight_layout()
         plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
         plt.close(fig)
-        
-        # Save column density values to a text file after plotting
-        with open("column_density_values.txt", "a") as file:  # Open in append mode to avoid overwriting
-            file.write(f"{mean_column_over_radius[-1]:.5e}\n")
 
-if True:
+if False:
     for i in range(m):
         mean_column, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
