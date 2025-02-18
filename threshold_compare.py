@@ -432,7 +432,7 @@ with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
     file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
     file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
-test_thresh = [100, 10, 50]
+test_thresh = [10, 50, 100]
 
 for case in test_thresh:
 

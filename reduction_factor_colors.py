@@ -175,7 +175,7 @@ Radius = np.linalg.norm(Pos, axis=1)
 in_sphere = (Radius < rloc_boundary)
 above_threshold = (Density[in_sphere]*gr_cm3_to_nuclei_cm3 > 100)
 
-def get_along_lines(x_init=None):
+def get_along_lines(x_init=None, densthresh = 100):
 
     dx = 0.5
 
@@ -206,13 +206,13 @@ def get_along_lines(x_init=None):
 
     k=0
 
-    mask = dens > 100 # True if not finished
+    mask = dens > densthresh # True if not finished
     un_masked = np.logical_not(mask)
 
     while np.any(mask):
 
         # Create a mask for values that are 10^2 N/cm^3 above the threshold
-        mask = dens > 100 # 1 if not finished
+        mask = dens > densthresh # 1 if not finished
         un_masked = np.logical_not(mask) # 1 if finished
 
         aux = x[un_masked]
@@ -272,12 +272,12 @@ def get_along_lines(x_init=None):
 
     k=0
 
-    mask_rev = dens > 100
+    mask_rev = dens > densthresh
     un_masked_rev = np.logical_not(mask_rev)
     
     while np.any((mask_rev)):
 
-        mask_rev = dens > 100 
+        mask_rev = dens > densthresh
         un_masked_rev = np.logical_not(mask_rev)
 
         aux = x[un_masked_rev]
@@ -414,7 +414,7 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init)
+__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, 50)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 

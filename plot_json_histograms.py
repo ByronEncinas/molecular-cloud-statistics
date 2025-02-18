@@ -278,7 +278,7 @@ fig.subplots_adjust(right = .98)
 
 # Save the figure
 plt.savefig(f'./RvsN_{case}_snap{snap}.png')
-plt.show()
+plt.close(fig)
 # plot 3D cavities in CR density
 
 print("mean (R) ",np.mean(reduction_data))
