@@ -414,9 +414,29 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
+with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
+    file.write(f"rloc (Pc) : {rloc_boundary}\n")
+    file.write(f"x_init (Pc)        :\n {x_init}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
+    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+
 test_thresh = [100, 10, 50]
 
 for case in test_thresh:
+
+    print(case)
 
     __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
@@ -433,9 +453,7 @@ for case in test_thresh:
 
     reduction_factor = list()
     numb_density_at  = list()
-
     min_den_cycle = list()
-
     pos_red = dict()
 
     for cycle in range(max_cycles):
@@ -500,9 +518,9 @@ for case in test_thresh:
                 numb_density_at.append(n_r)
                 pos_red[tupi] = R
 
-        print("Closest local maxima 'p':", closest_values)
-        print("Bs: ", B_r, "ns: ", n_r)
-        print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+        #print("Closest local maxima 'p':", closest_values)
+        #print("Bs: ", B_r, "ns: ", n_r)
+        #print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
         if B_r/B_l < 1:
             print(" B_r/B_l =", B_r/B_l, "< 1 ") 
@@ -514,24 +532,6 @@ for case in test_thresh:
     counter = Counter(reduction_factor)
 
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
-
-    with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
-        file.write(f"{filename}\n")
-        file.write(f"Cores Used: {os.cpu_count()}\n")
-        file.write(f"Snap Time (Myr): {time_value}\n")
-        file.write(f"rloc (Pc) : {rloc_boundary}\n")
-        file.write(f"x_init (Pc)        :\n {x_init}\n")
-        file.write(f"max_cycles         : {max_cycles}\n")
-        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-        file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
-        file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-        file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-        file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-        file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
-        file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
-        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
     # Print elapsed time
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
