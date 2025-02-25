@@ -126,7 +126,8 @@ data = h5py.File(filename, 'r')
 # Access the 'Header' group
 
 header_group = data['Header']
-parent_folder = "cloud_tracker_slices/"+ typpe 
+os.makedirs("threshold_reduction_test", exist_ok=True)
+parent_folder = "threshold_reduction_test/"+ typpe 
 children_folder = os.path.join(parent_folder, 'ct_'+snap)
 print(children_folder)
 os.makedirs(children_folder, exist_ok=True)
@@ -374,37 +375,36 @@ def get_along_lines(x_init=None, densthresh=100):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-def generate_vectors_in_sphere(max_cycles, rloc):
-    # List to store valid vectors
+
+from scipy.spatial import cKDTree
+
+def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
     valid_vectors = []
-
-    # Generate points until we get 'max_cycles' valid ones
+    
+    # Build a KDTree for nearest neighbor search
+    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
+    
     while len(valid_vectors) < max_cycles:
-        # Generate random points inside a cube with side 2*rloc
         points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
-
-        # Calculate the distance of each point from the origin
         distances = np.linalg.norm(points, axis=1)
+        
+        # Keep only points inside the sphere
+        inside_sphere = points[distances <= rloc]
 
-        # Filter points inside the sphere (distance <= rloc)
-        valid_points = points[distances <= rloc]
+        # Find the nearest Voronoi cell for each point
+        _, nearest_indices = tree.query(inside_sphere)
 
-        # Append valid points to the list
+        # Get the densities of the corresponding Voronoi cells
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+
         valid_vectors.extend(valid_points)
 
-        # Stop if we have enough valid points
-        if len(valid_vectors) >= max_cycles:
-            break
-
-    # Only return the first 'max_cycles' vectors
     return np.array(valid_vectors[:max_cycles])
-
-x_init = generate_vectors_in_sphere(max_cycles, rloc_boundary)
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
 print("rloc                : ", rloc_boundary)
-print("x_init              : ", x_init)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
 print("Center              : ", Center) # 256
@@ -419,7 +419,6 @@ with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc_boundary}\n")
-    file.write(f"x_init (Pc)        :\n {x_init}\n")
     file.write(f"max_cycles         : {max_cycles}\n")
     file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
     file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
@@ -436,7 +435,7 @@ test_thresh = [10, 50, 100]
 
 for case in test_thresh:
 
-    print(case)
+    x_init = generate_vectors_in_core(max_cycles, case)
 
     __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
