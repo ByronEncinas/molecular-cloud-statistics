@@ -465,6 +465,35 @@ for ax in axes:
 
 plt.tight_layout()
 plt.savefig(f'./x_init_above_thresh{densthresh}.png')
+plt.close(fig)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Create a 3D scatter plot
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot Voronoi cell positions in gray
+ax.scatter(Pos[:, 0], Pos[:, 1], Pos[:, 2], s=10, color='gray', alpha=0.3, label="Voronoi Cells")
+
+# Plot generated points in red
+ax.scatter(generated_points[:, 0], generated_points[:, 1], generated_points[:, 2], 
+           s=15, color='red', alpha=0.7, label="Generated Points")
+
+# Labels and title
+ax.set_xlabel("X Coordinate")
+ax.set_ylabel("Y Coordinate")
+ax.set_zlabel("Z Coordinate")
+ax.set_title("3D Distribution of Generated Vectors in Core")
+
+# Legend and aspect ratio
+ax.legend()
+ax.view_init(elev=30, azim=45)  # Adjust view angle for better visualization
+plt.savefig(f'./3D_plot_at_{densthresh}.png')
+plt.close(fig)
+
 
 exit()
 
