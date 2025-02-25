@@ -58,7 +58,7 @@ if len(sys.argv)>4:
 else:
     N            =5_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
-    max_cycles   =50
+    max_cycles   =5000
     typpe = 'ideal'
     num_file = '430'
 
