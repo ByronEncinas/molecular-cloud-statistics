@@ -397,35 +397,38 @@ def generate_vectors_in_sphere(max_cycles, rloc):
     # Only return the first 'max_cycles' vectors
     return np.array(valid_vectors[:max_cycles])
 
-def generate_vectors_in_core(max_cycles, densthresh,  rloc = 2.5):
-    # List to store valid vectors
+from scipy.spatial import cKDTree
+
+def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
     valid_vectors = []
-
-    # Generate points until we get 'max_cycles' valid ones
+    
+    # Build a KDTree for nearest neighbor search
+    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
+    
     while len(valid_vectors) < max_cycles:
-        # Generate random points inside a cube with side 2*rloc
-        points = np.random.uniform(low=0, high=rloc, size=(max_cycles, 3))
-
-        # Calculate the distance of each point from the origin
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
         distances = np.linalg.norm(points, axis=1)
+        
+        # Keep only points inside the sphere
+        inside_sphere = points[distances <= rloc]
 
-        # Filter points inside the sphere (distance <= rloc)
-        valid_points = Pos[Density[distances <= rloc]*gr_cm3_to_nuclei_cm3 > densthresh]
+        # Find the nearest Voronoi cell for each point
+        _, nearest_indices = tree.query(inside_sphere)
 
-        # Append valid points to the list
+        # Get the densities of the corresponding Voronoi cells
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+
         valid_vectors.extend(valid_points)
 
-        # Stop if we have enough valid points
-        if len(valid_vectors) >= max_cycles:
-            break
-
-    # Only return the first 'max_cycles' vectors
     return np.array(valid_vectors[:max_cycles])
 
-x_init = generate_vectors_in_sphere(max_cycles, rloc_boundary)
+x_init = generate_vectors_in_core(max_cycles, densthresh)
 
 print(x_init[:2, :])
+
 exit()
+
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
 print("rloc                : ", rloc_boundary)
