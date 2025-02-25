@@ -475,9 +475,6 @@ from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
 
-# Plot Voronoi cell positions in gray
-ax.scatter(Pos[:, 0], Pos[:, 1], Pos[:, 2], s=10, color='gray', alpha=0.1, label="Voronoi Cells")
-
 # Plot generated points in red
 ax.scatter(generated_points[:, 0], generated_points[:, 1], generated_points[:, 2], 
            s=15, color='red', alpha=0.7, label="Generated Points")
