@@ -170,10 +170,8 @@ VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 
 # obtain width of cloud to set up radius
 # calculate the a gaussian for the
+densthresh = 100
 rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
-Radius = np.linalg.norm(Pos, axis=1)
-in_sphere = (Radius < rloc_boundary)
-above_threshold = (Density[in_sphere]*gr_cm3_to_nuclei_cm3 > 100)
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -399,8 +397,35 @@ def generate_vectors_in_sphere(max_cycles, rloc):
     # Only return the first 'max_cycles' vectors
     return np.array(valid_vectors[:max_cycles])
 
+def generate_vectors_in_core(max_cycles, densthresh,  rloc = 2.5):
+    # List to store valid vectors
+    valid_vectors = []
+
+    # Generate points until we get 'max_cycles' valid ones
+    while len(valid_vectors) < max_cycles:
+        # Generate random points inside a cube with side 2*rloc
+        points = np.random.uniform(low=0, high=rloc, size=(max_cycles, 3))
+
+        # Calculate the distance of each point from the origin
+        distances = np.linalg.norm(points, axis=1)
+
+        # Filter points inside the sphere (distance <= rloc)
+        valid_points = Pos[Density[distances <= rloc]*gr_cm3_to_nuclei_cm3 > densthresh]
+
+        # Append valid points to the list
+        valid_vectors.extend(valid_points)
+
+        # Stop if we have enough valid points
+        if len(valid_vectors) >= max_cycles:
+            break
+
+    # Only return the first 'max_cycles' vectors
+    return np.array(valid_vectors[:max_cycles])
+
 x_init = generate_vectors_in_sphere(max_cycles, rloc_boundary)
 
+print(x_init[:2, :])
+exit()
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
 print("rloc                : ", rloc_boundary)
@@ -414,7 +439,7 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, 50)
+__, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, densthresh)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 

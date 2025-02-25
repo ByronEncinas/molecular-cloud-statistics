@@ -442,10 +442,7 @@ for case in test_thresh:
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-    # Create the new arepo_npys directory
     os.makedirs(children_folder, exist_ok=True)
-
-    # flow control to repeat calculations in no peak situations
 
     m = magnetic_fields.shape[1]
 
@@ -460,7 +457,6 @@ for case in test_thresh:
 
         _from = N+1 - threshold_rev[cycle]
         _to   = N+1 + threshold[cycle]
-        #print(f"{_from} - {_to}")
         p_r = N + 1 - _from
 
         bfield    = magnetic_fields[_from:_to,cycle]
@@ -594,7 +590,7 @@ for case in test_thresh:
 
     reduction_data = reduction_factor.copy()
     density_data = numb_density.copy()
-    log_density_data = np.log10(density_data)
+    log_density_data = np.log10(density_data.copy())
     max_log_den = np.max(log_density_data)
 
     def stats(n, density_data, reduction_data):
@@ -615,7 +611,7 @@ for case in test_thresh:
         return [mean, median, ten, len(sample_r)]
 
     Npoints = len(reduction_data)
-    x_n = np.logspace(2, max_log_den, Npoints)
+    x_n = np.logspace(np.log10(case), max_log_den, Npoints)
     mean_vec = np.zeros(Npoints)
     median_vec = np.zeros(Npoints)
     ten_vec = np.zeros(Npoints)
@@ -631,7 +627,7 @@ for case in test_thresh:
 
     rdcut = []
     for i in range(0, Npoints):
-        if density_data[i] > 100:
+        if density_data[i] > case:
             rdcut = rdcut + [reduction_data[i]]
 
     fig = plt.figure(figsize = (18, 6))

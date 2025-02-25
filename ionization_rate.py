@@ -1,7 +1,7 @@
 from library import *
-import numpy as np
+from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
-from scipy.signal import savgol_filter
+import numpy as np
 import os, sys
 
 """
@@ -30,205 +30,156 @@ radius = np.linalg.norm(radius_vector, axis=-1)  # Displacement magnitudes
 
 print(" Data Successfully Loaded")
 
-""" Smoothing the magnetic field lines """
 
-ds = np.abs(distance[1:] - distance[:-1])  # Shape (N,)
-ds /= np.sum(ds)
-ds[ds == 0.] = np.min(ds)
+if False: # smoothing of bfield
+    """ Smoothing the magnetic field lines """
 
-field = bfield[1:]*1.0e+6
-K = np.random.normal(0.0, 1.0, len(ds))  # Kernel should be precomputed
+    ds = np.abs(distance[1:] - distance[:-1])  # Shape (N,)
+    ds /= np.sum(ds)
+    ds[ds == 0.] = np.min(ds)
 
-# Apply convolution
-smoothed_field = np.convolve(field * ds, K, mode='same')
+    field = bfield[1:]*1.0e+6 # in micro Gauss
 
-from scipy.ndimage import gaussian_filter1d
+    Rs = []
+    InvRs = []
+    NormBfield = []
 
-smoothed_field = gaussian_filter1d(field, sigma=2)  # Adjust sigma for smoothing strength
+    def adaptative_sigma(field, ds, fraction=0.1, polyorder=2):
+        N = len(field)
 
-#plt.plot(field, label='smooth-$(B*K)$')
-#plt.plot(smoothed_field, label='smooth-$(B*K)$')
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
-from scipy.signal import medfilt, savgol_filter
-from scipy.fft import rfft, irfft
-
-# Generate an erratic field (simulated noisy data)
-np.random.seed(42)
-N = len(ds)
-
-# Adaptive Gaussian Filtering (Wider smoothing for noisy regions)
-grad = np.abs(np.gradient(field))
-adaptive_sigma = 3 + 5*ds/np.mean(ds) #(ds > np.mean(ds))
-adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
-
-Rs = []
-InvRs = []
-NormBfield = []
-
-"""
-SavGol with window adapter
-"""
-
-def adaptive_savgol_filter(field, ds, fraction=0.1, polyorder=2):
-    smoothed = np.zeros_like(field)
-    N = len(field)
-
-    # Compute local variability using the step size gradient (local_std)
-    local_std = np.abs(ds)/np.mean(ds)  # Local variability measure
-    local_std2 = np.zeros_like(local_std)  # To store adaptive window sizes
-    
-    # Normalize local_std to [0,1] for scaling purposes
-    local_std = (local_std - local_std.min()) / (local_std.max() - local_std.min() + 1e-5)  # Avoid division by zero
-    
-    # Define min and max window sizes
-    min_window = polyorder + 1  # Minimum window size must be at least polyorder + 1
-    max_window = max(min_window, int(fraction * N))  # Max window size is a fraction of the total data length
-    
-    # Inverse scaling of local_std (smaller std -> smaller window, larger std -> larger window)
-    for i in range(N):
-        # Inverse relationship: Larger local_std -> larger window
-        win_size = int(min_window + 0.5*(1 - local_std[i]) * (max_window - min_window))  # Inverse scaling
+        # Compute local variability using the step size gradient (local_std)
+        local_std = np.abs(ds)/np.mean(ds)  # Local variability measure
+        local_std2 = np.zeros_like(local_std)  # To store adaptive window sizes
         
-        if win_size % 2 == 0:  # Ensure window size is odd for Savitzky-Golay filter
-            win_size += 1
-        local_std2[i] = win_size
+        # Normalize local_std to [0,1] for scaling purposes
+        local_std = (local_std - local_std.min()) / (local_std.max() - local_std.min() + 1e-5)  # Avoid division by zero
         
-        # Apply Savitzky-Golay filter with adaptive window size
-        smoothed[i] = savgol_filter(field, window_length=min(win_size, max_window), 
-                                    polyorder=polyorder, mode='nearest')[i]
+        # Define min and max window sizes
+        min_window = polyorder + 1  # Minimum window size must be at least polyorder + 1
+        max_window = max(min_window, int(fraction * N))  # Max window size is a fraction of the total data length
+        
+        # Inverse scaling of local_std (smaller std -> smaller window, larger std -> larger window)
+        for i in range(N):
+            # Inverse relationship: Larger local_std -> larger window
+            win_size = int(min_window + 0.5*(1 - local_std[i]) * (max_window - min_window))  # Inverse scaling
+            
+            if win_size % 2 == 0:  # Ensure window size is odd for Savitzky-Golay filter
+                win_size += 1
+            local_std2[i] = win_size
+                # Plot window size (local_std2)
+        plt.plot(local_std/np.max(local_std)*np.max(local_std2),  label="$ds*\sigma^{max}/ds_{mean}$")
+        plt.plot(local_std2, label="$\sigma(s)$ Standard deviation")
+        plt.xlabel("Index")
+        plt.ylabel("Relative Window Size")
+        plt.title("Adaptive Window Size Based on Local $\sigma(s)$")
+        plt.legend()
+        plt.grid()
+        plt.savefig(f"./AdaptativeSigma{cycle}.png")
+        return None
 
-    # Plot window size (local_std2)
-    plt.plot(local_std/np.mean(local_std)*np.max(local_std2),  label="$ds/ds_{mean}$ (scaled)")
-    plt.plot(local_std2, label="Window Size  (scaled)")
+    # Adaptive Gaussian Filtering (Wider smoothing for noisy regions)
+    grad = np.abs(np.gradient(field))
+    adaptive_sigma = 5 + 2.5*ds/np.mean(ds) #(ds > np.mean(ds))
+    adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
+
+    plt.plot(adaptive_sigma, label="$\sigma(s)$ Standard deviation")
     plt.xlabel("Index")
-    plt.ylabel("Window Size")
-    plt.title("Adaptive Window Size Based on Local Variability")
+    plt.ylabel(r"$\sigma(s)$")
+    plt.title(r"$\sigma(s) = 3 + 2.5 \frac{dr_{cell}}{dr^{mean}_{cell}}$")
     plt.legend()
     plt.grid()
-    return smoothed
+    plt.savefig(f"./AdaptativeSigma{cycle}.png")
 
-# Example usage
-adaptive_savgol = adaptive_savgol_filter(field, ds)
-"""
-plt.scatter(distance[:-1]/length_unit,distance[:-1]/length_unit, label='path', marker='^')
-plt.scatter(distance[:-1]/length_unit,np.mean(distance[:-1]/length_unit)*ds/np.max(ds), label='diff', marker='o')
-plt.xlabel("s (cm)")
-plt.ylabel("s (cm)")
-plt.legend()
-plt.grid()
-plt.show()
-"""
-def reduction(aux):
-    pocket, global_info = smooth_pocket_finder(aux, "_c1", plot=False) # this plots
-    index_pocket, field_pocket = pocket[0], pocket[1]
+    def reduction(aux):
+        pocket, global_info = smooth_pocket_finder(aux, "_c1", plot=False) # this plots
+        index_pocket, field_pocket = pocket[0], pocket[1]
 
-    global_max_index = global_info[0]
-    global_max_field = global_info[1]
+        global_max_index = global_info[0]
+        global_max_field = global_info[1]
 
-    for i, Bs in enumerate(aux): 
-        """  
-        R = 1 - \sqrt{1 - B(s)/Bl}
-        s = distance traveled inside of the molecular cloud (following field lines)
-        Bs= Magnetic Field Strenght at s
-        """
-        if i < index_pocket[0] or i > index_pocket[-1]: # assuming its monotonously decreasing at s = -infty, infty
-            Bl = Bs
-        
-        p_i = find_insertion_point(index_pocket, i)    
-        indexes = index_pocket[p_i-1:p_i+1]       
+        for i, Bs in enumerate(aux): 
+            """  
+            R = 1 - \sqrt{1 - B(s)/Bl}
+            s = distance traveled inside of the molecular cloud (following field lines)
+            Bs= Magnetic Field Strenght at s
+            """
+            if i < index_pocket[0] or i > index_pocket[-1]: # assuming its monotonously decreasing at s = -infty, infty
+                Bl = Bs
+            
+            p_i = find_insertion_point(index_pocket, i)    
+            indexes = index_pocket[p_i-1:p_i+1]       
 
-        if len(indexes) < 2:
-            nearby_field = [Bs, Bs]
-        else:
-            nearby_field = [aux[indexes[0]], aux[indexes[1]]]
+            if len(indexes) < 2:
+                nearby_field = [Bs, Bs]
+            else:
+                nearby_field = [aux[indexes[0]], aux[indexes[1]]]
 
-        Bl = min(nearby_field)
+            Bl = min(nearby_field)
 
-        if Bs/Bl < 1:
-            R = 1 - np.sqrt(1. - Bs/Bl)
-        else:
-            R = 1
+            if Bs/Bl < 1:
+                R = 1 - np.sqrt(1. - Bs/Bl)
+            else:
+                R = 1
 
-        Rs.append(R)
-        InvRs.append(1/R)
+            Rs.append(R)
+            InvRs.append(1/R)
 
-    return Rs, InvRs
+        return Rs, InvRs
 
-# Plot Results
-plt.figure(figsize=(12, 8))
-plt.plot(distance[:-1], field, label='Original', color='grey', alpha=0.6, linewidth=2, linestyle='-')
-plt.plot(distance[:-1], adaptive_gaussian_smoothed, label='Adaptive Gaussian', linestyle='--') # follows too closely the micro-pockets
-#plt.plot(distance[:-1], adaptive_savgol, label='Adaptative Savitzky-Golay', linestyle='--') # maxima is smoothed down 
-plt.legend()
-plt.savefig("./ProfileCompareFilters.png")
-plt.show()
-
-smoothing_algos = [field, adaptive_gaussian_smoothed]#, adaptive_savgol]#, , fourier_smoothed]
-smoothing_names = ["field", "adaptive_gaussian"]#, "adaptative_savgol"]#, "savgol_smoothed", "fourier_smoothed"]
-
-diffRs = []
-for o, algo  in enumerate(smoothing_algos):
-    
-    Rs, InvRs = reduction(algo)
-    diffRs.append([np.mean(Rs),np.mean(InvRs)])
-    plt.scatter(o, np.mean(Rs), label=f'$R(s)$ {smoothing_names[o]}', alpha=0.6, linewidth=2, linestyle='--')
+    # Plot Results
+    plt.figure(figsize=(12, 8))
+    plt.plot(distance[:-1], field, label='Original', color='grey', alpha=0.6, linewidth=2, linestyle='-')
+    plt.plot(distance[:-1], adaptive_gaussian_smoothed, label='Adaptive Gaussian', linestyle='--') # follows too closely the micro-pockets
+    #plt.plot(distance[:-1], adaptive_savgol, label='Adaptative Savitzky-Golay', linestyle='--') # maxima is smoothed down 
     plt.legend()
+    plt.savefig(f"./ProfileCompareFilters{cycle}.png")
 
-data_Rs = abs(diffRs[0][0])
-data_InvRs = abs(diffRs[0][1])
-    
-Rs, InvRs = diffRs[1][0], diffRs[1][1]
-percentage_Rs    = abs(Rs- data_Rs)*100
-percentage_InvRs = abs(InvRs-data_InvRs)*100
-plt.text(
-    0.25, 0.25, 
-    rf"$\Delta R (AG) = {percentage_Rs:.4f}$, ",
-    transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
-)
-"""
-Rs, InvRs = diffRs[2][0], diffRs[2][1]
-percentage_Rs    = abs(Rs- data_Rs)*100
-percentage_InvRs = abs(InvRs-data_InvRs)*100
-plt.text(
-    0.25, 0.15, 
-    rf"$\Delta R (SG) = {percentage_Rs:.4f}$, ",
-    transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
-)"""
+    smoothing_algos = [field, adaptive_gaussian_smoothed]#, adaptive_savgol]#, , fourier_smoothed]
+    smoothing_names = ["field", "adaptive_gaussian"]#, "adaptative_savgol"]#, "savgol_smoothed", "fourier_smoothed"]
 
-plt.xlabel('Path distance (cgs)')
-plt.ylabel('Field Value (cgs)')
-plt.title('Comparison of Different Smoothing Techniques')
-plt.grid()
-plt.savefig("./PocketMeanComparison.png")
+    diffRs = []
+    for o, algo  in enumerate(smoothing_algos):
+        
+        Rs, InvRs = reduction(algo)
+        diffRs.append([np.mean(Rs),np.mean(InvRs)])
+
+    data_Rs = abs(diffRs[0][0])
+    data_InvRs = abs(diffRs[0][1])
+        
+    Rs, InvRs = diffRs[1][0], diffRs[1][1]
+    percentage_Rs    = abs(Rs- data_Rs)*100
+    percentage_InvRs = abs(InvRs-data_InvRs)*100
+    plt.text(
+        0.25, 0.75, 
+        rf"$\Delta R (AG) = {percentage_Rs:.4f}$, ",
+        transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
+    )
+    plt.text(
+        0.25, 0.60, 
+        r"$n_g^{threshold} = 10^2$ cm$^{-3}$",
+        transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
+    )
+    plt.xlabel('Path distance (Pc)')
+    plt.ylabel('Field Magnitude $\mu$G')
+    plt.title('Adaptative Convolution $(B*K)$')
+    plt.grid()
+    plt.savefig(f"./PocketMeanComparison{cycle}.png")
+
+""" Calculate Forward and Backward Column Densities """
+
+ds = abs(np.diff(distance))
+
+Nplus = np.cumsum(numb_density[1:]*ds)
+
+Nminus = np.cumsum(numb_density[1:][::-1]*ds[::-1])
+
+plt.plot(Nplus)
+plt.plot(Nminus)
+plt.yscale('log')
 plt.show()
-
 exit()
 
-import matplotlib.pyplot as plt
 
-plt.scatter(radius, volume)
-plt.xlabel("Displacement from core")
-plt.ylabel("Cell Volume")
-plt.title("Displacement vs. Cell Volume")
-plt.show()
-
-""" Calculate Maximum and Minimum Column Densities """
-
-# assuming the particle already travelled 10e19 to get to the core
-column = 0
-z = 0
-for i, si in enumerate(distance):
-    if i==0:
-        ds = 0.0
-    else:
-        ds = si - z
-    column += numb_density[i]*(abs(si-z))
-    z = si
-
-exit()
 """ Parameters """
 
 Ei = 1.0e+0

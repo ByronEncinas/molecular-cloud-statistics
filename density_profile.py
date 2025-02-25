@@ -56,18 +56,6 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
     
     return x_final, abs_local_fields_1, local_densities, CellVol, kinetic_energy, internal_energy, pressure
 
-"""  
-Using Alex Mayer Data
-
-"""
-
-"""
-Parameters
-
-- [N] default total number of steps in the simulation
-- [dx] default 4/N of the rloc_boundary (radius of spherical region of interest) variable
-
-"""
 FloatType = np.float64
 IntType = np.int32
 
