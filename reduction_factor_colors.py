@@ -464,7 +464,7 @@ for ax in axes:
     ax.grid(True)
 
 plt.tight_layout()
-plt.savefig(f'./x_init_above_thresh{densthresh}.png')
+plt.savefig(os.path.join(parent_folder, f'./x_init_above_thresh{densthresh}.png'))
 plt.close(fig)
 
 import numpy as np
@@ -482,6 +482,11 @@ ax.scatter(Pos[:, 0], Pos[:, 1], Pos[:, 2], s=10, color='gray', alpha=0.3, label
 ax.scatter(generated_points[:, 0], generated_points[:, 1], generated_points[:, 2], 
            s=15, color='red', alpha=0.7, label="Generated Points")
 
+# Set axis limits to form a cube with side length 2.5
+ax.set_xlim([-2.5, 2.5])
+ax.set_ylim([-2.5, 2.5])
+ax.set_zlim([-2.5, 2.5])
+
 # Labels and title
 ax.set_xlabel("X Coordinate")
 ax.set_ylabel("Y Coordinate")
@@ -493,9 +498,6 @@ ax.legend()
 ax.view_init(elev=30, azim=45)  # Adjust view angle for better visualization
 plt.savefig(f'./3D_plot_at_{densthresh}.png')
 plt.close(fig)
-
-
-exit()
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
