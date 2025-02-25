@@ -429,18 +429,42 @@ generated_points = generate_vectors_in_core(max_cycles, densthresh)
 x, y = generated_points[:, 0], generated_points[:, 1]
 #vor_x, vor_y = Pos[:, 0], Pos[:, 1]
 
-# Plot
-plt.figure(figsize=(8, 8))
-#plt.scatter(vor_x, vor_y, s=10, color='gray', alpha=0.5, label="Voronoi Cells")
-plt.scatter(x, y, s=15, color='red', alpha=0.7, label="Generated Points")
+# Create three subplots for X-Y, X-Z, and Y-Z projections
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-plt.xlabel("X Coordinate")
-plt.ylabel("Y Coordinate")
-plt.title("Projection of Generated Vectors in Core (X-Y Plane)")
-plt.legend()
-plt.axis("equal")
-plt.grid(True)
-plt.savefig('./XY_from_x_init.png')
+# X-Y Projection
+#axes[0].scatter(vor_x, vor_y, s=10, color='gray', alpha=0.5, label="Voronoi Cells")
+axes[0].scatter(x, y, s=15, color='red', alpha=0.7, label="Generated Points")
+axes[0].set_xlabel("X Coordinate")
+axes[0].set_ylabel("Y Coordinate")
+axes[0].set_title("X-Y Projection")
+
+# X-Z Projection
+x, z = generated_points[:, 0], generated_points[:, 2]
+#vor_z = Pos[:, 2]
+#axes[1].scatter(vor_x, vor_z, s=10, color='gray', alpha=0.5, label="Voronoi Cells")
+axes[1].scatter(x, z, s=15, color='red', alpha=0.7, label="Generated Points")
+axes[1].set_xlabel("X Coordinate")
+axes[1].set_ylabel("Z Coordinate")
+axes[1].set_title("X-Z Projection")
+
+# Y-Z Projection
+y, z = generated_points[:, 1], generated_points[:, 2]
+#vor_y = Pos[:, 1]
+#axes[2].scatter(vor_y, vor_z, s=10, color='gray', alpha=0.5, label="Voronoi Cells")
+axes[2].scatter(y, z, s=15, color='red', alpha=0.7, label="Generated Points")
+axes[2].set_xlabel("Y Coordinate")
+axes[2].set_ylabel("Z Coordinate")
+axes[2].set_title("Y-Z Projection")
+
+# Adjust layout and show plots
+for ax in axes:
+    ax.legend()
+    ax.axis("equal")
+    ax.grid(True)
+
+plt.tight_layout()
+plt.savefig(f'./x_init_above_thresh{densthresh}.png')
 
 exit()
 
