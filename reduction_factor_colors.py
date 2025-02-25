@@ -425,7 +425,22 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
 
 x_init = generate_vectors_in_core(max_cycles, densthresh)
 
-print(x_init[:2, :])
+generated_points = generate_vectors_in_core(max_cycles, densthresh)
+x, y = generated_points[:, 0], generated_points[:, 1]
+#vor_x, vor_y = Pos[:, 0], Pos[:, 1]
+
+# Plot
+plt.figure(figsize=(8, 8))
+#plt.scatter(vor_x, vor_y, s=10, color='gray', alpha=0.5, label="Voronoi Cells")
+plt.scatter(x, y, s=15, color='red', alpha=0.7, label="Generated Points")
+
+plt.xlabel("X Coordinate")
+plt.ylabel("Y Coordinate")
+plt.title("Projection of Generated Vectors in Core (X-Y Plane)")
+plt.legend()
+plt.axis("equal")
+plt.grid(True)
+plt.savefig('./XY_from_x_init.png')
 
 exit()
 
