@@ -232,7 +232,7 @@ def get_along_lines(x_init):
     pressure = Pressure[cells]* mass_unit / (length_unit * (time_unit ** 2))  #cgs
     grav_potential = 0.0
 
-    energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]/(8*np.pi)*(vol*parsec_to_cm3**3)
+    energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]*(gauss_code_to_gauss_cgs)**2/(8*np.pi)*(vol*parsec_to_cm3**3)
     energy_thermal[0,:]  = (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
     energy_grav[0,:]     = 0.0
     
@@ -284,7 +284,7 @@ def get_along_lines(x_init):
         binding_energy = -np.sum((grav_constant_cgs * M_r / (rad*parsec_to_cm3)) * 4 * np.pi * (rad*parsec_to_cm3)**2 * mass_dens * dx_vec*parsec_to_cm3)
 
         energy_grav[k + 1, :]     = binding_energy
-        energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield / (8 * np.pi) * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
+        energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield*(gauss_code_to_gauss_cgs)**2 / (8 * np.pi) * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
         energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3))**2*(dx_vec*parsec_to_cm3)
 
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
@@ -349,53 +349,37 @@ if True:
 
         eff_column_densities, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-        eff_column = eff_column_densities[-1,i]
+        eff_column = np.max(eff_column_densities[:,i])
         
         order_total_energy = np.log10(energy_magnetic[:cut, i] + energy_thermal[:cut, i] + energy_grav[:cut, i])
-        print(order_total_energy == 0) # if 
-        
-        # Define mosaic layout
+        print(order_total_energy) # if 
+                
+        # Define new mosaic layout
         mosaic = [
             ['A', 'B'],
-            ['E', '.'],
-            ['C', 'D']
+            ['C', 'C']
         ]
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
-        # Plot Magnetic Energy
+        # Plot Number Density
         axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
-        axs['A'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="blue", s=5)
         axs['A'].set_yscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
         axs['A'].set_ylabel("$n_g(s)$")
         axs['A'].set_title("Number Density (LOS)")
         axs['A'].grid(True)
 
-        # Plot Thermal Energy
-        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red")
+        # Plot All Energies Together
+        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red", label="Magnetic Energy")
+        axs['B'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="green", label="Thermal Energy")
+        axs['B'].plot(trajectory[:cut, i], abs(energy_grav[:cut, i]), linestyle="--", color="orange", label="Gravitational Energy")
+
+        axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
-        axs['B'].set_yscale('log')
-        axs['B'].set_title("Magnetic Energy (LOS)")
+        axs['B'].set_title("Energies along Line of Sight")
+        axs['B'].legend()
         axs['B'].grid(True)
-
-        # Energies Relative to Gravitational Energy
-        axs['C'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="red", label="Thermal Energy")
-        axs['C'].set_xlabel("s (cm) along LOS")
-        axs['C'].set_ylabel("Energy")
-        axs['C'].set_title("Thermal Energy (LOS)")
-        axs['C'].set_yscale('log')
-        axs['C'].legend()
-        axs['C'].grid(True)
-
-        # Gravitational Energy
-        axs['D'].plot(trajectory[:cut, i], abs(energy_grav[:cut, i]), linestyle="--", color="orange", label="Gravitational Energy")
-        axs['D'].set_xlabel("s (cm) along LOS")
-        axs['D'].set_ylabel("$|E_{grav}|$")
-        axs['D'].set_yscale('log')
-        axs['D'].set_title("Gravitational Binding Energy (LOS)")
-        axs['D'].legend()
-        axs['D'].grid(True)
 
         # Table Data
         table_data = [
@@ -410,8 +394,8 @@ if True:
             ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut,i]):.3e}', '-'],
             ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-']
         ]
-        table = axs['E'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
-        axs['E'].axis('off')
+        table = axs['C'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
+        axs['C'].axis('off')
 
         # Adjust Layout and Save Figure
         plt.tight_layout()
