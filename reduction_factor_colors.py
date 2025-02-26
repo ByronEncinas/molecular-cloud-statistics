@@ -372,34 +372,10 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-def generate_vectors_in_sphere(max_cycles, rloc):
-    # List to store valid vectors
-    valid_vectors = []
-
-    # Generate points until we get 'max_cycles' valid ones
-    while len(valid_vectors) < max_cycles:
-        # Generate random points inside a cube with side 2*rloc
-        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
-
-        # Calculate the distance of each point from the origin
-        distances = np.linalg.norm(points, axis=1)
-
-        # Filter points inside the sphere (distance <= rloc)
-        valid_points = points[distances <= rloc]
-
-        # Append valid points to the list
-        valid_vectors.extend(valid_points)
-
-        # Stop if we have enough valid points
-        if len(valid_vectors) >= max_cycles:
-            break
-
-    # Only return the first 'max_cycles' vectors
-    return np.array(valid_vectors[:max_cycles])
-
-from scipy.spatial import cKDTree
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
+    from scipy.spatial import cKDTree
+
     valid_vectors = []
     
     # Build a KDTree for nearest neighbor search

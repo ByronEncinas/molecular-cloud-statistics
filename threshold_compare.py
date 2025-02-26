@@ -171,7 +171,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 
 # obtain width of cloud to set up radius
 # calculate the a gaussian for the
-rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+rloc_boundary = 2.0 # average size is two parsec, allow them to be a little big bigger before rejection sampling
 Radius = np.linalg.norm(Pos, axis=1)
 in_sphere = (Radius < rloc_boundary)
 above_threshold = (Density[in_sphere]*gr_cm3_to_nuclei_cm3 > 100)
@@ -375,10 +375,8 @@ def get_along_lines(x_init=None, densthresh=100):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-
-from scipy.spatial import cKDTree
-
 def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
+    from scipy.spatial import cKDTree
     valid_vectors = []
     
     # Build a KDTree for nearest neighbor search
