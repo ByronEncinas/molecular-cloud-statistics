@@ -30,18 +30,13 @@ IntType = np.int32
 
 # python3 arepo_cloud_tracker.py 5_000 0.3 500 2
 
-if len(sys.argv)>5:
-	N=int(sys.argv[1])
-	rloc_boundary=float(sys.argv[2])
-	max_cycles   =int(sys.argv[3])
-	spacing = int(sys.argv[4])
-	how_many = int(sys.argv[5])
+if len(sys.argv)>2:
+	spacing = int(sys.argv[1])
+	how_many = int(sys.argv[2])
 else:
-    N             =4_000
-    rloc_boundary =0.5
-    max_cycles    =20
+
     spacing      = 1
-    how_many     = 50
+    how_many     = 500
 
 print(sys.argv[1:])
 cycle = 0 
@@ -50,7 +45,7 @@ reduction_factor = []
 prev_time = 0.0
 
 """  B. Jesus Velazquez """
-
+"""
 def get_along_lines(x_init, dir = ''):
 
     dx = 0.5
@@ -250,6 +245,7 @@ def get_along_lines(x_init, dir = ''):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
+"""
 #/ideal_mhd
 #file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
 file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]

@@ -26,12 +26,11 @@ distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{
 bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{cycle}.npy'), mmap_mode='r'))
 numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{cycle}.npy'), mmap_mode='r'))
 volume         = np.array(np.load(os.path.join(origin_folder, f'ArepoVolumes{cycle}.npy'), mmap_mode='r'))
-radius = np.linalg.norm(radius_vector, axis=-1)  # Displacement magnitudes
+radius         = np.linalg.norm(radius_vector, axis=-1)
 
 print(" Data Successfully Loaded")
 
-
-if False: # smoothing of bfield
+if True: # smoothing of bfield
     """ Smoothing the magnetic field lines """
 
     ds = np.abs(distance[1:] - distance[:-1])  # Shape (N,)
@@ -79,7 +78,7 @@ if False: # smoothing of bfield
 
     # Adaptive Gaussian Filtering (Wider smoothing for noisy regions)
     grad = np.abs(np.gradient(field))
-    adaptive_sigma = 5 + 2.5*ds/np.mean(ds) #(ds > np.mean(ds))
+    adaptive_sigma = 1 + 5*ds/np.mean(ds) #(ds > np.mean(ds))
     adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
 
     plt.plot(adaptive_sigma, label="$\sigma(s)$ Standard deviation")
@@ -132,7 +131,6 @@ if False: # smoothing of bfield
     plt.plot(distance[:-1], adaptive_gaussian_smoothed, label='Adaptive Gaussian', linestyle='--') # follows too closely the micro-pockets
     #plt.plot(distance[:-1], adaptive_savgol, label='Adaptative Savitzky-Golay', linestyle='--') # maxima is smoothed down 
     plt.legend()
-    plt.savefig(f"./ProfileCompareFilters{cycle}.png")
 
     smoothing_algos = [field, adaptive_gaussian_smoothed]#, adaptive_savgol]#, , fourier_smoothed]
     smoothing_names = ["field", "adaptive_gaussian"]#, "adaptative_savgol"]#, "savgol_smoothed", "fourier_smoothed"]
@@ -147,11 +145,11 @@ if False: # smoothing of bfield
     data_InvRs = abs(diffRs[0][1])
         
     Rs, InvRs = diffRs[1][0], diffRs[1][1]
-    percentage_Rs    = abs(Rs- data_Rs)*100
-    percentage_InvRs = abs(InvRs-data_InvRs)*100
+    percentage_Rs    = ((Rs- data_Rs)/data_Rs)*100
+    percentage_InvRs = ((InvRs-data_InvRs)/data_InvRs)*100
     plt.text(
         0.25, 0.75, 
-        rf"$\Delta R (AG) = {percentage_Rs:.4f}$, ",
+        rf"% $Difference R (AG) = {percentage_Rs:.4f}$ %",
         transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
     )
     plt.text(
@@ -165,20 +163,114 @@ if False: # smoothing of bfield
     plt.grid()
     plt.savefig(f"./PocketMeanComparison{cycle}.png")
 
-""" Calculate Forward and Backward Column Densities """
+exit()
+
+""" Calculate Effective Column Densities """
 
 ds = abs(np.diff(distance))
 
-Nplus = np.cumsum(numb_density[1:]*ds)
+Npluseff = np.cumsum(numb_density[1:]*ds)
 
-Nminus = np.cumsum(numb_density[1:][::-1]*ds[::-1])
+Nminuseff = np.cumsum(numb_density[1:][::-1]*ds[::-1])
 
-plt.plot(Nplus)
-plt.plot(Nminus)
-plt.yscale('log')
+""" Column Densities N_+(mu, s) & N_-(mu, s)"""
+
+size = ds.shape[0]
+
+#mu_ism = np.flip(np.logspace(-3,0,50))
+mu_ism = np.linspace(0.5, 1.0, num=100)
+#mu_ism = np.array([0.5, 0.75, 1.0])
+
+Npmu  = np.zeros((size, len(mu_ism))) # N(s, mu)
+
+B_ism     = bfield[0]
+
+for i, mui_ism in enumerate(mu_ism):
+
+    for j in range(size):
+
+        n_g = numb_density[j]
+        Bsprime = bfield[j]
+        mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
+        
+        if (mu_local2 < 0):
+            break
+        
+        Npmu[j,i] = Npmu[j-i,i] + n_g*ds[j] / np.sqrt(mu_local2)
+
+Nmmu  = np.zeros((size, len(mu_ism))) # N(s, mu)
+
+rev_numb_density = numb_density[::-1]
+rev_bfield        = bfield[::-1]
+
+B_ism      = bfield[-1]
+
+for i, mui_ism in enumerate(mu_ism):
+
+    for j in range(size):
+
+        n_g = rev_numb_density[j]
+        Bsprime = rev_bfield[j]
+        mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
+        
+        if (mu_local2 < 0):
+            break
+        
+        Nmmu[j,i] = Nmmu[j-i,i] + n_g*ds[j] / np.sqrt(mu_local2)
+
+Nplusmu  = np.sum(Npmu, axis  =1) 
+Nminusmu = np.sum(Nmmu, axis =1) 
+
+plt.plot(Nplusmu)
+plt.plot(Nminusmu)
 plt.show()
-exit()
 
+
+Nsfor = Npmu.copy()
+B_max = np.max(bfield)
+s_max = np.argmax(bfield)
+B_ism      = bfield[0]
+
+for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
+    for s in range(s_max):            # at s
+        N = 0.0#Nsfor[s, i]
+        for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
+            # sprime is the integration variable.
+            if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
+                break
+            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
+            s_mir = s + s_prime
+            dens  = numb_density[s:s_mir]
+            diffs = ds[s:s_mir] 
+            N += np.cumsum(dens*diffs/mu_local)
+        Nsfor[s,i] += N
+
+NFtotal = np.sum(Nsfor, axis=1)
+
+ds = np.linalg.norm(np.diff(radius_vector[::-1], axis=0), axis=1)    
+bfield = bfield[::-1]
+numb_density = numb_density[::-1]
+
+Nsback = Nmmu.copy()
+B_max = np.max(bfield)
+s_max = np.argmax(bfield[::-1])
+B_ism      = bfield[-1]
+
+for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
+    for s in range(s_max):            # at s
+        N = 0.0#Nsback[s, i]
+        for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
+            # sprime is the integration variable.
+            if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
+                break
+            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
+            s_mir = s + s_prime
+            dens  = numb_density[s:s_mir]
+            diffs = ds[s:s_mir] 
+            N += np.cumsum(dens*diffs/mu_local)
+        Nsback[s,i] += N
+
+NBtotal = np.sum(Nsback, axis=1)
 
 """ Parameters """
 
@@ -211,79 +303,6 @@ Jstar = 2.4e+15*(1.0e+6)**(0.1)/(Enot**2.8)
 # Energy scale for cosmic rays (1 MeV = 1e+6 eV)
 Estar = 1.0e+6
 
-
-""" Column Densities N_+(mu, s) & N_-(mu, s)"""
-
-size = distance.shape[0]
-
-mu_ism = np.flip(np.logspace(-3,0,50))
-
-print(size, len(mu_ism))
-
-Nforward  = np.zeros((len(mu_ism), size))+1.0e19
-
-B_ism     = bfield[0]
-
-for i, mui_ism in enumerate(mu_ism):
-
-    for j in range(size):
-
-        print(mui_ism)
-        n_g = numb_density[j]
-        print(n_g)
-        Bsprime = bfield[j]
-        print(Bsprime)        
-        deno = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
-        print()
-        deno_mu_local = 1 - (bfield[j]/bfield[0])*(1 - mui_ism**2)
-        
-
-        if (deno < 0) or (deno_mu_local < 0):
-            """ 
-            1 - (Bsprime/B_ism) * (1 - muj_ism**2) < 0 
-            or 
-            mu_local non-existent
-            """
-            break
-        
-        delta_nj  = (distance[j]- distance[j-1]) / np.sqrt(deno)
-        Nforward[i,j] = Nforward[i,j-1] + n_g*delta_nj
-
-size = distance.shape[0]
-
-mu_ism = np.flip(np.logspace(-1,0,50))
-
-Nbackward  = np.zeros((len(mu_ism), size))+1.0e19
-
-rev_numb_density = numb_density[::-1]
-rev_bfield        = bfield[::-1]
-
-B_ism      = bfield[-1]
-
-for i, mui_ism in enumerate(mu_ism):
-
-    for j in range(size):
-
-        n_g = rev_numb_density[j]
-        Bsprime = rev_bfield[j]
-        deno = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
-
-        deno_mu_local = 1 - (bfield[j]/bfield[0])*(1 - mui_ism**2)
-
-        if deno < 0 or deno_mu_local < 0:
-            """ 
-            1 - (Bsprime/B_ism) * (1 - muj_ism**2) < 0 
-            or 
-            mu_local non-existent
-            """
-            break
-        
-        delta_nj  = (distance[j]- distance[j-1]) / np.sqrt(deno)
-        Nbackward[i,j] = Nbackward[i,j-1] + n_g*delta_nj
-
-
-""" Ionization Rate for N = N_+(s,mu) """
-
 energy = np.array([1.0e+2*(10)**(14*k/size) for k in range(size)])  # Energy values from 1 to 10^15
 diff_energy = np.array([energy[k]-energy[k-1] for k in range(len(energy))])
 diff_energy[0] = energy[0]
@@ -291,9 +310,67 @@ diff_energy[0] = energy[0]
 ism_spectrum = lambda x: Jstar*(x/Estar)**a
 loss_function = lambda z: Lstar*(Estar/z)**d
 
-mu_ism = np.flip(np.logspace(-1,0,10))
+""" Ionization Rate for N = N(s) """
 
-log_forward_ion_rate = np.zeros((len(mu_ism), len(Nforward[0,:])))
+zeta_plus = np.zeros_like(Nplusmu)
+
+for j, Nj in enumerate(Nplusmu):
+    
+    jl_dE = 0.0
+    
+    for k, E in enumerate(energy): 
+
+        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+
+        isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
+        llei = loss_function(Ei)           # log_10(L(E_i))
+        jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+    
+    zeta_plus[j] = jl_dE / epsilon             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+
+zeta_minus = np.zeros_like(Nminusmu)
+
+for j, Nj in enumerate(Nminusmu):
+    
+    jl_dE = 0.0
+    
+    for k, E in enumerate(energy): 
+
+        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+
+        isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
+        llei = loss_function(Ei)           # log_10(L(E_i))
+        jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+    
+    zeta_minus[j] = jl_dE / epsilon             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+
+zeta_mirr = np.zeros_like(NFtotal)
+
+for j, Nj in enumerate(NBtotal[::-1] + NFtotal):
+    
+    jl_dE = 0.0
+    
+    for k, E in enumerate(energy): 
+
+        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+
+        isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
+        llei = loss_function(Ei)           # log_10(L(E_i))
+        jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+    
+    zeta_mirr[j] = jl_dE / epsilon             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+
+print(np.log10(zeta_plus).shape)
+print(np.log10(zeta_minus).shape)
+print(np.log10(zeta_mirr).shape)
+
+plt.plot(zeta_plus)
+plt.show()
+exit()
+
+
+
+
 
 for i, mui in enumerate(mu_ism):
 

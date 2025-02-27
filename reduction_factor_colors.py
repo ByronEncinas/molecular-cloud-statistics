@@ -15,15 +15,13 @@ start_time = time.time()
 
 
 """  
-Using Margo Data
-
 Analysis of reduction factor
 
 $$N(s) 1 - \sqrt{1-B(s)/B_l}$$
 
 Parameters
 
-- [N] default is 50 as the total number of steps in the simulation
+- [N] default is 500 as the total number of steps in the simulation
 
 Units:
 
@@ -58,7 +56,7 @@ if len(sys.argv)>4:
 else:
     N            =5_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
-    max_cycles   =5000
+    max_cycles   =500
     typpe = 'ideal'
     num_file = '430'
 
