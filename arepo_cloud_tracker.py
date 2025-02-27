@@ -249,7 +249,7 @@ def get_along_lines(x_init, dir = ''):
 #/ideal_mhd
 #file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
 #file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
-file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/*/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
     print("No files to process.")
