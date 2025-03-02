@@ -92,12 +92,12 @@ time_value = []
 with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
-    # Read each row of data
     for row in csv_reader:
         if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             snap =str(row[0])
             time_value = float(row[1])
+            peak_den =  float(row[5])
 
 print(Center)
 
@@ -582,6 +582,7 @@ pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for k
 
 with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
     file.write(f"{filename}\n")
+    file.write(f"{peak_den}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc_boundary}\n")

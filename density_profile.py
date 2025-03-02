@@ -344,16 +344,25 @@ import matplotlib.pyplot as plt
 
 # Ensure output directory exists
 os.makedirs(output_path, exist_ok=True)
+import numpy as np
+
 if True:
     for i in range(m):
 
         eff_column_densities, energy_magnetic, energy_thermal, energy_grav = col_energies
         cut = threshold[i]
-        eff_column = np.max(eff_column_densities[:,i])
-        
+        eff_column = np.max(eff_column_densities[:, i])
+
         order_total_energy = np.log10(energy_magnetic[:cut, i] + energy_thermal[:cut, i] + energy_grav[:cut, i])
         print(order_total_energy) # if 
-                
+
+        # Save sliced arrays as .npy files
+        np.save(f"{output_path}/eff_column_densities_{i}_sliced.npy", eff_column_densities[:cut, i])
+        np.save(f"{output_path}/energy_magnetic_{i}_sliced.npy", energy_magnetic[:cut, i])
+        np.save(f"{output_path}/energy_thermal_{i}_sliced.npy", energy_thermal[:cut, i])
+        np.save(f"{output_path}/energy_grav_{i}_sliced.npy", energy_grav[:cut, i])
+        np.save(f"{output_path}/numb_densities_{i}_sliced.npy", numb_densities[:cut, i])
+
         # Define new mosaic layout
         mosaic = [
             ['A', 'B'],
@@ -364,6 +373,7 @@ if True:
         # Plot Number Density
         axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
         axs['A'].set_yscale('log')
+        axs['A'].set_xscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
         axs['A'].set_ylabel("$n_g(s)$")
         axs['A'].set_title("Number Density (LOS)")
@@ -385,22 +395,26 @@ if True:
         table_data = [
             ['---', 'Value', 'Note'],
             ['Mean Column Density (LOS)', f'{eff_column:.5e}', '-'],
-            ['Magnetic Energy', f'{energy_magnetic[cut-1,i]:.5e}', '-'],
-            ['Thermal Energy', f'{energy_thermal[cut-1,i]:.5e}', '-'],
-            ['Grav Binding Energy', f'{energy_grav[cut-1,i]:.5e}', '-'],
+            ['Magnetic Energy', f'{energy_magnetic[cut-1, i]:.5e}', '-'],
+            ['Thermal Energy', f'{energy_thermal[cut-1, i]:.5e}', '-'],
+            ['Grav Binding Energy', f'{energy_grav[cut-1, i]:.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
-            ['Smallest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
-            ['Biggest Volume (LOS)', f'{np.max(volumes[:cut,i]):.3e}', '-'],
-            ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut,i]):.3e}', '-'],
-            ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut,i]):.3e}', '-']
+            ['Smallest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
+            ['Biggest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
+            ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut, i]):.3e}', '-'],
+            ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut, i]):.3e}', '-']
         ]
         table = axs['C'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
         axs['C'].axis('off')
+
+        # Save table data to a text file
+        np.savetxt(f"{output_path}/table_data_{i}_sliced.txt", table_data, fmt="%s", delimiter="   ")
 
         # Adjust Layout and Save Figure
         plt.tight_layout()
         plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
         plt.close(fig)
+
 
 if False:
     for i in range(m):
@@ -420,6 +434,7 @@ if False:
         # Plot Magnetic Energy
         axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
         axs['A'].scatter(trajectory[:cut, i], numb_densities[:cut, i], marker="o", color="blue", s=5)
+        axs['A'].set_xscale('log')
         axs['A'].set_yscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
         axs['A'].set_ylabel("$n_g(s)$")
