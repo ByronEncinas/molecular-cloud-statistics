@@ -15,15 +15,13 @@ start_time = time.time()
 
 
 """  
-Using Margo Data
-
 Analysis of reduction factor
 
 $$N(s) 1 - \sqrt{1-B(s)/B_l}$$
 
 Parameters
 
-- [N] default is 50 as the total number of steps in the simulation
+- [N] default is 500 as the total number of steps in the simulation
 
 Units:
 
@@ -58,8 +56,8 @@ if len(sys.argv)>4:
 else:
     N            =5_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
-    max_cycles   =50
-    typpe = 'amb'
+    max_cycles   =500
+    typpe = 'ideal'
     num_file = '430'
 
 print(*sys.argv)
@@ -94,12 +92,12 @@ time_value = []
 with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
-    # Read each row of data
     for row in csv_reader:
         if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             snap =str(row[0])
             time_value = float(row[1])
+            peak_den =  float(row[5])
 
 print(Center)
 
@@ -171,12 +169,10 @@ VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 
 # obtain width of cloud to set up radius
 # calculate the a gaussian for the
-rloc_boundary = 2.0 # average size is two parsec, allow them to be a little big bigger before rejection sampling
-Radius = np.linalg.norm(Pos, axis=1)
-in_sphere = (Radius < rloc_boundary)
-above_threshold = (Density[in_sphere]*gr_cm3_to_nuclei_cm3 > 100)
+densthresh = 100
+rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
 
-def get_along_lines(x_init=None, densthresh=100):
+def get_along_lines(x_init=None, densthresh = 100):
 
     dx = 0.5
 
@@ -273,7 +269,7 @@ def get_along_lines(x_init=None, densthresh=100):
 
     k=0
 
-    mask_rev = dens > 100
+    mask_rev = dens > densthresh
     un_masked_rev = np.logical_not(mask_rev)
     
     while np.any((mask_rev)):
@@ -377,6 +373,32 @@ def get_along_lines(x_init=None, densthresh=100):
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
     from scipy.spatial import cKDTree
+
+    valid_vectors = []
+    
+    # Build a KDTree for nearest neighbor search
+    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
+    
+    while len(valid_vectors) < max_cycles:
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
+        distances = np.linalg.norm(points, axis=1)
+        
+        # Keep only points inside the sphere
+        inside_sphere = points[distances <= rloc]
+
+        # Find the nearest Voronoi cell for each point
+        _, nearest_indices = tree.query(inside_sphere)
+
+        # Get the densities of the corresponding Voronoi cells
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+
+        valid_vectors.extend(valid_points)
+
+    return np.array(valid_vectors[:max_cycles])
+
+    from scipy.spatial import cKDTree
+
     valid_vectors = []
     
     # Build a KDTree for nearest neighbor search
@@ -412,43 +434,26 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
-    file.write(f"{filename}\n")
-    file.write(f"Cores Used: {os.cpu_count()}\n")
-    file.write(f"Snap Time (Myr): {time_value}\n")
-    file.write(f"rloc (Pc) : {rloc_boundary}\n")
-    file.write(f"max_cycles         : {max_cycles}\n")
-    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
-    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
-    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
-    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-
 test_thresh = [10, 50, 100]
 
-for case in test_thresh:
+for case in test_thresh:   
+    
+    os.makedirs(children_folder, exist_ok=True)
+    m = magnetic_fields.shape[1]
+    threshold, threshold_rev = th
+    reduction_factor = list()
+    numb_density_at  = list()
+    min_den_cycle = list()
+    pos_red = dict()
 
     x_init = generate_vectors_in_core(max_cycles, case)
 
     __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
-
     os.makedirs(children_folder, exist_ok=True)
-
     m = magnetic_fields.shape[1]
-
     threshold, threshold_rev = th
-
-    reduction_factor = list()
-    numb_density_at  = list()
-    min_den_cycle = list()
-    pos_red = dict()
 
     for cycle in range(max_cycles):
 
@@ -510,10 +515,6 @@ for case in test_thresh:
                 reduction_factor.append(R)
                 numb_density_at.append(n_r)
                 pos_red[tupi] = R
-
-        #print("Closest local maxima 'p':", closest_values)
-        #print("Bs: ", B_r, "ns: ", n_r)
-        #print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
         if B_r/B_l < 1:
             print(" B_r/B_l =", B_r/B_l, "< 1 ") 
@@ -587,7 +588,7 @@ for case in test_thresh:
 
     reduction_data = reduction_factor.copy()
     density_data = numb_density.copy()
-    log_density_data = np.log10(density_data.copy())
+    log_density_data = np.log10(density_data)
     max_log_den = np.max(log_density_data)
 
     def stats(n, density_data, reduction_data):
@@ -608,7 +609,7 @@ for case in test_thresh:
         return [mean, median, ten, len(sample_r)]
 
     Npoints = len(reduction_data)
-    x_n = np.logspace(np.log10(case), max_log_den, Npoints)
+    x_n = np.logspace(2, max_log_den, Npoints)
     mean_vec = np.zeros(Npoints)
     median_vec = np.zeros(Npoints)
     ten_vec = np.zeros(Npoints)
@@ -624,7 +625,7 @@ for case in test_thresh:
 
     rdcut = []
     for i in range(0, Npoints):
-        if density_data[i] > case:
+        if density_data[i] > 100:
             rdcut = rdcut + [reduction_data[i]]
 
     fig = plt.figure(figsize = (18, 6))
@@ -672,78 +673,7 @@ for case in test_thresh:
     # Save the figure
     plt.savefig(f'./RvsN_{case}_snap{snap}.png')
     plt.close(fig)
+    # plot 3D cavities in CR density
 
-if False:
-
-    # Extract data from the dictionary
-    x = np.log10(numb_density_at)   # log10(numb number density)
-    y = np.array(reduction_factor)              # reduction factor R
-
-    # Plot original scatter plot
-    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-    axs.scatter(x, y, marker="x", s=5, color='red', label='Data points')
-    axs.set_title('Histogram of Reduction Factor (R)')
-    axs.set_ylabel('$(R)$')
-    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
-
-    # Compute binned statistics
-    num_bins = 100
-
-    # Median binned statistics
-    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
-    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs.plot(bin_centers, bin_medians, marker="+", color='#17becf', linestyle='-', label='Binned medians')
-
-    # Mean binned statistics
-    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-    axs.plot(bin_centers, bin_means, marker="x", color='pink', linestyle='-', label='Binned means')
-
-    # Overall mean and median
-    overall_mean = np.average(y)
-    overall_median = np.median(y)
-
-    mean = np.ones_like(y) * overall_mean
-    median = np.ones_like(y) * overall_median
-
-    axs.plot(x, mean, color='dimgrey', linestyle='--', label=f'Overall mean ({overall_mean:.2f})')
-    axs.plot(x, median, color='dimgray', linestyle='--', label=f'Overall median ({overall_median:.2f})')
-
-    # Add legend
-    axs.legend()
-
-    plt.savefig(os.path.join(children_folder,f"mean_median.png"))
-    plt.close(fig)
-    #plt.show()
-
-    # Define the number of bins
-    num_bins = 100
-
-    # Compute binned statistics
-    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
-    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-
-    # Set Seaborn style
-    sns.set(style="whitegrid")
-
-    # Create the figure and axis
-    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-    # Plot the histograms using Matplotlib
-    axs.hist(bin_edges[:-1], bins=bin_edges, weights=bin_medians, alpha=0.5, label='medians', color='c', edgecolor='darkcyan')
-    axs.hist(bin_edges[:-1], bins=bin_edges, weights=-bin_means, alpha=0.5, label='means', color='m', edgecolor='darkmagenta')
-
-    # Set the labels and title
-    axs.set_title('Histograms of Binned Medians and Means (Inverted)')
-    axs.set_ylabel('$(R)$')
-    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
-
-    # Add legend
-    axs.legend(loc='center')
-
-    # save figure
-    plt.savefig(os.path.join(children_folder,f"mirrored_histograms.png"))
-
-    # Show the plot
-    plt.close(fig)
-    #plt.show()
+    print("mean (R) ",np.mean(reduction_data))
+    print("median (R) ",np.median(reduction_data))
