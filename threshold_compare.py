@@ -434,7 +434,7 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-x_init = generate_vectors_in_core(max_cycles, densthresh)
+x_init = generate_vectors_in_core(max_cycles, densthresh, rloc_boundary)
 
 test_thresh = [10, 50, 100]
 
