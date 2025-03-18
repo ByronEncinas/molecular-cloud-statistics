@@ -353,7 +353,7 @@ def get_along_lines(x_init=None, densthresh = 100):
     trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
@@ -474,7 +474,7 @@ x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.19161783,  0.10030747,  0.14942809]])
 """
 
-_, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd  = get_along_lines(x_init)
+radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd  = get_along_lines(x_init)
 
 m = magnetic_fields.shape[1]
 
