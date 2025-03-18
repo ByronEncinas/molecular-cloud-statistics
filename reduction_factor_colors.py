@@ -169,7 +169,7 @@ VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 # obtain width of cloud to set up radius
 # calculate the a gaussian for the
 densthresh = 100
-rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+rloc_boundary = 1 # average size is two parsec, allow them to be a little big bigger before rejection sampling
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -370,7 +370,6 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-
 def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
     from scipy.spatial import cKDTree
 
@@ -507,13 +506,22 @@ for cycle in range(max_cycles):
 
     _from = N+1 - threshold_rev[cycle]
     _to   = N+1 + threshold[cycle]
-    #print(f"{_from} - {_to}")
     p_r = N + 1 - _from
 
     bfield    = magnetic_fields[_from:_to,cycle]
     distance = trajectory[_from:_to,cycle]
     numb_density = numb_densities[_from:_to,cycle]
     tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+
+    from scipy.ndimage import gaussian_filter1d
+
+    bfield = bfield[1:]
+    ds = np.diff(distance) 
+    adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
+    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+
+    distance = distance[1:]
+    numb_density = numb_density[1:]
 
     #index_peaks, global_info = pocket_finder(bfield) # this plots
     pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots

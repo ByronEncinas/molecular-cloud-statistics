@@ -73,14 +73,6 @@ contain results using at least 20 boxes that contain equally spaced intervals fo
 # Calculating Histogram for Reduction Factor in Randomized Positions in the 128**3 Cube 
 
 """
-
-"""
-Parameters
-
-- [N] default total number of steps in the simulation
-- [dx] default 4/N of the rloc_boundary (radius of spherical region of interest) variable
-
-"""
 FloatType = np.float64
 IntType = np.int32
 
@@ -157,22 +149,24 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-def get_along_lines(x_init):
+densthresh = 100
 
-    dx = 0.3
+rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+
+def get_along_lines(x_init=None, densthresh = 100):
+
+    dx = 0.5
 
     m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
-    bfieldvec = np.zeros((N+1,m,3))
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
     threshold = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
-    bfieldvec_rev = np.zeros((N+1,m,3))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
     threshold_rev = np.zeros((m,)).astype(int) # one value for each
@@ -190,20 +184,18 @@ def get_along_lines(x_init):
 
     k=0
 
-    mask = dens > 100 # True if not finished
+    mask = dens > densthresh # True if not finished
     un_masked = np.logical_not(mask)
-
-    unito = None
 
     while np.any(mask):
 
         # Create a mask for values that are 10^2 N/cm^3 above the threshold
-        mask = dens > 100 # 1 if not finished
+        mask = dens > densthresh # 1 if not finished
         un_masked = np.logical_not(mask) # 1 if finished
 
         aux = x[un_masked]
 
-        x, bfield, dens, vol, bvect = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
+        x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
@@ -216,13 +208,12 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold)
         
         x[un_masked] = aux
+        print(np.log10(dens[:3]))
         
-        print(dens.shape)
-        #
+        #print(threshold)
         # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
-        bfieldvec[k+1,:,:]= bvect
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
@@ -234,7 +225,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(os.path.join(new_folder, f'init_vectors_{num_file}.dat'), 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -259,17 +250,17 @@ def get_along_lines(x_init):
 
     k=0
 
-    mask_rev = dens > 100
+    mask_rev = dens > densthresh
     un_masked_rev = np.logical_not(mask_rev)
     
     while np.any((mask_rev)):
 
-        mask_rev = dens > 100 
+        mask_rev = dens > densthresh
         un_masked_rev = np.logical_not(mask_rev)
 
         aux = x[un_masked_rev]
 
-        x, bfield, dens, vol, bvect = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, unito)
+        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask_rev.astype(int)
@@ -282,11 +273,10 @@ def get_along_lines(x_init):
             max_threshold = np.max(threshold_rev)
 
         #print(max_threshold, unique_unmasked_max_threshold)
-        print(dens.shape)
+        print(np.log10(dens[:3]))
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
-        bfieldvec_rev[k+1,:,:]= bvect
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens 
@@ -298,7 +288,7 @@ def get_along_lines(x_init):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(os.path.join(new_folder, f'init_vectors_{num_file}.dat'), 'a') as file: 
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -315,21 +305,18 @@ def get_along_lines(x_init):
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
     line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
-    bfieldvec = bfieldvec[:, updated_mask, :]  # Mask applied to the second dimension (m)
     volumes = volumes[:, updated_mask]  # Assuming volumes has shape (m,)
     bfields = bfields[:, updated_mask]  # Mask applied to second dimension (m)
     densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
 
     # Apply to the reverse arrays in the same way
     line_rev = line_rev[:, updated_mask, :]
-    bfieldvec_rev = bfieldvec_rev[:, updated_mask, :]  # Mask applied to the second dimension (m)
     volumes_rev = volumes_rev[:, updated_mask]
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
     radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
-    magnetic_field_vectors = np.append(bfieldvec_rev[::-1, :, :],  bfieldvec, axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
@@ -338,8 +325,8 @@ def get_along_lines(x_init):
 
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
+    column = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
-    column_densities = np.zeros_like(magnetic_fields)
 
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
@@ -347,31 +334,58 @@ def get_along_lines(x_init):
 
     m = magnetic_fields.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
-    
-    for _n in range(m):  # Iterate over the second dimension
+
+    radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
+	
+    for _n in range(m): # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
         for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
-            radius_to_origin[k, _n] = np.linalg.norm(radius_vector[k, _n, :])
+            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = np.linalg.norm(cur - prev)  # Calculate the difference between consecutive points
-            if k == 0:
-                column_densities[k,_n] = 0.0
-                trajectory[k, _n] = 0.0  # Ensure the starting point of trajectory is zero
-            else:
-                column_densities[k,_n] = column_densities[k-1,_n] + numb_densities[k-1,_n]*diff_rj_ri
-                trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri
-            prev = cur  # Update `prev` to the current point
-            print("Trajectory at step", k, ":", trajectory[k, _n])
-
-        #trajectory[:,_n] = trajectory[:,_n] - trajectory[start_idx,_n] #np.zeros((m,))
+            diff_rj_ri = magnitude(cur, prev)
+            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
+            column[k,_n] = column[k-1,_n] + numb_densities[_n,k]*diff_rj_ri            
+            prev = radius_vector[k, _n, :]
     
-    radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
+    trajectory[0,:]  = 0.0
+
+    volumes_all     *= 1.0#/(3.086e+18**3) 
     trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
-    volumes_all     *= 1.0#/(3.086e+18**3)                           # in Parsec^3
 
-    return radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column_densities
+    return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
+
+def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
+    
+    from scipy.spatial import cKDTree
+
+    valid_vectors = []
+    
+    # Build a KDTree for nearest neighbor search
+    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
+    
+    while len(valid_vectors) < max_cycles:
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
+        distances = np.linalg.norm(points, axis=1)
+        
+        # Keep only points inside the sphere
+        inside_sphere = points[distances <= rloc]
+
+        # Find the nearest Voronoi cell for each point
+        _, nearest_indices = tree.query(inside_sphere)
+
+        # Get the densities of the corresponding Voronoi cells
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+
+        valid_vectors.extend(valid_points)
+
+    return np.array(valid_vectors[:max_cycles])
+
+x_init = generate_vectors_in_core(max_cycles, densthresh)
+
+"""
 if sys.argv[-1] == "input":
 
     unique_vectors = set()  # Use a set to store unique vectors
@@ -436,6 +450,8 @@ else:
         file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
         file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+"""
+
 
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
@@ -457,7 +473,8 @@ x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
                    [-0.01082023, -0.02556539, -0.00694829],
                    [-0.19161783,  0.10030747,  0.14942809]])
 """
-radius_vector, trajectory, magnetic_fields, magnetic_field_vectors, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init)
+
+_, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd  = get_along_lines(x_init)
 
 m = magnetic_fields.shape[1]
 
@@ -473,8 +490,7 @@ for i in range(m):
     print(f"{_from} - {_to}")
 
     column_dens  = cd[_from:_to,i]
-    mag_field    = magnetic_fields[_from:_to,i]*gauss_code_to_gauss_cgs*10e+6 # microgauss (cgs)
-    mag_field_vectors =  magnetic_field_vectors[_from:_to,i,:]*gauss_code_to_gauss_cgs*10e+6 # microgauss (cgs)
+    mag_field    = magnetic_fields[_from:_to,i]
     pos_vector   = radius_vector[_from:_to,i,:] # stays in Pc
     s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i] # stays in Pc
     mass_density = numb_densities[_from:_to,i] /gr_cm3_to_nuclei_cm3
@@ -489,7 +505,6 @@ for i in range(m):
 
     print("column_dens shape:", column_dens.shape)
     print("mag_field shape:", mag_field.shape)
-    print("mag_field_vectors shape:", mag_field_vectors.shape)
     print("pos_vector shape:", pos_vector.shape)
     print("s_coordinate shape:", s_coordinate.shape)
     print("numb_density shape:", numb_density.shape)
@@ -502,7 +517,6 @@ for i in range(m):
     np.save(os.path.join(new_folder, f"ArepoTrajectory{i}.npy"), s_coordinate)
     np.save(os.path.join(new_folder, f"ArepoNumberDensities{i}.npy"), numb_density)
     np.save(os.path.join(new_folder, f"ArepoMagneticFields{i}.npy"), mag_field)
-    np.save(os.path.join(new_folder, f"ArepoMagneticFieldVectors{i}.npy"), mag_field_vectors)
     np.save(os.path.join(new_folder, f"ArepoVolumes{i}.npy"), volume)
 
 	
@@ -512,28 +526,19 @@ for i in range(m):
         # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
-        #plt.ticklabel_format(axis='both', style='sci')
-        
         axs[0,0].plot(s_coordinate*length_unit, mag_field, linestyle="--", color="m")
-        #axs[0,0].scatter(trajectory[:,i], magnetic_fields[:,i], marker="+", color="m")
-        #axs[0,0].scatter(trajectory[lmn,i], magnetic_fields[lmn,i], marker="x", color="black")
         axs[0,0].set_xlabel("s (cm)")
         axs[0,0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
         axs[0,0].set_title("Magnetic FIeld")
         axs[0,0].grid(True)
 		
         axs[0,1].plot(s_coordinate*length_unit, linestyle="--", color="m")
-        #axs[0,1].scatter(trajectory[:,i], marker="+", color="m")
-        #axs[0,1].scatter(trajectory[lmn,i], radius_to_origin[lmn,i], marker="x", color="black")
-        #axs[0,1].set_xlabel("s (cm)")
         axs[0,1].set_xlabel("# steps")
         axs[0,1].set_ylabel("$s$ cm")
         axs[0,1].set_title("Distance Away of $n_g^{max}(r)$ ")
         axs[0,1].grid(True)
 
         axs[1,0].plot(numb_density, linestyle="--", color="m")
-        #axs[1,0].scatter(trajectory[:,i], numb_densities[:,i], marker="+", color="m")
-        #axs[1,0].scatter(trajectory[lmn,i], numb_densities[lmn,i], marker="x", color="black")
         axs[1,0].set_yscale('log')
         axs[1,0].set_xlabel("s (cm)")
         axs[1,0].set_ylabel("$N_g(s)$ cm^-3")

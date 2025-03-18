@@ -394,7 +394,7 @@ if True:
         # Table Data
         table_data = [
             ['---', 'Value', 'Note'],
-            ['Mean Column Density (LOS)', f'{eff_column:.5e}', '-'],
+            ['Column Density (LOS)', f'{eff_column:.5e}', '-'],
             ['Magnetic Energy', f'{energy_magnetic[cut-1, i]:.5e}', '-'],
             ['Thermal Energy', f'{energy_thermal[cut-1, i]:.5e}', '-'],
             ['Grav Binding Energy', f'{energy_grav[cut-1, i]:.5e}', '-'],

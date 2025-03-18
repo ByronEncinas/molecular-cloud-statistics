@@ -167,11 +167,6 @@ xPosFromCenter = Pos[:,2]
 Pos[xPosFromCenter > Boxsize/2,2]       -= Boxsize
 VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
 
-# obtain width of cloud to set up radius
-# calculate the a gaussian for the
-densthresh = 100
-rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
-
 def get_along_lines(x_init=None, densthresh = 100):
 
     dx = 0.5
@@ -339,9 +334,6 @@ def get_along_lines(x_init=None, densthresh = 100):
     numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
 
-    #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-    #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
@@ -371,32 +363,7 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
-    from scipy.spatial import cKDTree
-
-    valid_vectors = []
-    
-    # Build a KDTree for nearest neighbor search
-    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
-    
-    while len(valid_vectors) < max_cycles:
-        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
-        distances = np.linalg.norm(points, axis=1)
-        
-        # Keep only points inside the sphere
-        inside_sphere = points[distances <= rloc]
-
-        # Find the nearest Voronoi cell for each point
-        _, nearest_indices = tree.query(inside_sphere)
-
-        # Get the densities of the corresponding Voronoi cells
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
-        valid_points = inside_sphere[valid_mask]
-
-        valid_vectors.extend(valid_points)
-
-    return np.array(valid_vectors[:max_cycles])
-
+def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0):
     from scipy.spatial import cKDTree
 
     valid_vectors = []
@@ -434,13 +401,13 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-x_init = generate_vectors_in_core(max_cycles, densthresh, rloc_boundary)
-
-test_thresh = [10, 50, 100]
+test_thresh = [10, 100]
 
 for case in test_thresh:   
+
+    x_init = generate_vectors_in_core(max_cycles, case, rloc_boundary)
     
-    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, densthresh)
+    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
     print("Elapsed Time: ", (time.time() - start_time)/60.)
 
