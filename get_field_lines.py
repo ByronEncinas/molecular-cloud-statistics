@@ -53,7 +53,7 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdi
 
     bdirection = 0.5*(local_fields_1 + local_fields_2)
     
-    return x_final, abs_local_fields_1, local_densities, CellVol, bdirection
+    return x_final, abs_local_fields_1, local_densities, CellVol
 
 """  
 Analysis of reduction factor
@@ -225,7 +225,7 @@ def get_along_lines(x_init=None, densthresh = 100):
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{num_file}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
                 print("80% of lines have concluded ")
@@ -288,7 +288,7 @@ def get_along_lines(x_init=None, densthresh = 100):
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
+                with open(f'isolated_radius_vectors{num_file}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
                 print("80% of lines have concluded ")
@@ -350,8 +350,8 @@ def get_along_lines(x_init=None, densthresh = 100):
     trajectory[0,:]  = 0.0
 
     volumes_all     *= 1.0#/(3.086e+18**3) 
-    trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
-    magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+    trajectory      *= 1.0#* 3.086e+18                                # from Parsec to cm
+    magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
