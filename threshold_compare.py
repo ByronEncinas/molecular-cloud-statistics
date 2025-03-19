@@ -13,33 +13,6 @@ import time
 
 start_time = time.time()
 
-
-"""  
-Analysis of reduction factor
-
-$$N(s) 1 - \sqrt{1-B(s)/B_l}$$
-
-Parameters
-
-- [N] default is 500 as the total number of steps in the simulation
-
-Units:
-
-Attribute: UnitLength_in_cm = 3.086e+18
-Attribute: UnitMass_in_g = 1.99e+33
-Attribute: UnitVelocity_in_cm_per_s = 100000.0
-
-Name: PartType0/Coordinates
-    Attribute: to_cgs = 3.086e+18
-Name: PartType0/Density
-    Attribute: to_cgs = 6.771194847794873e-23
-Name: PartType0/Masses
-    Attribute: to_cgs = 1.99e+33
-Name: PartType0/Velocities
-    Attribute: to_cgs = 100_000.0
-Name: PartType0/MagneticField
-"""
-
 FloatType = np.float64
 IntType = np.int32
 
@@ -60,14 +33,9 @@ else:
     typpe = 'ideal'
     num_file = '430'
 
-print(*sys.argv)
-
-
 cycle = 0 
 reduction_factor_at_numb_density = defaultdict()
 reduction_factor = []
-
-"""  B. Jesus Velazquez """
 
 if typpe == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -76,13 +44,7 @@ elif typpe == 'amb':
 else:
     subdirectory= ''
 
-trajectory_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
-
-import csv
-import numpy as np
-
-# Path to the input file
-file_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
+file_path       = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
 # Lists to store column data
 snap = []
@@ -108,26 +70,17 @@ time_value_array = np.array(time_value)
 import glob
 
 # Get the list of files from the directory
-directory_path = f"arepo_data/{subdirectory}"
-file_list = glob.glob(f"{directory_path}/*.hdf5")
-
-# Print the first 5 files for debugging/inspection
-print(file_list[:5])
-
-filename = 'arepo_data/snap_430.hdf5'
+file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
 for f in file_list:
     if num_file in f:
         filename = f
 
 data = h5py.File(filename, 'r')
-# Access the 'Header' group
-
 header_group = data['Header']
 os.makedirs("threshold_reduction_test", exist_ok=True)
 parent_folder = "threshold_reduction_test/"+ typpe 
 children_folder = os.path.join(parent_folder, 'ct_'+snap)
-print(children_folder)
 os.makedirs(children_folder, exist_ok=True)
 Boxsize = data['Header'].attrs['BoxSize'] #
 
@@ -150,8 +103,6 @@ print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
 #Center = Pos[np.argmax(Density),:]
 CloudCord = Center.copy()
-
-# ideal/amb #snap #ocationOf
 
 # all positions are relative to the 'Center'
 VoronoiPos-=Center
@@ -401,7 +352,7 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
-test_thresh = [10, 100]
+test_thresh = [100, 10]
 
 for case in test_thresh:   
 
