@@ -340,11 +340,9 @@ radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_o
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-import matplotlib.pyplot as plt
-
 # Ensure output directory exists
 os.makedirs(output_path, exist_ok=True)
-import numpy as np
+
 
 if True:
     for i in range(m):
@@ -371,7 +369,7 @@ if True:
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
         # Plot Number Density
-        axs['A'].plot(trajectory[:cut, i], numb_densities[:cut, i], linestyle="--", color="blue")
+        axs['A'].plot(trajectory[1:cut, i], numb_densities[1:cut, i], linestyle="--", color="blue")
         axs['A'].set_yscale('log')
         axs['A'].set_xscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
@@ -380,9 +378,8 @@ if True:
         axs['A'].grid(True)
 
         # Plot All Energies Together
-        axs['B'].plot(trajectory[:cut, i], energy_magnetic[:cut, i], linestyle="--", color="red", label="Magnetic Energy")
-        axs['B'].plot(trajectory[:cut, i], energy_thermal[:cut, i], linestyle="--", color="green", label="Thermal Energy")
-        axs['B'].plot(trajectory[:cut, i], abs(energy_grav[:cut, i]), linestyle="--", color="orange", label="Gravitational Energy")
+        axs['B'].plot(trajectory[1:cut, i], energy_magnetic[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="red", label="Magnetic Energy")
+        axs['B'].plot(trajectory[1:cut, i], energy_thermal[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="green", label="Thermal Energy")
 
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
