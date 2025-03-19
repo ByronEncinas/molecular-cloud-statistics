@@ -188,7 +188,7 @@ directions= np.vstack((axis, unit_diagonals))
 
 #directions=np.swapaxes(directions)
 
-directions = fibonacci_sphere(14)
+directions = fibonacci_sphere(20)
 
 m = directions.shape[0]
 
@@ -380,7 +380,7 @@ if True:
         # Plot All Energies Together
         axs['B'].plot(trajectory[1:cut, i], energy_magnetic[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="red", label="Magnetic Energy")
         axs['B'].plot(trajectory[1:cut, i], energy_thermal[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="green", label="Thermal Energy")
-
+        axs['B'].set_xscale('log')
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
         axs['B'].set_ylabel("Energy (ergs)")
