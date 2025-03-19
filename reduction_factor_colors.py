@@ -1,15 +1,18 @@
+from scipy.ndimage import gaussian_filter1d
+from mpl_toolkits.mplot3d import Axes3D
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import seaborn as sns
 from library import *
-import glob
 import os
 import h5py
 import json
 import sys
 import time
+import csv
+import glob
 
 start_time = time.time()
 
@@ -20,10 +23,6 @@ Analysis of reduction factor
 $$N(s) 1 - \sqrt{1-B(s)/B_l}$$
 
 Parameters
-
-- [N] default is 500 as the total number of steps in the simulation
-
-Units:
 
 Attribute: UnitLength_in_cm = 3.086e+18
 Attribute: UnitMass_in_g = 1.99e+33
@@ -78,8 +77,6 @@ else:
 
 trajectory_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
 
-import csv
-import numpy as np
 
 # Path to the input file
 file_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
@@ -104,8 +101,6 @@ print(Center)
 # Convert lists to numpy arrays
 snap_array = np.array(snap)
 time_value_array = np.array(time_value)
-
-import glob
 
 # Get the list of files from the directory
 directory_path = f"arepo_data/{subdirectory}"
@@ -440,10 +435,6 @@ plt.tight_layout()
 plt.savefig(os.path.join(parent_folder, f'./x_init_above_thresh{densthresh}.png'))
 plt.close(fig)
 
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 # Create a 3D scatter plot
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
@@ -512,8 +503,6 @@ for cycle in range(max_cycles):
     distance = trajectory[_from:_to,cycle]
     numb_density = numb_densities[_from:_to,cycle]
     tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
-
-    from scipy.ndimage import gaussian_filter1d
 
     bfield = bfield[1:]
     ds = np.diff(distance) 

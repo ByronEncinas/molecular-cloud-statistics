@@ -151,7 +151,7 @@ for dim in range(3):  # Loop over x, y, z
 
 densthresh = 100
 
-rloc_boundary = 3 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+rloc_boundary = 1.0 # average size is two parsec, allow them to be a little big bigger before rejection sampling
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -337,17 +337,21 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
 	
-    for _n in range(m): # Iterate over the first dimension
+    for _n in range(m):  # Iterate over the first dimension
         prev = radius_vector[0, _n, :]
-        for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
+        trajectory[0, _n] = 0  # Initialize first row
+        column[0, _n] = 0      # Initialize first row
+        
+        for k in range(1, magnetic_fields.shape[0]):  # Start from k = 1 to avoid indexing errors
             radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
+            
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur, prev)
-            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
-            column[k,_n] = column[k-1,_n] + numb_densities[_n,k]*diff_rj_ri            
-            prev = radius_vector[k, _n, :]
-    
-    trajectory[0,:]  = 0.0
+            diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
+
+            trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
+            column[k, _n] = column[k-1, _n] + numb_densities[_n, k] * diff_rj_ri            
+            
+            prev = cur  # Store current point as previous point
 
     volumes_all     *= 1.0#/(3.086e+18**3) 
     trajectory      *= 1.0#* 3.086e+18                                # from Parsec to cm
@@ -356,7 +360,7 @@ def get_along_lines(x_init=None, densthresh = 100):
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=2.5):
+def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0):
     
     from scipy.spatial import cKDTree
 

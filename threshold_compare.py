@@ -422,9 +422,7 @@ for case in test_thresh:
 
     reduction_factor = list()
     numb_density_at  = list()
-
     min_den_cycle = list()
-
     pos_red = dict()
 
     for cycle in range(max_cycles):
@@ -439,7 +437,6 @@ for case in test_thresh:
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-        #index_peaks, global_info = pocket_finder(bfield) # this plots
         pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
         index_pocket, field_pocket = pocket[0], pocket[1]
 
