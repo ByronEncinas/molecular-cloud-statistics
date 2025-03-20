@@ -90,8 +90,8 @@ else:
 
 """  B. Jesus Velazquez """
 
-file_list = glob.glob('arepo_data/ambipolar_diffusion/*.hdf5')
-#file_list = glob.glob('arepo_data/ideal_mhd/*.hdf5')
+#file_list = glob.glob('arepo_data/ambipolar_diffusion/*.hdf5')
+file_list = glob.glob('arepo_data/ideal_mhd/*.hdf5')
 
 filename = None
 
