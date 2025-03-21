@@ -43,8 +43,8 @@ reduction_factor = []
 prev_time = 0.0
 
 #file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
-#file_list = [sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing], sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]]
-file_list = [sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]]
+file_list = [sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing], sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]]
+#file_list = [sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]]
 
 print(file_list)
 
