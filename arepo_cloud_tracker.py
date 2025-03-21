@@ -7,8 +7,6 @@ python3 arepo_cloud_tracker.py [N] [r_upperbound] [# lines] []
 from collections import Counter
 import matplotlib.pyplot as plt
 from scipy import stats
-import seaborn as sns
-import healpy as hp
 import numpy as np
 import random
 import glob
@@ -249,7 +247,7 @@ def get_along_lines(x_init, dir = ''):
 #/ideal_mhd
 #file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
 #file_list = sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]
-file_list = sorted(glob.glob('arepo_data/*/*.hdf5'))[::spacing]
+file_list = sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]
 
 if len(file_list) == 0:
     print("No files to process.")
@@ -284,7 +282,7 @@ for fileno, filename in enumerate(file_list[::-1][0:how_many]):
     xc = Pos[:, 0]
     yc = Pos[:, 1]
     zc = Pos[:, 2]
-    region_radius = 3
+    region_radius = 1
         
     if fileno == 0:
         # Initialize CloudCord based on the max density position
