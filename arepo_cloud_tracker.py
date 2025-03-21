@@ -43,8 +43,8 @@ reduction_factor = []
 prev_time = 0.0
 
 #file_list = sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing]
-file_list = [sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing], sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]]
-#file_list = sorted(glob.glob('arepo_data/*/*.hdf5'))[::spacing]
+#file_list = [sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5'))[::spacing], sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))[::spacing]]
+file_list = [sorted(glob.glob('arepo_data/*.hdf5'))[::spacing]]
 
 print(file_list)
 
@@ -53,14 +53,21 @@ if len(file_list) == 0:
     exit()
 
 for list in file_list:
+    print(list)
 
-    for fileno, filename in enumerate(list[::-1][0:how_many]):
+    for fileno, filename in enumerate(list[::-1]):
+
+        print("_>", fileno, filename)
         
         data = h5py.File(filename, 'r')
         header_group = data['Header']
         time_value = header_group.attrs['Time']
         snap = filename.split('/')[-1].split('.')[0][-3:]
-        typpe = filename.split('/')[-1].split('_')[0]
+        if 'amb' in filename:
+            typpe = 'amb'
+        else:
+            typpe = 'ideal'
+        print(typpe, snap)
         parent_folder = "cloud_tracker_slices/"+typpe 
         children_folder = os.path.join(parent_folder, 'ct_'+snap)
         print(children_folder)
