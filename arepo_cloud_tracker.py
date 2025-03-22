@@ -97,7 +97,6 @@ for list in file_list:
             CloudCord = Pos[np.argmax(Density), :]
             PeakDensity = Density[np.argmax(Density)]*gr_cm3_to_nuclei_cm3
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "w") as file:
-            #with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "w") as file:
                 file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z,Peak_Density\n")
                 file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},0.0,0.0,0.0,{PeakDensity}\n")
         else:
@@ -110,15 +109,10 @@ for list in file_list:
             else:
                 print(f"Warning: No particles found within region_radius of {region_radius} around CloudCord.")
             
-            # Compute CloudVelocity
             CloudVelocity = np.sum(Momentums[cloud_sphere], axis=0) / np.sum(Mass[cloud_sphere])
 
-            # Update CloudCord based on velocity and elapsed time
             delta_time_seconds = abs(time_value - prev_time) * seconds_in_myr
             UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
-
-            # Recompute cloud sphere around UpdatedCord and find the new density peak
-            #cloud_sphere = ((xc - UpdatedCord[0])**2 + (yc - UpdatedCord[1])**2 + (zc - UpdatedCord[2])**2 < region_radius**2)
             if np.any(cloud_sphere):
                 CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
                 PeakDensity = Density[cloud_sphere][np.argmax(Density[cloud_sphere])]*gr_cm3_to_nuclei_cm3
@@ -127,17 +121,12 @@ for list in file_list:
             print(CloudCord)
             # Save trajectory data
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
-            #with open(f"cloud_tracker_slices/_cloud_trajectory.txt", "a") as file:
                 file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},{CloudVelocity[0]},{CloudVelocity[1]},{CloudVelocity[2]},{PeakDensity}\n")
 
         prev_time = time_value
 
         ds = yt.load(filename)
-
-        # Access the all_data object
         ad = ds.all_data()
-
-        # Create the slice plot at z = CloudCord[2]
         sp = yt.SlicePlot(
             ds, 
             'z', 
