@@ -103,8 +103,8 @@ elif case == 'amb':
 else:
     subdirectory= ''
 
-file_list = glob.glob(f'arepo_data/{case}/*.hdf5')
-
+file_list = glob.glob(f'arepo_data/{subdirectory}/*.hdf5')
+print(file_list)
 filename = None
 
 for f in file_list:
