@@ -2,15 +2,9 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-import seaborn as sns
 from library import *
-import csv
-import glob
-import os
-import h5py
-import json
-import sys
-import time
+import csv, glob, os, sys, time
+import h5py, json
 
 start_time = time.time()
 
@@ -23,7 +17,7 @@ if len(sys.argv)>4:
 	N=int(sys.argv[1])
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
-	typpe = f'{sys.argv[4]}'
+	case = f'{sys.argv[4]}'
 	num_file = f'{sys.argv[5]}'
 	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
@@ -31,27 +25,24 @@ else:
     N            =5_000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
     max_cycles   =500
-    typpe = 'ideal'
+    case = 'ideal'
     num_file = '430'
 
 cycle = 0 
 reduction_factor_at_numb_density = defaultdict()
 reduction_factor = []
 
-if typpe == 'ideal':
+if case == 'ideal':
     subdirectory = 'ideal_mhd'
-elif typpe == 'amb':
+elif case == 'amb':
     subdirectory = 'ambipolar_diffusion'
 else:
     subdirectory= ''
 
-file_path       = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
+file_path       = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
 
-# Lists to store column data
 snap = []
 time_value = []
-
-# Open the file and read it using the CSV module
 with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
@@ -64,60 +55,48 @@ with open(file_path, mode='r') as file:
 
 print(Center)
 
-# Convert lists to numpy arrays
 snap_array = np.array(snap)
 time_value_array = np.array(time_value)
 
 import glob
 
-# Get the list of files from the directory
 file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
+filename = None
 for f in file_list:
     if num_file in f:
         filename = f
+if filename is None:
+    raise FileNotFoundError
 
 data = h5py.File(filename, 'r')
 header_group = data['Header']
 os.makedirs("threshold_reduction_test", exist_ok=True)
-parent_folder = "threshold_reduction_test/"+ typpe 
-children_folder = os.path.join(parent_folder, 'ct_'+snap)
+parent_folder = "threshold_reduction_test/"+ case 
+children_folder = os.path.join(parent_folder, snap)
 os.makedirs(children_folder, exist_ok=True)
-Boxsize = data['Header'].attrs['BoxSize'] #
-
-# Directly convert and cast to desired dtype
+Boxsize = data['Header'].attrs['BoxSize']
 VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
 Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
 Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
 Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
 Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
-Volume   = Mass/Density
-
-# Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
-
-# Print the time
-print(f"Time: {time_value} Myr")
+Volume   = Mass/Density
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-#Center = Pos[np.argmax(Density),:]
 CloudCord = Center.copy()
 
-# all positions are relative to the 'Center'
 VoronoiPos-=Center
 Pos-=Center
 
-xPosFromCenter = Pos[:,0]
-Pos[xPosFromCenter > Boxsize/2,0]       -= Boxsize
-VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
-xPosFromCenter = Pos[:,1]
-Pos[xPosFromCenter > Boxsize/2,1]       -= Boxsize
-VoronoiPos[xPosFromCenter > Boxsize/2,1] -= Boxsize
-xPosFromCenter = Pos[:,2]
-Pos[xPosFromCenter > Boxsize/2,2]       -= Boxsize
-VoronoiPos[xPosFromCenter > Boxsize/2,2] -= Boxsize
+for dim in range(3):  # Loop over x, y, z
+    pos_from_center = Pos[:, dim]
+    boundary_mask = pos_from_center > Boxsize / 2
+    Pos[boundary_mask, dim] -= Boxsize
+    VoronoiPos[boundary_mask, dim] -= Boxsize
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -313,33 +292,25 @@ def get_along_lines(x_init=None, densthresh = 100):
     magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3) 
 
-    return bfields[0,:], radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0):
+def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
+    import numpy as np
     from scipy.spatial import cKDTree
-
+    np.random.seed(seed)
     valid_vectors = []
-    
-    # Build a KDTree for nearest neighbor search
-    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
-    
+    tree = cKDTree(Pos)
     while len(valid_vectors) < max_cycles:
         points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
         distances = np.linalg.norm(points, axis=1)
-        
-        # Keep only points inside the sphere
         inside_sphere = points[distances <= rloc]
-
-        # Find the nearest Voronoi cell for each point
         _, nearest_indices = tree.query(inside_sphere)
-
-        # Get the densities of the corresponding Voronoi cells
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
         valid_points = inside_sphere[valid_mask]
-
         valid_vectors.extend(valid_points)
-
-    return np.array(valid_vectors[:max_cycles])
+    valid_vectors = np.array(valid_vectors)
+    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
+    return valid_vectors[random_indices]
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
@@ -355,18 +326,18 @@ print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Vol
 
 test_thresh = [100, 10]
 
+init_files = glob.glob('./x_init*.npy')
+
+if init_files:
+    x_init = np.load(init_files[0], mmap_mode='r')
+else:
+    x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
+
 for case in test_thresh:   
 
-    x_init = generate_vectors_in_core(max_cycles, case, rloc_boundary)
-    
-    __, radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
-    print("Elapsed Time: ", (time.time() - start_time)/60.)
-
-    # Create the new arepo_npys directory
     os.makedirs(children_folder, exist_ok=True)
-
-    # flow control to repeat calculations in no peak situations
 
     m = magnetic_fields.shape[1]
 
@@ -381,7 +352,6 @@ for case in test_thresh:
 
         _from = N+1 - threshold_rev[cycle]
         _to   = N+1 + threshold[cycle]
-        #print(f"{_from} - {_to}")
         p_r = N + 1 - _from
 
         bfield    = magnetic_fields[_from:_to,cycle]
@@ -389,7 +359,7 @@ for case in test_thresh:
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-        pocket, global_info = pocket_finder(bfield, cycle, plot=False) # this plots
+        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
         index_pocket, field_pocket = pocket[0], pocket[1]
 
         min_den_cycle.append(min(numb_density))
@@ -468,13 +438,12 @@ for case in test_thresh:
         file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
         file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
         file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-        file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
-        file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+        file.write(f"Smallest Density (N/cm^3)  : {np.log10(Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3)} \n")
+        file.write(f"Biggest  Density (N/cm^3) : {np.log10(Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3)}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
     # Print elapsed time
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
-
 
     from collections import Counter
 
@@ -508,21 +477,15 @@ for case in test_thresh:
 
     """# Graphs"""
 
-    #plot_trajectory_versus_magnitude(trajectory, magnetic_fields, ["B Field Density in Path", "B-Magnitude", "s-coordinate"])
-
     bins=len(reduction_factor)//10 
 
     if bins == 0:
-        bins=1
+        raise ValueError("No valid data found: bins cannot be zero.")
 
     inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
 
-    # try plt.stairs(*np.histogram(inverse_reduction_factor, 50), fill=True, color='skyblue')
-
-    # Create a figure and axes objects
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-    # Plot histograms on the respective axes
     axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black')
     axs[0].set_yscale('log')
     axs[0].set_title('Histogram of Reduction Factor (R)')
@@ -538,12 +501,9 @@ for case in test_thresh:
     # Adjust layout
     plt.tight_layout()
 
-    # Save the figure
-    plt.savefig(os.path.join(children_folder,f"{typpe}_{case}_hist={len(reduction_factor)}bins={bins}.png"))
+    plt.savefig(os.path.join(children_folder,f"hist_nth={case}.png"))
 
-    reduction_data = reduction_factor.copy()
-    density_data = numb_density.copy()
-    log_density_data = np.log10(density_data)
+    log_density_data = np.log10(numb_density)
     max_log_den = np.max(log_density_data)
 
     def stats(n, density_data, reduction_data):
@@ -563,14 +523,14 @@ for case in test_thresh:
 
         return [mean, median, ten, len(sample_r)]
 
-    Npoints = len(reduction_data)
+    Npoints = len(reduction_factor)
     x_n = np.logspace(2, max_log_den, Npoints)
     mean_vec = np.zeros(Npoints)
     median_vec = np.zeros(Npoints)
     ten_vec = np.zeros(Npoints)
     sample_size = np.zeros(Npoints)
     for i in range(0, Npoints):
-        s = stats(x_n[i], density_data, reduction_data)
+        s = stats(x_n[i], numb_density, reduction_factor)
         mean_vec[i] = s[0]
         median_vec[i] = s[1]
         ten_vec[i] = s[2]
@@ -580,8 +540,8 @@ for case in test_thresh:
 
     rdcut = []
     for i in range(0, Npoints):
-        if density_data[i] > 100:
-            rdcut = rdcut + [reduction_data[i]]
+        if numb_density[i] > 100:
+            rdcut = rdcut + [reduction_factor[i]]
 
     fig = plt.figure(figsize = (18, 6))
     ax1 = fig.add_subplot(131)
@@ -598,14 +558,14 @@ for case in test_thresh:
     plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
     plt.xscale('log')
     plt.ylim(0.25, 1.05)
-    ax2.set_ylabel(f'Reduction factor ({len(reduction_data)})', fontsize = 20)
+    ax2.set_ylabel(f'Reduction factor ({len(reduction_factor)})', fontsize = 20)
     ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
     plt.setp(ax2.get_xticklabels(), fontsize = 16)
     plt.setp(ax2.get_yticklabels(), fontsize = 16)
 
     # Add global mean and median lines
-    global_mean = np.mean(reduction_data)
-    global_median = np.median(reduction_data)
+    global_mean = np.mean(reduction_factor)
+    global_median = np.median(reduction_factor)
 
     # Add text annotations for global mean and median
     ax2.text(0.98, global_mean, f'Global_Mean = {global_mean:.3f}', ha='right', va='bottom', fontsize=12, color=l1.get_color())
@@ -625,10 +585,5 @@ for case in test_thresh:
     fig.subplots_adjust(top = .98)
     fig.subplots_adjust(right = .98)
 
-    # Save the figure
-    plt.savefig(f'./RvsN_{case}_snap{snap}.png')
+    plt.savefig(os.path.join(children_folder,f"{case}_rnv_{num_file}.png"))
     plt.close(fig)
-    # plot 3D cavities in CR density
-
-    print("mean (R) ",np.mean(reduction_data))
-    print("median (R) ",np.median(reduction_data))

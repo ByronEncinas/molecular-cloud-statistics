@@ -1,14 +1,9 @@
+import os, sys, time, glob, random
+import numpy as np
+import h5py
 import matplotlib.pyplot as plt
 import healpy as hp
-import numpy as np
-import random
-import h5py
-import sys
-import os
-import glob
 from library import *
-
-import time
 
 """  
 Attribute: UnitLength_in_cm = 3.086e+18
@@ -83,15 +78,14 @@ FloatType = np.float64
 IntType = np.int32
 
 if len(sys.argv)>2:
-	# first argument is a number related to rloc_boundary
 	N=int(sys.argv[1])
-	rloc_boundary=float(sys.argv[2])
+	rloc=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	num_file = str(sys.argv[4])
 	case = str(sys.argv[5])
 else:
     N            =2000
-    rloc_boundary=1   # rloc_boundary for boundary region of the cloud
+    rloc=1   
     max_cycles   =10
     num_file = '430'
     case = 'amb'
@@ -163,7 +157,7 @@ for dim in range(3):  # Loop over x, y, z
 
 densthresh = 100
 
-rloc_boundary = 1.0
+rloc = 1.0
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -384,11 +378,11 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
 
 x_init = generate_vectors_in_core(max_cycles, densthresh)
 
-np.save(os.path.join(new_folder, f"x_init.npy"), x_init)
+np.save(f"./x_init_{max_cycles}.npy", x_init)
 
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
-print("rloc_boundary      : ", rloc_boundary)
+print("rloc               : ", rloc)
 print("x_init             : ", x_init)
 print("max_cycles         : ", max_cycles)
 print("Boxsize            : ", Boxsize) # 256
