@@ -80,8 +80,6 @@ for list in file_list:
         Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
         Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
         Momentums = Mass[:, np.newaxis] * Velocities
-        InternalEnergy = np.asarray(data['PartType0']['InternalEnergy'], dtype=FloatType)
-        Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
         Bfield_grad = np.zeros((len(Pos), 9))
         Density_grad = np.zeros((len(Density), 3))
         Volume   = Mass/Density
@@ -93,18 +91,15 @@ for list in file_list:
         region_radius = 1
             
         if fileno == 0:
-            # Initialize CloudCord based on the max density position
             CloudCord = Pos[np.argmax(Density), :]
             PeakDensity = Density[np.argmax(Density)]*gr_cm3_to_nuclei_cm3
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "w") as file:
                 file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z,Peak_Density\n")
                 file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},0.0,0.0,0.0,{PeakDensity}\n")
         else:
-            # Isolate values surrounding CloudCord
             cloud_sphere = ((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2 < region_radius**2)
             
-            # Find the density peak within the sphere
-            if np.any(cloud_sphere):  # Ensure there are particles within the region
+            if np.any(cloud_sphere):
                 CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
             else:
                 print(f"Warning: No particles found within region_radius of {region_radius} around CloudCord.")
@@ -118,13 +113,10 @@ for list in file_list:
                 PeakDensity = Density[cloud_sphere][np.argmax(Density[cloud_sphere])]*gr_cm3_to_nuclei_cm3
             else:
                 print(f"Warning: No particles found within updated region_radius of {region_radius} around UpdatedCord.")
-            print(CloudCord)
-            # Save trajectory data
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:
                 file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},{CloudVelocity[0]},{CloudVelocity[1]},{CloudVelocity[2]},{PeakDensity}\n")
 
         prev_time = time_value
-
         ds = yt.load(filename)
         ad = ds.all_data()
         sp = yt.SlicePlot(
@@ -132,21 +124,16 @@ for list in file_list:
             'z', 
             ('gas', 'density'), 
             center=[CloudCord[0], CloudCord[1], CloudCord[2]],
-            width = 25
+            width = region_radius
         )
-
         sp.annotate_marker(
             [CloudCord[0], CloudCord[1], CloudCord[2]],
             marker='x',
             color='red',
             s=100
         )
-
-        # Annotate the plot with timestamp and scale
         sp.annotate_timestamp(redshift=False)
         sp.annotate_scale()
-
-        # Save the plot as a PNG file {fileno}-{filename.split('/')[-1]}
         sp.save(os.path.join(parent_folder, f"{typpe}_{snap}_slice_z.png"))
 
         continue
