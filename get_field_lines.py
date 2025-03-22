@@ -354,7 +354,7 @@ def get_along_lines(x_init=None, densthresh = 100):
             diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
 
             trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
-            column[k, _n] = column[k-1, _n] + numb_densities[_n, k] * diff_rj_ri            
+            column[k, _n] = column[k-1, _n] + numb_densities[k, _n] * diff_rj_ri            
             
             prev = cur  # Store current point as previous point
 
@@ -383,6 +383,8 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     return valid_vectors[random_indices]
 
 x_init = generate_vectors_in_core(max_cycles, densthresh)
+
+np.save(os.path.join(new_folder, f"x_init.npy"), x_init)
 
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
