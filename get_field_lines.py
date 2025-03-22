@@ -519,6 +519,5 @@ for i in range(m):
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
-
-        plt.savefig(f'field_shapes/MagneticFieldTopology.png', bbox_inches='tight')
+        plt.savefig(os.path.join(new_folder,f"FieldTopology{i}.png"), bbox_inches='tight')
         plt.show()
