@@ -442,40 +442,27 @@ for case in test_thresh:
         file.write(f"Biggest  Density (N/cm^3) : {np.log10(Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3)}\n")
         file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
-    # Print elapsed time
     print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
-
-    from collections import Counter
 
     counter = Counter(reduction_factor)
-
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-    # Print elapsed time
-    print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
-
-    # Specify the file path
     file_path = os.path.join(children_folder, f'reduction_factor{case}_{sys.argv[-1]}.json')
+    with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
 
-    # Write the list data to a JSON file
-    with open(file_path, 'w') as json_file:
-        json.dump(reduction_factor, json_file)
+    file_path = os.path.join(children_folder, f'numb_density{case}_{sys.argv[-1]}.json')
+    with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
 
-    # Specify the file path
-    file_path = os.path.join(children_folder,f'numb_density{case}_{sys.argv[-1]}.json')
-
-    # Write the list data to a JSON file
-    with open(file_path, 'w') as json_file:
-        json.dump(numb_density_at, json_file)
-
-    # Specify the file path
-    file_path = os.path.join(children_folder,f'position_vector{case}_{sys.argv[-1]}')
-
-    # Write the list data to a JSON file
-    with open(file_path, 'w') as json_file:
-        json.dump(pos_red, json_file) # [x,y,z] = R basicly a 3D stochastic functin
+    file_path = os.path.join(children_folder, f'position_vector{case}_{sys.argv[-1]}')
+    with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
 
     """# Graphs"""
+
+    reduction_factor = np.array(reduction_factor)
+
+    ones = counter['1']
+
+    reduction_factor = reduction_factor[reduction_factor != 1.0]
 
     bins=len(reduction_factor)//10 
 
@@ -522,6 +509,9 @@ for case in test_thresh:
             ten = np.quantile(sample_r, .1)
 
         return [mean, median, ten, len(sample_r)]
+    
+    hist_reduction_factor = reduction_factor[reduction_factor != 1]
+    hist_numb_density     = numb_density[reduction_factor != 1]
 
     Npoints = len(reduction_factor)
     x_n = np.logspace(2, max_log_den, Npoints)
@@ -539,13 +529,13 @@ for case in test_thresh:
     num_bins = Npoints//10  # Define the number of bins as a variable
 
     rdcut = []
-    for i in range(0, Npoints):
+    for i in range(0, len(hist_reduction_factor)):
         if numb_density[i] > 100:
-            rdcut = rdcut + [reduction_factor[i]]
+            rdcut = rdcut + [hist_reduction_factor[i]]
 
     fig = plt.figure(figsize = (18, 6))
     ax1 = fig.add_subplot(131)
-    ax1.hist(rdcut, num_bins)  # Use the num_bins variable here
+    ax1.hist(rdcut, num_bins) 
     ax1.set_xlabel('Reduction factor', fontsize = 20)
     ax1.set_ylabel('number', fontsize = 20)
     plt.setp(ax1.get_xticklabels(), fontsize = 16)
@@ -563,17 +553,14 @@ for case in test_thresh:
     plt.setp(ax2.get_xticklabels(), fontsize = 16)
     plt.setp(ax2.get_yticklabels(), fontsize = 16)
 
-    # Add global mean and median lines
     global_mean = np.mean(reduction_factor)
     global_median = np.median(reduction_factor)
 
-    # Add text annotations for global mean and median
     ax2.text(0.98, global_mean, f'Global_Mean = {global_mean:.3f}', ha='right', va='bottom', fontsize=12, color=l1.get_color())
     ax2.text(0.98, global_median, f'Global_Median = {global_median:.3f}', ha='right', va='bottom', fontsize=12, color=l2.get_color())
 
     ax3 = fig.add_subplot(133)
     l0, = ax3.plot(x_n, sample_size)
-    #plt.legend(l0, ['sample size'], loc="lower right", prop={'size': 14.0}, ncol=1, numpoints=5, handlelength=3.5)
     plt.xscale('log')
     ax3.set_ylabel(f'Sample size', fontsize = 20)
     ax3.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)

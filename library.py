@@ -50,9 +50,9 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 	return local_densities
 
 def find_points_and_relative_positions(x, Pos, VoronoiPos):
-	dist, cells = spatial.KDTree(Pos[:]).query(x, k=1,workers=-1)
-	rel_pos = VoronoiPos[cells] - x
-	return dist, cells, rel_pos
+    dist, cells = spatial.KDTree(Pos[:]).query(x, k=1)
+    rel_pos = VoronoiPos[cells] - x
+    return dist, cells, rel_pos
 
 def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
 	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
