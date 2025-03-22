@@ -1,14 +1,9 @@
-import matplotlib.pyplot as plt
+
+import os, sys, glob, time, csv
+import numpy as np, h5py
 from scipy import spatial
-import healpy as hp
-import numpy as np
-import h5py
-import sys
-import os
-
+import matplotlib.pyplot as plt, healpy as hp
 from library import *
-
-import time
 
 start_time = time.time()
 
@@ -51,88 +46,69 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
     unito = 2*(local_fields_1 + local_fields_2)/abs_sum_local_fields[:, np.newaxis]
     x_final = x + 0.5 * dx[:, np.newaxis] * unito
     kinetic_energy = 0.5*Mass[cells]*np.linalg.norm(Velocities[cells], axis=1)**2
-    internal_energy = InternalEnergy[cells]
     pressure = Pressure[cells]
     
-    return x_final, abs_local_fields_1, local_densities, CellVol, kinetic_energy, internal_energy, pressure
+    return x_final, abs_local_fields_1, local_densities, CellVol, kinetic_energy, pressure
 
 FloatType = np.float64
 IntType = np.int32
 
 if len(sys.argv)>2:
     N             = int(sys.argv[1])
-    typpe         = str(sys.argv[2]) #ideal/amb
+    case         = str(sys.argv[2]) #ideal/amb
     num_file          = str(sys.argv[3]) 
 else:
     N            = 4_000
-    typpe        = 'ideal'
+    case        = 'ideal'
     num_file     = '430'
 
-"""  B. Jesus Velazquez    """
-
-if typpe == 'ideal':
+if case == 'ideal':
     subdirectory = 'ideal_mhd'
-elif typpe == 'amb':
+elif case == 'amb':
     subdirectory = 'ambipolar_diffusion'
 else:
     subdirectory= ''
 
-trajectory_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
+file_list = glob.glob(f'arepo_data/{subdirectory}/*.hdf5')
+print(file_list)
+filename = None
 
-import csv
-import numpy as np
+for f in file_list:
+    if num_file in f:
+        filename = f
+if filename == None:
+    raise FileNotFoundError
 
-# Path to the input file
-file_path = f'cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt'
+file_path = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
 
-# Lists to store column data
 snap = []
 time_value = []
 
-# Open the file and read it using the CSV module
 with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
-    
-    # Read each row of data
     for row in csv_reader:
         snap.append(int(row[0]))  # First column is snap
         time_value.append(float(row[1]))  # Second column is time_value
         if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
 
-print(Center)
-
-# Convert lists to numpy arrays
 snap_array = np.array(snap)
 time_value_array = np.array(time_value)
 
-import glob
-
-# Get the list of files from the directory
-directory_path = f"arepo_data/{subdirectory}"
-file_list = glob.glob(f"{directory_path}/*.hdf5")
-
-# Print the first 5 files for debugging/inspection
-print(file_list[:5])
-
+file_list = glob.glob(f'arepo_data/{subdirectory}/*.hdf5')
 filename = None
 
 for f in file_list:
     if num_file in f:
         filename = f
+if filename == None:
+    raise FileNotFoundError
 
 snap = filename.split(".")[0][-3:]
 
-# Create the directory path
-output_path = os.path.join(f"./density_profiles/{typpe}/", snap)
-
-# Check if the directory exists, if not create it
-if not os.path.exists(output_path):
-    os.makedirs(directory_path, exist_ok=True)
-    print(f"Directory {output_path} created.")
-else:
-    print(f"Directory {output_path} already exists.")
+new_folder = os.path.join(f"./density_profiles/{case}/", num_file)
+os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize'] #
@@ -141,68 +117,67 @@ Boxsize = data['Header'].attrs['BoxSize'] #
 VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
 Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
 Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
+Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
 Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
 Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
-Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
-InternalEnergy = np.asarray(data['PartType0']['InternalEnergy'], dtype=FloatType)
-Pressure = np.asarray(data['PartType0']['Pressure'], dtype=FloatType)
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
+Volume   = Mass/Density
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Volume   = Mass/Density
+file_path       = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
+
+snap = []
+time_value = []
+
+with open(file_path, mode='r') as file:
+    csv_reader = csv.reader(file)
+    next(csv_reader)
+    for row in csv_reader:
+        if num_file == str(row[0]):
+            Center = np.array([float(row[2]),float(row[3]),float(row[4])])
+            snap =str(row[0])
+            time_value = float(row[1])
+            peak_den =  float(row[5])
+
+CloudCord = Center.copy()
 
 print("Center before Centering", Center)
 
-VoronoiPos-=Center
-Pos-=Center
+VoronoiPos-=CloudCord
+Pos-=CloudCord
 
-xPosFromCenter = Pos[:,0]
-Pos[xPosFromCenter > Boxsize/2,0]        -= Boxsize
-VoronoiPos[xPosFromCenter > Boxsize/2,0] -= Boxsize
+for dim in range(3):  # Loop over x, y, z
+    pos_from_center = Pos[:, dim]
+    boundary_mask = pos_from_center > Boxsize / 2
+    Pos[boundary_mask, dim] -= Boxsize
+    VoronoiPos[boundary_mask, dim] -= Boxsize
 
-# Original direction vectors
-axis = np.array([[ 1.0,  0.0,  0.0], # +x 0
-                [ 0.0,  1.0,  0.0],  # +y 1
-                [ 0.0,  0.0,  1.0],  # +z 2
-                [-1.0,  0.0,  0.0],  # -x 3
-                [ 0.0, -1.0,  0.0],  # -y 4
-                [ 0.0,  0.0, -1.0]]) # -z 5
+densthresh = 100
 
-# Diagonal vectors
-diagonals = np.array([[ 1.0,  1.0,  1.0],
-                    [ 1.0,  1.0, -1.0],
-                    [ 1.0, -1.0,  1.0],
-                    [ 1.0, -1.0, -1.0],
-                    [-1.0,  1.0,  1.0],
-                    [-1.0,  1.0, -1.0],
-                    [-1.0, -1.0,  1.0],
-                    [-1.0, -1.0, -1.0]])
+rloc_boundary = 1.0
 
-# Normalize the diagonal vectors to make them unit vectors
-unit_diagonals = diagonals / np.linalg.norm(diagonals[0])
+init_files = glob.glob(f'./x_init_100.npy')
 
-# Combine both arrays
-directions= np.vstack((axis, unit_diagonals))
+if init_files:
+    x_init = np.load(init_files[0], mmap_mode='r')
+else:
+    pass
 
-#directions=np.swapaxes(directions)
-
-directions = fibonacci_sphere(20)
-
-m = directions.shape[0]
-
-x_init = np.zeros((m,3))
-
-print(directions.shape)
-
-def store_in_directory():
-    import os
-    import shutil
-
-    new_folder = os.join("density_profiles/" , snap)
-    # Create the new arepo_npys directory
-    os.makedirs(new_folder, exist_ok=True)
+try:
+    # for column densities propagated in field direction from several starting points
+    directions, abs_local_fields, local_densities, _ = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    print('Directions provided by B field at point')
+except:
+    # for line os sight with start in center
+    directions = fibonacci_sphere(100)
+    m = directions.shape[0]
+    x_init = np.zeros((m,3))
+     
+new_folder = os.path.join("density_profiles/" , snap)
+os.makedirs(new_folder, exist_ok=True)
 
 def get_along_lines(x_init):
     
@@ -247,7 +222,7 @@ def get_along_lines(x_init):
         un_masked = np.logical_not(mask)
 
         # Perform Heun step and update values
-        _, bfield, dens, vol, ke, ie, pressure = Heun_step(
+        _, bfield, dens, vol, ke, pressure = Heun_step(
             x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
         )
         
@@ -340,9 +315,7 @@ radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_o
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-# Ensure output directory exists
-os.makedirs(output_path, exist_ok=True)
-
+os.makedirs(new_folder, exist_ok=True)
 
 if True:
     for i in range(m):
@@ -352,14 +325,13 @@ if True:
         eff_column = np.max(eff_column_densities[:, i])
 
         order_total_energy = np.log10(energy_magnetic[:cut, i] + energy_thermal[:cut, i] + energy_grav[:cut, i])
-        print(order_total_energy) # if 
+        print(order_total_energy)
 
-        # Save sliced arrays as .npy files
-        np.save(f"{output_path}/eff_column_densities_{i}_sliced.npy", eff_column_densities[:cut, i])
-        np.save(f"{output_path}/energy_magnetic_{i}_sliced.npy", energy_magnetic[:cut, i])
-        np.save(f"{output_path}/energy_thermal_{i}_sliced.npy", energy_thermal[:cut, i])
-        np.save(f"{output_path}/energy_grav_{i}_sliced.npy", energy_grav[:cut, i])
-        np.save(f"{output_path}/numb_densities_{i}_sliced.npy", numb_densities[:cut, i])
+        np.save(f"{new_folder}/eff_column_densities_{i}.npy", eff_column_densities[:cut, i])
+        np.save(f"{new_folder}/numb_densities_{i}.npy", numb_densities[:cut, i])
+        np.save(f"{new_folder}/energy_magnetic_{i}.npy", energy_magnetic[:cut, i])
+        np.save(f"{new_folder}/energy_thermal_{i}.npy", energy_thermal[:cut, i])
+        np.save(f"{new_folder}/energy_grav_{i}.npy", energy_grav[:cut, i])
 
         # Define new mosaic layout
         mosaic = [
@@ -373,18 +345,18 @@ if True:
         axs['A'].set_yscale('log')
         axs['A'].set_xscale('log')
         axs['A'].set_xlabel("s (cm) along LOS")
-        axs['A'].set_ylabel("$n_g(s)$")
-        axs['A'].set_title("Number Density (LOS)")
+        axs['A'].set_ylabel("Number Density $n_g(s)$")
+        axs['A'].set_title("Number Density Along LOS")
         axs['A'].grid(True)
 
-        # Plot All Energies Together
-        axs['B'].plot(trajectory[1:cut, i], energy_magnetic[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="red", label="Magnetic Energy")
-        axs['B'].plot(trajectory[1:cut, i], energy_thermal[1:cut, i]/abs(energy_grav[1:cut, i]), linestyle="--", color="green", label="Thermal Energy")
+        # Plot Energy Ratios
+        axs['B'].plot(trajectory[1:cut, i], energy_magnetic[1:cut, i] / abs(energy_grav[1:cut, i]), linestyle="--", color="red", label="Magnetic / Gravity")
+        axs['B'].plot(trajectory[1:cut, i], energy_thermal[1:cut, i] / abs(energy_grav[1:cut, i]), linestyle="--", color="green", label="Thermal / Gravity")
         axs['B'].set_xscale('log')
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (cm) along LOS")
-        axs['B'].set_ylabel("Energy (ergs)")
-        axs['B'].set_title("Energies along Line of Sight")
+        axs['B'].set_ylabel("Energy Ratios")
+        axs['B'].set_title("Energy Ratios Along Line of Sight")
         axs['B'].legend()
         axs['B'].grid(True)
 
@@ -392,9 +364,6 @@ if True:
         table_data = [
             ['---', 'Value', 'Note'],
             ['Column Density (LOS)', f'{eff_column:.5e}', '-'],
-            ['Magnetic Energy', f'{energy_magnetic[cut-1, i]:.5e}', '-'],
-            ['Thermal Energy', f'{energy_thermal[cut-1, i]:.5e}', '-'],
-            ['Grav Binding Energy', f'{energy_grav[cut-1, i]:.5e}', '-'],
             ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
             ['Smallest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
             ['Biggest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
@@ -404,14 +373,52 @@ if True:
         table = axs['C'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
         axs['C'].axis('off')
 
-        # Save table data to a text file
-        np.savetxt(f"{output_path}/table_data_{i}_sliced.txt", table_data, fmt="%s", delimiter="   ")
-
-        # Adjust Layout and Save Figure
+        np.savetxt(f"{new_folder}/table_{i}.txt", table_data, fmt="%s", delimiter="   ")
         plt.tight_layout()
-        plt.savefig(f"{output_path}/energies_mosaic_{i}.png", dpi=300)
+        plt.savefig(f"{new_folder}/energy_ratios{i}.png", dpi=300)
         plt.close(fig)
 
+        if True:
+                
+            from matplotlib import cm
+            from matplotlib.colors import Normalize
+
+            norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+            cmap = cm.viridis
+
+            ax = plt.figure().add_subplot(projection='3d')
+            radius_vector /= 3.086e+18
+
+            for k in range(m):
+                x=radius_vector[:, k, 0]
+                y=radius_vector[:, k, 1]
+                z=radius_vector[:, k, 2]
+                
+                for l in range(len(x)):
+                    color = cmap(norm(magnetic_fields[l, k]))
+                    ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
+
+                #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
+                ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+                ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+                    
+            radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
+            zoom = np.max(radius_to_origin)
+            ax.set_xlim(-zoom,zoom)
+            ax.set_ylim(-zoom,zoom)
+            ax.set_zlim(-zoom,zoom)
+            ax.set_xlabel('x [Pc]')
+            ax.set_ylabel('y [Pc]')
+            ax.set_zlabel('z [Pc]')
+            ax.set_title('Magnetic field morphology')
+
+            # Add a colorbar
+            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+            cbar.set_label('Magnetic Field Strength')
+            plt.savefig(os.path.join(new_folder,f"FieldTopology{i}.png"), bbox_inches='tight')
+            plt.show()
 
 if False:
     for i in range(m):
@@ -465,35 +472,3 @@ if False:
         plt.tight_layout()
         plt.savefig(f"{output_path}/ratios_mosaic_{i}.png", dpi=300)
         plt.close(fig)
-
-    if True:
-        ax = plt.figure().add_subplot(projection='3d')
-        dens_min = np.log10(np.min(numb_densities))
-        dens_max = np.log10(np.max(numb_densities))
-
-        dens_diff = dens_max - dens_min
-
-        for k in range(m):
-            x=radius_vector[:,k,0]/ 3.086e+18                                # from Parsec to cm
-            y=radius_vector[:,k,1]/ 3.086e+18                                # from Parsec to cm
-            z=radius_vector[:,k,2]/ 3.086e+18                                # from Parsec to cm
-            
-            for l in range(len(radius_vector[:,0,0])):
-                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color='m',linewidth=0.3)
-                
-            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-            
-        zoom = np.max(radius_to_origin)
-        
-        ax.set_xlim(-zoom,zoom)
-        ax.set_ylim(-zoom,zoom)
-        ax.set_zlim(-zoom,zoom)
-        
-        ax.set_xlabel('x [Pc]')
-        ax.set_ylabel('y [Pc]')
-        ax.set_zlabel('z [Pc]')
-
-        ax.set_title('Magnetic field morphology')
-        
-        plt.savefig(f"{output_path}/MagneticFieldTopology.png", bbox_inches='tight')
