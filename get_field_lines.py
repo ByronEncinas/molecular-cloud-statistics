@@ -10,6 +10,29 @@ from library import *
 
 import time
 
+"""  
+Attribute: UnitLength_in_cm = 3.086e+18
+Attribute: UnitMass_in_g = 1.99e+33
+Attribute: UnitVelocity_in_cm_per_s = 100000.0
+
+Name: PartType0/Coordinates
+    Attribute: to_cgs = 3.086e+18
+Name: PartType0/Density
+    Attribute: to_cgs = 6.771194847794873e-23
+Name: PartType0/Masses
+    Attribute: to_cgs = 1.99e+33
+Name: PartType0/Velocities
+    Attribute: to_cgs = 100_000.0
+Name: PartType0/MagneticField
+"""
+
+"""  
+Analysis of reduction factor
+
+$$N(s) 1 - \sqrt{1-B(s)/B_l}$$
+
+"""
+
 start_time = time.time()
 
 def get_magnetic_field_at_points(x, Bfield, rel_pos):
@@ -55,24 +78,7 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdi
     
     return x_final, abs_local_fields_1, local_densities, CellVol
 
-"""  
-Analysis of reduction factor
 
-$$N(s) 1 - \sqrt{1-B(s)/B_l}$$
-
-Where $B_l$ corresponds with (in region of randomly choosen point) the lowest between the highest peak at both left and right.
-where $s$ is a random chosen point at original 128x128x128 grid.
-
-1.- Randomly select a point in the 3D Grid. 
-2.- Follow field lines until finding B_l, if non-existent then change point.
-3.- Repeat 10k times
-4.- Plot into a histogram.
-
-contain results using at least 20 boxes that contain equally spaced intervals for the reduction factor.
-
-# Calculating Histogram for Reduction Factor in Randomized Positions in the 128**3 Cube 
-
-"""
 FloatType = np.float64
 IntType = np.int32
 
@@ -82,24 +88,32 @@ if len(sys.argv)>2:
 	rloc_boundary=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	num_file = str(sys.argv[4])
+	case = str(sys.argv[5])
 else:
     N            =2000
     rloc_boundary=1   # rloc_boundary for boundary region of the cloud
     max_cycles   =10
     num_file = '430'
+    case = 'amb'
 
-"""  B. Jesus Velazquez """
+if case == 'ideal':
+    subdirectory = 'ideal_mhd'
+elif case == 'amb':
+    subdirectory = 'ambipolar_diffusion'
+else:
+    subdirectory= ''
 
-#file_list = glob.glob('arepo_data/ambipolar_diffusion/*.hdf5')
-file_list = glob.glob('arepo_data/ideal_mhd/*.hdf5')
+file_list = glob.glob(f'arepo_data/{case}/*.hdf5')
 
 filename = None
 
 for f in file_list:
     if num_file in f:
         filename = f
+if filename == None:
+    raise FileNotFoundError
     
-new_folder = os.path.join("getLines/amb/" , num_file)
+new_folder = os.path.join(f"getLines/{case}/" , num_file)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -111,33 +125,31 @@ Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
 Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
 Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
 Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
-
-# Initialize gradients
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
+Volume   = Mass/Density
 
 print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
 
-Volume   = Mass/Density
+file_path       = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
 
-"""  
-Attribute: UnitLength_in_cm = 3.086e+18
-Attribute: UnitMass_in_g = 1.99e+33
-Attribute: UnitVelocity_in_cm_per_s = 100000.0
+import csv
 
-Name: PartType0/Coordinates
-    Attribute: to_cgs = 3.086e+18
-Name: PartType0/Density
-    Attribute: to_cgs = 6.771194847794873e-23
-Name: PartType0/Masses
-    Attribute: to_cgs = 1.99e+33
-Name: PartType0/Velocities
-    Attribute: to_cgs = 100_000.0
-Name: PartType0/MagneticField
-"""
+snap = []
+time_value = []
 
-Center = Pos[np.argmax(Density),:] #430
+with open(file_path, mode='r') as file:
+    csv_reader = csv.reader(file)
+    next(csv_reader)
+    for row in csv_reader:
+        if num_file == str(row[0]):
+            Center = np.array([float(row[2]),float(row[3]),float(row[4])])
+            snap =str(row[0])
+            time_value = float(row[1])
+            peak_den =  float(row[5])
+
 CloudCord = Center.copy()
+
 print("Center before Centering", Center)
 
 VoronoiPos-=CloudCord
@@ -151,7 +163,7 @@ for dim in range(3):  # Loop over x, y, z
 
 densthresh = 100
 
-rloc_boundary = 1.0 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+rloc_boundary = 1.0
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -209,9 +221,6 @@ def get_along_lines(x_init=None, densthresh = 100):
         
         x[un_masked] = aux
         print(np.log10(dens[:3]))
-        
-        #print(threshold)
-        # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
@@ -315,15 +324,11 @@ def get_along_lines(x_init=None, densthresh = 100):
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
-    radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
-    magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
-    volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
+    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
-    #gas_densities   *= 1.0* 6.771194847794873e-23                      # M_sol/pc^3 to gram/cm^3
-    #numb_densities   = gas_densities.copy() * 6.02214076e+23 / 1.00794 # from gram/cm^3 to Nucleus/cm^3
-
-    # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
@@ -359,103 +364,25 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
-
-def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0):
-    
+def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
+    import numpy as np
     from scipy.spatial import cKDTree
-
+    np.random.seed(seed)
     valid_vectors = []
-    
-    # Build a KDTree for nearest neighbor search
-    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
-    
+    tree = cKDTree(Pos)
     while len(valid_vectors) < max_cycles:
         points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
         distances = np.linalg.norm(points, axis=1)
-        
-        # Keep only points inside the sphere
         inside_sphere = points[distances <= rloc]
-
-        # Find the nearest Voronoi cell for each point
         _, nearest_indices = tree.query(inside_sphere)
-
-        # Get the densities of the corresponding Voronoi cells
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
         valid_points = inside_sphere[valid_mask]
-
         valid_vectors.extend(valid_points)
-
-    return np.array(valid_vectors[:max_cycles])
+    valid_vectors = np.array(valid_vectors)
+    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
+    return valid_vectors[random_indices]
 
 x_init = generate_vectors_in_core(max_cycles, densthresh)
-
-"""
-if sys.argv[-1] == "input":
-
-    unique_vectors = set()  # Use a set to store unique vectors
-
-    with open('lone_run_radius_vectors.dat', 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            if line.startswith('['):  # Assuming x_init vectors are represented as arrays in brackets
-                # Convert the string representation of the array to a numpy array
-                vector = np.fromstring(line.strip().strip('[]'), sep=',')
-                # Convert to tuple (so it can be added to a set) and add to unique_vectors
-                unique_vectors.add(tuple(vector))
-
-    # Step 2: Convert set back to a list of unique numpy arrays
-    x_init = np.array([np.array(vec) for vec in unique_vectors])
-    print(x_init)
-    max_cycles = x_init.shape[1]
-
-    with open('output', 'w') as file:
-        file.write(f"Make sure the initial radius vectors correspond with the file that will provide the\n")
-        file.write(f"Magnetic field that will be use to trace field lines\n")
-        file.write(f"{filename}\n")
-        file.write(f"Cores Used: {os.cpu_count()}\n")
-        file.write(f"Steps in Simulation: {2 * N}\n")
-        file.write(f"max_cycles         : {x_init.shape}\n")
-        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-else:
-    rloc_center      = np.array([float(random.uniform(0,rloc_boundary)) for l in range(max_cycles)])
-    nside = 1_000     # sets number of cells sampling the spherical boundary layers = 12*nside**2
-    npix  = 12 * nside ** 2
-    ipix_center       = np.arange(npix)
-    xx,yy,zz = hp.pixelfunc.pix2vec(nside, ipix_center)
-
-    xx = np.array(random.sample(list(xx), max_cycles))
-    yy = np.array(random.sample(list(yy), max_cycles))
-    zz = np.array(random.sample(list(zz), max_cycles))
-
-    m = len(zz) # amount of values that hold which_up_down
-
-    x_init = np.zeros((m,3))
-
-    x_init[:,0]      = rloc_center * xx[:]
-    x_init[:,1]      = rloc_center * yy[:]
-    x_init[:,2]      = rloc_center * zz[:]
-
-    lmn = N
-
-    with open(os.path.join(new_folder, 'PARAMETERS'), 'w') as file:
-        file.write(f"{filename}\n")
-        file.write(f"Cores Used: {os.cpu_count()}\n")
-        file.write(f"Steps in Simulation: {2 * N}\n")
-        file.write(f"rloc_boundary (Pc) : {rloc_boundary}\n")
-        file.write(f"rloc_center (Pc)   :\n {rloc_center}\n")
-        file.write(f"x_init (Pc)        :\n {x_init}\n")
-        file.write(f"max_cycles         : {max_cycles}\n")
-        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-        file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
-        file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-        file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-        file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-"""
-
 
 print("Cores Used         : ", os.cpu_count())
 print("Steps in Simulation: ", 2*N)
@@ -469,14 +396,6 @@ print("Smallest Volume    : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
-
-"""
-x_init = np.array([[ 0.03518049, -0.06058562,  0.09508827],
-                   [-0.08827144,  0.07445224, -0.01678605],
-                   [ 0.11605630,  0.24466445, -0.32513439],
-                   [-0.01082023, -0.02556539, -0.00694829],
-                   [-0.19161783,  0.10030747,  0.14942809]])
-"""
 
 radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd  = get_along_lines(x_init)
 
@@ -496,32 +415,29 @@ for i in range(m):
     column_dens  = cd[_from:_to,i]
     mag_field    = magnetic_fields[_from:_to,i]
     pos_vector   = radius_vector[_from:_to,i,:] # stays in Pc
-    s_coordinate = trajectory[_from:_to,i] - trajectory[_from,i] # stays in Pc
+    path_distance = trajectory[_from:_to,i] - trajectory[_from,i] # stays in Pc
     mass_density = numb_densities[_from:_to,i] /gr_cm3_to_nuclei_cm3
     numb_density = numb_densities[_from:_to,i] 
     volume       = volumes[_from:_to,i]*(parsec_to_cm3**3)
 
     if len(trajectory) == 0:
-        # if density at starting point is less that 100/cm^3 ignore profiles
         continue
-
-    # use volume to obtain dr_cell 
 
     print("column_dens shape:", column_dens.shape)
     print("mag_field shape:", mag_field.shape)
     print("pos_vector shape:", pos_vector.shape)
-    print("s_coordinate shape:", s_coordinate.shape)
+    print("path_distance shape:", path_distance.shape)
     print("numb_density shape:", numb_density.shape)
     print("volume shape:", volume.shape)
 
     pocket, global_info = pocket_finder(mag_field, i, plot=False) # this plots
 
-    np.save(os.path.join(new_folder, f"AreColumnDensity{i}.npy"), column_dens)
-    np.save(os.path.join(new_folder, f"ArePositions{i}.npy"), pos_vector)
-    np.save(os.path.join(new_folder, f"ArepoTrajectory{i}.npy"), s_coordinate)
-    np.save(os.path.join(new_folder, f"ArepoNumberDensities{i}.npy"), numb_density)
-    np.save(os.path.join(new_folder, f"ArepoMagneticFields{i}.npy"), mag_field)
-    np.save(os.path.join(new_folder, f"ArepoVolumes{i}.npy"), volume)
+    np.save(os.path.join(new_folder, f"ColumnDensity{i}.npy"), column_dens)
+    np.save(os.path.join(new_folder, f"Positions{i}.npy"), pos_vector)
+    np.save(os.path.join(new_folder, f"Trajectory{i}.npy"), path_distance)
+    np.save(os.path.join(new_folder, f"NumberDensities{i}.npy"), numb_density)
+    np.save(os.path.join(new_folder, f"MagneticFields{i}.npy"), mag_field)
+    np.save(os.path.join(new_folder, f"Volumes{i}.npy"), volume)
 
 	
     print(f"finished line {i+1}/{max_cycles}",(time.time()-start_time)/60)
@@ -530,19 +446,19 @@ for i in range(m):
         # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
-        axs[0,0].plot(s_coordinate*length_unit, mag_field, linestyle="--", color="m")
+        axs[0,0].plot(path_distance*length_unit, mag_field, linestyle="--", color="m")
         axs[0,0].set_xlabel("s (cm)")
         axs[0,0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
         axs[0,0].set_title("Magnetic FIeld")
         axs[0,0].grid(True)
 		
-        axs[0,1].plot(s_coordinate*length_unit, linestyle="--", color="m")
+        axs[0,1].plot(path_distance*length_unit, linestyle="--", color="m")
         axs[0,1].set_xlabel("# steps")
         axs[0,1].set_ylabel("$s$ cm")
         axs[0,1].set_title("Distance Away of $n_g^{max}(r)$ ")
         axs[0,1].grid(True)
 
-        axs[1,0].plot(numb_density, linestyle="--", color="m")
+        axs[1,0].plot(path_distance*length_unit, numb_density, linestyle="--", color="m")
         axs[1,0].set_yscale('log')
         axs[1,0].set_xlabel("s (cm)")
         axs[1,0].set_ylabel("$N_g(s)$ cm^-3")
@@ -564,76 +480,45 @@ for i in range(m):
         # Close the plot
         plt.close(fig)
     
-    if False:
-
-        # Normalize the vectors
-        norm_vectors = mag_field_vectors / np.linalg.norm(mag_field_vectors, axis=0, keepdims=True)
-
-        # Compute angular changes
-        angles = []
-        for i in range(len(norm_vectors) - 1):
-            cos_theta = np.clip(np.dot(norm_vectors[i], norm_vectors[i+1]), -1.0, 1.0)
-            angles.append(np.arccos(cos_theta))
-
-        # Plot angular changes
-        import matplotlib.pyplot as plt
-        plt.plot(angles, label='Angular Change (radians)')
-        plt.xlabel('Index')
-        plt.ylabel('Angle (radians)')
-        plt.legend()
-        plt.show()
-
-        # Analyze alignment with a reference vector
-        reference_vector = np.array([1, 0, 0])  # Example reference
-        alignment = np.dot(norm_vectors, reference_vector)
-
-        # Plot alignment
-        plt.plot(alignment, label='Alignment with Reference')
-        plt.xlabel('Index')
-        plt.ylabel('Dot Product (Alignment)')
-        plt.legend()
-        plt.savefig(os.path.join(new_folder,"direction_changes.png"))
-        plt.close(fig)
-        
-if False:
-        
-    from matplotlib import cm
-    from matplotlib.colors import Normalize
-    # Assuming mag_field is of shape (N+1, m)
-    norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
-    cmap = cm.viridis  # Choose a colormap
-
-    ax = plt.figure().add_subplot(projection='3d')
-    radius_vector /= 3.086e+18
-
-    for k in range(m):
-        x=radius_vector[:, k, 0]
-        y=radius_vector[:, k, 1]
-        z=radius_vector[:, k, 2]
-        
-        for l in range(len(x)):
-            color = cmap(norm(magnetic_fields[l, k]))
-            ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
-
-        #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-        ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-        ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+    if True:
             
-    radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
-    zoom = np.max(radius_to_origin)
-    ax.set_xlim(-zoom,zoom)
-    ax.set_ylim(-zoom,zoom)
-    ax.set_zlim(-zoom,zoom)
-    ax.set_xlabel('x [Pc]')
-    ax.set_ylabel('y [Pc]')
-    ax.set_zlabel('z [Pc]')
-    ax.set_title('Magnetic field morphology')
+        from matplotlib import cm
+        from matplotlib.colors import Normalize
 
-    # Add a colorbar
-    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
-    cbar.set_label('Magnetic Field Strength')
+        norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+        cmap = cm.viridis
 
-    plt.savefig(f'field_shapes/MagneticFieldTopology.png', bbox_inches='tight')
-    plt.show()
+        ax = plt.figure().add_subplot(projection='3d')
+        radius_vector /= 3.086e+18
+
+        for k in range(m):
+            x=radius_vector[:, k, 0]
+            y=radius_vector[:, k, 1]
+            z=radius_vector[:, k, 2]
+            
+            for l in range(len(x)):
+                color = cmap(norm(magnetic_fields[l, k]))
+                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
+
+            #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
+            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+                
+        radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
+        zoom = np.max(radius_to_origin)
+        ax.set_xlim(-zoom,zoom)
+        ax.set_ylim(-zoom,zoom)
+        ax.set_zlim(-zoom,zoom)
+        ax.set_xlabel('x [Pc]')
+        ax.set_ylabel('y [Pc]')
+        ax.set_zlabel('z [Pc]')
+        ax.set_title('Magnetic field morphology')
+
+        # Add a colorbar
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+        cbar.set_label('Magnetic Field Strength')
+
+        plt.savefig(f'field_shapes/MagneticFieldTopology.png', bbox_inches='tight')
+        plt.show()
