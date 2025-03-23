@@ -49,14 +49,11 @@ with open(file_path, mode='r') as file:
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
     print('File opened successfully')
-    # Print every row to verify the values being read
-    for row in csv_reader:
 
+    for row in csv_reader:
         if num_file == str(row[0]):
             print("Match found!")
             print("Row:", row)  # Print the row for debugging
-    for row in csv_reader:
-        if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             print(Center, " Found")
             snap =str(row[0])
