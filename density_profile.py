@@ -186,12 +186,13 @@ def get_along_lines(x_init):
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
     threshold = np.zeros((m,)).astype(int) # one value for each
-
+    
     energy_magnetic   = np.zeros((N+1,m))
     energy_grav   = np.zeros((N+1,m))
     energy_thermal   = np.zeros((N+1,m))
     eff_column_densities   = np.zeros((N+1,m))
-    
+    temperature = np.zeros((N+1,m))
+
     line[0,:,:]     = x_init
     x = x_init
     dummy, bfields[0,:], dens, cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
@@ -208,9 +209,9 @@ def get_along_lines(x_init):
     grav_potential = 0.0
 
     energy_magnetic[0,:] = bfields[0,:]*bfields[0,:]*(gauss_code_to_gauss_cgs)**2/(8*np.pi)*(vol*parsec_to_cm3**3)
-    energy_thermal[0,:]  = (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
+    energy_thermal[0, :] = (3 / 2) * pressure * (4 * np.pi * (rad * parsec_to_cm3)**2) * (dx_vec * parsec_to_cm3)
     energy_grav[0,:]     = 0.0
-    
+    temperature[0,:] =(pressure * 4 * np.pi * (rad * parsec_to_cm3)**2) * (dx_vec * parsec_to_cm3)/ (dens * boltzmann_constant_cgs) 
     k=0
 
     mask = dens > 100 # True if continue
@@ -247,13 +248,8 @@ def get_along_lines(x_init):
         bfields[k + 1, :] = bfield
         densities[k + 1, :] = dens
 
-        # Compute radial positions
         rad = np.linalg.norm(x[:, :], axis=1)
-
-        # Gravitational potential contribution
         grav_potential += -(4 * np.pi) ** 2 * (dens ** 2) * (rad * parsec_to_cm3) ** 4 * (dx_vec * parsec_to_cm3)
-
-        # Compute cumulative mass for gravitational potential
         M_r = np.cumsum(4 * np.pi * mass_dens * (rad* parsec_to_cm3) ** 2 * dx_vec * parsec_to_cm3)
 
         binding_energy = -np.sum((grav_constant_cgs * M_r / (rad*parsec_to_cm3)) * 4 * np.pi * (rad*parsec_to_cm3)**2 * mass_dens * dx_vec*parsec_to_cm3)
@@ -261,7 +257,7 @@ def get_along_lines(x_init):
         energy_grav[k + 1, :]     = binding_energy
         energy_magnetic[k + 1, :] = energy_magnetic[k, :] +  bfield * bfield*(gauss_code_to_gauss_cgs)**2 / (8 * np.pi) * (4*np.pi*(rad*parsec_to_cm3)**2*(dx_vec*parsec_to_cm3))
         energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3))**2*(dx_vec*parsec_to_cm3)
-
+        temperature[k+1,:] =(pressure * 4 * np.pi * (rad * parsec_to_cm3)**2) * (dx_vec * parsec_to_cm3)/ (dens * boltzmann_constant_cgs)
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
 
         print(f"Eff. Column Densities: {eff_column_densities[k + 1, 0]:5e}")
@@ -332,6 +328,7 @@ if True:
         np.save(f"{new_folder}/energy_magnetic_{i}.npy", energy_magnetic[:cut, i])
         np.save(f"{new_folder}/energy_thermal_{i}.npy", energy_thermal[:cut, i])
         np.save(f"{new_folder}/energy_grav_{i}.npy", energy_grav[:cut, i])
+        np.save(f"{new_folder}/temperature_{i}.npy", temperature[:cut, i])
 
         # Define new mosaic layout
         mosaic = [

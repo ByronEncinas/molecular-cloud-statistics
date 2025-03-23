@@ -3,147 +3,127 @@ from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 import numpy as np
 import os, sys
-
-"""
-# Reduction Factor Along Field Lines (R vs S)
-
-"""
-
-#pocket_finder(bmag, cycle=0, plot =False):
 import glob
 
-cycle = str(sys.argv[-1])
-
-# percentual error goes commonly into 2% but it can grow up to 6%
-# SG has larger discrepancy with original data
-# AG smoothes out micro-pockets
+line = str(sys.argv[-1])
 
 origin_folder = 'getLines/430'
 
-
-radius_vector  = np.array(np.load(os.path.join(origin_folder, f'ArePositions{cycle}.npy'), mmap_mode='r'))
-distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{cycle}.npy'), mmap_mode='r'))
-bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{cycle}.npy'), mmap_mode='r'))
-numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{cycle}.npy'), mmap_mode='r'))
-volume         = np.array(np.load(os.path.join(origin_folder, f'ArepoVolumes{cycle}.npy'), mmap_mode='r'))
+radius_vector  = np.array(np.load(os.path.join(origin_folder, f'ArePositions{line}.npy'), mmap_mode='r'))
+distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{line}.npy'), mmap_mode='r'))
+bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{line}.npy'), mmap_mode='r'))
+numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{line}.npy'), mmap_mode='r'))
+volume         = np.array(np.load(os.path.join(origin_folder, f'ArepoVolumes{line}.npy'), mmap_mode='r'))
 radius         = np.linalg.norm(radius_vector, axis=-1)
 
-inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
 
-distance = distance[inter]
-ds = abs(np.diff(distance))
-radius_vector = radius_vector[inter][1:]
-bfield        = bfield[inter][1:]
-numb_density  = numb_density[inter][1:]
-distance = distance[:-1]
-print(" Data Successfully Loaded")
 
 if True: # smoothing of bfield
 
-    ds = np.abs(distance[1:] - distance[:-1])  # Shape (N,)
-    ds /= np.max(ds)
-    ds[ds == 0.] = np.min(ds)
+    inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
 
+    distance = distance[inter]
+    ds = np.abs(np.diff(distance))
+    radius_vector = radius_vector[inter][1:]
+    bfield        = bfield[inter]
+    numb_density  = numb_density[inter][1:]
+    print(distance.shape, ds.shape)
+    ds_norm = ds/np.max(ds)
+    
     field = bfield[1:] *1.0e+6 # in micro Gauss
-    field = np.ones_like(field) # in micro Gauss
 
-    Rs = []
-    InvRs = []
-    NormBfield = []
-
-    # Adaptive Gaussian Filtering (Wider smoothing for noisy regions)
     grad = np.abs(np.gradient(field))
-    adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
+    adaptive_sigma = 3*ds_norm/np.mean(ds_norm) #(ds > np.mean(ds))
+    print(adaptive_sigma.shape, ds_norm.shape,field.shape)
     adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
 
-    plt.plot(adaptive_sigma, label="$\sigma(s)$ Standard deviation")
-    plt.xlabel("Index")
-    plt.ylabel(r"$\sigma(s)$")
-    plt.title(r"$\sigma(s) = 3.0 \frac{dr_{cell}}{dr^{mean}_{cell}}$")
-    plt.legend()
-    plt.grid()
-    plt.savefig(f"./AdaptativeSigma{cycle}.png")
+    if False:
+        Rs = []
+        InvRs = []
+        NormBfield = []
 
-    def reduction(aux):
-        pocket, global_info = smooth_pocket_finder(aux, "_c1", plot=False) # this plots
-        index_pocket, field_pocket = pocket[0], pocket[1]
+        plt.plot(adaptive_sigma, label="$\sigma(s)$ Standard deviation")
+        plt.xlabel("Index")
+        plt.ylabel(r"$\sigma(s)$")
+        plt.title(r"$\sigma(s) = 3.0 \frac{dr_{cell}}{dr^{mean}_{cell}}$")
+        plt.legend()
+        plt.grid()
+        plt.savefig(f"./AdaptativeSigma{cycle}.png")
 
-        global_max_index = global_info[0]
-        global_max_field = global_info[1]
+        def reduction(aux):
+            pocket, global_info = smooth_pocket_finder(aux, "_c1", plot=False) # this plots
+            index_pocket, field_pocket = pocket[0], pocket[1]
 
-        for i, Bs in enumerate(aux): 
-            """  
-            R = 1 - \sqrt{1 - B(s)/Bl}
-            s = distance traveled inside of the molecular cloud (following field lines)
-            Bs= Magnetic Field Strenght at s
-            """
-            if i < index_pocket[0] or i > index_pocket[-1]: # assuming its monotonously decreasing at s = -infty, infty
-                Bl = Bs
+            global_max_index = global_info[0]
+            global_max_field = global_info[1]
+
+            for i, Bs in enumerate(aux): 
+                if i < index_pocket[0] or i > index_pocket[-1]: # assuming its monotonously decreasing at s = -infty, infty
+                    Bl = Bs
+                
+                p_i = find_insertion_point(index_pocket, i)    
+                indexes = index_pocket[p_i-1:p_i+1]       
+
+                if len(indexes) < 2:
+                    nearby_field = [Bs, Bs]
+                else:
+                    nearby_field = [aux[indexes[0]], aux[indexes[1]]]
+
+                Bl = min(nearby_field)
+
+                if Bs/Bl < 1:
+                    R = 1 - np.sqrt(1. - Bs/Bl)
+                else:
+                    R = 1
+
+                Rs.append(R)
+                InvRs.append(1/R)
+
+            return Rs, InvRs
+
+        # Plot Results
+        plt.figure(figsize=(12, 8))
+        plt.plot(field, label='Original', color='grey', alpha=0.6, linewidth=2, linestyle='-')
+        plt.plot(adaptive_gaussian_smoothed, label='Adaptive Gaussian', linestyle='--') # follows too closely the micro-pockets
+        plt.legend()
+
+        smoothing_algos = [field, adaptive_gaussian_smoothed]
+        smoothing_names = ["field", "adaptive_gaussian"]
+
+        diffRs = []
+        for o, algo  in enumerate(smoothing_algos):
             
-            p_i = find_insertion_point(index_pocket, i)    
-            indexes = index_pocket[p_i-1:p_i+1]       
+            Rs, InvRs = reduction(algo)
+            diffRs.append([np.mean(Rs),np.mean(InvRs)])
 
-            if len(indexes) < 2:
-                nearby_field = [Bs, Bs]
-            else:
-                nearby_field = [aux[indexes[0]], aux[indexes[1]]]
-
-            Bl = min(nearby_field)
-
-            if Bs/Bl < 1:
-                R = 1 - np.sqrt(1. - Bs/Bl)
-            else:
-                R = 1
-
-            Rs.append(R)
-            InvRs.append(1/R)
-
-        return Rs, InvRs
-
-    # Plot Results
-    plt.figure(figsize=(12, 8))
-    plt.plot(field, label='Original', color='grey', alpha=0.6, linewidth=2, linestyle='-')
-    plt.plot(adaptive_gaussian_smoothed, label='Adaptive Gaussian', linestyle='--') # follows too closely the micro-pockets
-    plt.legend()
-
-    smoothing_algos = [field, adaptive_gaussian_smoothed]
-    smoothing_names = ["field", "adaptive_gaussian"]
-
-    diffRs = []
-    for o, algo  in enumerate(smoothing_algos):
-        
-        Rs, InvRs = reduction(algo)
-        diffRs.append([np.mean(Rs),np.mean(InvRs)])
-
-    data_Rs = abs(diffRs[0][0])
-    data_InvRs = abs(diffRs[0][1])
-        
-    Rs, InvRs = diffRs[1][0], diffRs[1][1]
-    percentage_Rs    = ((Rs- data_Rs)/data_Rs)*100
-    percentage_InvRs = ((InvRs-data_InvRs)/data_InvRs)*100
-    plt.text(
-        0.25, 0.75, 
-        rf"% $Difference R (AG) = {percentage_Rs:.4f}$ %",
-        transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
-    )
-    plt.text(
-        0.25, 0.60, 
-        r"$n_g^{threshold} = 10^2$ cm$^{-3}$",
-        transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
-    )
-   
-    plt.xlabel('Path distance (Pc)')
-    plt.ylabel('Field Magnitude $\mu$G')
-    plt.title('Adaptative Convolution $(B*K)$')
-    plt.grid()
-    plt.savefig(f"./PocketMeanComparison{cycle}.png")
-
+        data_Rs = abs(diffRs[0][0])
+        data_InvRs = abs(diffRs[0][1])
+            
+        Rs, InvRs = diffRs[1][0], diffRs[1][1]
+        percentage_Rs    = abs((Rs- data_Rs)/data_Rs)*100
+        percentage_InvRs = abs((InvRs-data_InvRs)/data_InvRs)*100
+        plt.text(
+            0.25, 0.75, 
+            rf"$\Delta R (AG) = {percentage_Rs:.4f}$ %",
+            transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
+        )
+        plt.text(
+            0.25, 0.60, 
+            r"$n_g^{threshold} = 10^2$ cm$^{-3}$",
+            transform=plt.gca().transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5)
+        )
+    
+        plt.xlabel('Path distance (Pc)')
+        plt.ylabel('Field Magnitude $\mu$G')
+        plt.title('Adaptative Convolution $(B*K)$')
+        plt.grid()
+        plt.savefig(f"./PocketMeanComparison{cycle}.png")
+    
     bfield = adaptive_gaussian_smoothed.copy()
 
     print(distance.shape, bfield.shape, numb_density.shape)
 
     distance = distance[1:]
-    numb_density = numb_density[1:]
 
 """ Calculate Effective Column Densities """
 
@@ -155,7 +135,7 @@ plt.ylabel("Number Density (cm$^{-3}$)")
 plt.title("Number Density Profile")
 plt.legend()
 plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-plt.show()
+#plt.show()
 
 plt.figure(figsize=(8, 5))
 plt.plot(distance, bfield, label="Magnetic Field Strength", color="red")
@@ -164,19 +144,31 @@ plt.ylabel("Magnetic Field Strength ($\mu$G)")
 plt.title("Magnetic Field Strength Profile")
 plt.legend()
 plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-plt.show()
+#plt.show()
 
 Npluseff = np.cumsum(numb_density*ds)
-
 Nminuseff = np.cumsum(numb_density[::-1]*ds[::-1])
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(distance, Npluseff, label=r'$N_{\rm plus}^{\rm eff}$', color='blue', linewidth=2)
+ax.plot(distance, Nminuseff[::-1], label=r'$N_{\rm minus}^{\rm eff}$', color='red', linestyle='--', linewidth=2)
+
+ax.set_xlabel('Path Distance (pc)', fontsize=14)
+ax.set_ylabel(r'Effective Column Density', fontsize=14)
+ax.set_title('Effective Column Densities vs Distance', fontsize=16)
+ax.grid(True)
+ax.legend(fontsize=12)
+#plt.show()
 
 """ Column Densities N_+(mu, s) & N_-(mu, s)"""
 
 size = ds.shape[0]
 
-mu_ism = np.array([1.0])#np.linspace(0.0, 1.0, num=2)
+mu_ism = np.linspace(0.0, 1.0, num=5)#np.array([1.0,0.9,0.8])#
+dmui = np.insert(np.diff(mu_ism), 0, mu_ism[0])
 
-Npmu  = np.zeros((size, len(mu_ism))) # N(s, mu)
+Npmu  = np.zeros((size, len(mu_ism)))
+Jacobpmu = np.zeros((size, len(mu_ism)))
 mu_local_plus = np.zeros((size, len(mu_ism)))
 B_ism     = bfield[0]
 
@@ -190,139 +182,55 @@ for i, mui_ism in enumerate(mu_ism):
         
         if (mu_local2 <= 0):
             break
-
+        
         mu_local_plus[j,i] = np.sqrt(mu_local2)
+
+        Jacobpmu[j,i] = (mu_local_plus[j,i]/mui_ism)*(Bsprime/B_ism)
         
-        Npmu[j,i] = Npmu[j-i,i] + n_g*ds[j] / mu_local_plus[j,i]
+        Npmu[j, i] = Npmu[j - 1, i] + n_g * ds[j] / mu_local_plus[j, i] if j > 0 else n_g * ds[j] / mu_local_plus[j, i]
 
-Nmmu  = np.zeros((size, len(mu_ism))) # N(s, mu)
+print(Npmu.shape)
+# Matrix N x # mu_i
 
-rev_numb_density = numb_density[::-1]
-rev_bfield        = bfield[::-1]
-mu_local_minus = np.zeros((size, len(mu_ism)))
-B_ism      = bfield[-1]
+# Nplusmu = np.sum(Jacobpmu*Npmu*dmui, axis=1) 
+# Nminusmu = np.sum(Jacobmmu*Nmmu*dmui, axis=1)
 
-for i, mui_ism in enumerate(mu_ism):
-
-    for j in range(size):
-
-        n_g = rev_numb_density[j]
-        Bsprime = rev_bfield[j]
-        mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
-        
-        if (mu_local2 <= 0):
-            break
-
-        mu_local_minus[j,i] = np.sqrt(mu_local2)
-        
-        Nmmu[j,i] = Nmmu[j-i,i] + n_g*ds[j] / mu_local_minus[j,i]
-
-# First plot
-Nplusmu = np.sum(Npmu, axis=1)
-Nminusmu = np.sum(Nmmu, axis=1)
-
-if False:
+if True:
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, mu_local_plus[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
         plt.legend()
 
-    # Adding title and axis labels
     plt.title(r"Evolution of $cos(\alpha(\alpha_i), s)$ along trajectory")
     plt.xlabel("Distance (pc)")
     plt.ylabel(r"$cos(\alpha(\alpha_i), s)$")
     plt.xscale('log')
-    plt.legend()  # Show legend for the first plot
+    plt.legend()
     plt.show()
 
-    # Second plot
-    for mui in range(Npmu.shape[1]):
-        plt.plot(distance, Npmu[:, mui] + Nmmu[::-1, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+    for mui in range(Jacobpmu.shape[1]):
+        plt.plot(distance, Jacobpmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
         plt.legend()
 
-    # Adding title, axis labels, and scaling
-    plt.title("Column density $N_+(\mu_i) + N_-(\mu_i)$  ")
+    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu}{\mu_i}$ along trajectory")
     plt.xlabel("Distance (pc)")
-    plt.ylabel(r"$N_+(\mu_i, s) + N_-(\mu_i, s)$")
+    plt.ylabel(r"$cos(\alpha(\alpha_i), s)$")
     plt.xscale('log')
-    plt.yscale('log')
-    plt.legend()  # Show legend for the second plot
-    plt.show()
-
-
-    plt.plot(distance, Nplusmu + Nminusmu, label=r"$\sum_{\mu_i} N(\mu_i,s)$")    
     plt.legend()
-    plt.title("Column density $N(s)$  ")
-    plt.xlabel("Distance (pc)")
-    plt.ylabel(r"$N(s)")
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend()  # Show legend for the second plot
     plt.show()
 
-Nmirfor = Npmu.copy()
-B_max = np.max(bfield)
-s_max = np.argmax(bfield)
-B_ism      = bfield[0]
+    for mui in range(Npmu.shape[1]):
+        plt.plot(distance, Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+        plt.legend()
 
-for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
-    for s in range(s_max):            # at s
-        N = 0.0#Nmirfor[s, i]
-        for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
-            # sprime is the integration variable.
-            if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
-                break
-            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
-            s_mir = s + s_prime
-            dens  = numb_density[s:s_mir]
-            diffs = ds[s:s_mir] 
-            if len(diffs) == 0:
-                break
-            N += np.cumsum(dens*diffs/mu_local)
-        Nmirfor[s,i] = N
+    plt.title("Column density $N_+(\mu_i)$  ")
+    plt.xlabel("Distance (pc)")
+    plt.ylabel(r"$N_+(\mu_i, s)$")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
+    plt.show()
 
-NFtotal = np.sum(Nmirfor, axis=1)
-
-ds = np.linalg.norm(np.diff(radius_vector[::-1], axis=0), axis=1)    
-bfield = bfield[::-1]
-numb_density = numb_density[::-1]
-
-Nmirback = Nmmu.copy()
-B_max = np.max(bfield)
-s_max = np.argmax(bfield[::-1])
-B_ism      = bfield[-1]
-
-for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
-    for s in range(s_max):            # at s
-        N = 0.0#Nmirback[s, i]
-        for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
-            # sprime is the integration variable.
-            if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
-                break
-            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
-            s_mir = s + s_prime
-            dens  = numb_density[s:s_mir]
-            diffs = ds[s:s_mir] 
-            if len(diffs) == 0:
-                break
-            N += np.cumsum(dens*diffs/mu_local)
-        Nmirback[s,i] = N
-
-NBtotal = np.sum(Nmirback, axis=1) + Nminusmu
-NFtotal = np.sum(Nmirfor, axis=1) +  Nplusmu
-Ntotal = NFtotal + NBtotal[::-1]
-
-plt.plot(distance, Ntotal, label=r"$N_+(s) + N_-(s) + N_{mirr}(s)$")    
-plt.title("Column density $N_+(\mu_i) + N_-(\mu_i) + N_{mirr}(s)$")
-plt.xlabel("Distance (pc)")
-plt.ylabel(r"$N_+(s) + N_-(s) + N_{mirr}(s)$")
-plt.xscale('log')
-plt.yscale('log')
-
-# Show legend for the plot
-plt.legend()
-
-# Display the plot
-plt.show()
+#NFtotal = np.sum(Nmirfor, axis=1)
 
 """ Parameters """
 
@@ -364,23 +272,29 @@ loss_function = lambda z: Lstar*(Estar/z)**d
 
 """ Ionization Rate for N = N(s) """
 
-zeta_plus = np.zeros_like(Nplusmu)
+zeta_plus = np.zeros_like(Npmu)
 
-for j, Nj in enumerate(Nplusmu):
-    
-    jl_dE = 0.0
-    
-    for k, E in enumerate(energy): 
+for l, mui in enumerate(mu_ism):
 
-        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+    for i, mu_ in enumerate(mu_local_plus[:,l]):
 
-        isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
-        llei = loss_function(Ei)           # log_10(L(E_i))
-        jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
-    
-    zeta_plus[j] = jl_dE / epsilon             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+        for j, Nj in enumerate(Npmu[i,:]):
+            
+            jl_dE = 0.0
 
-zeta_minus = np.zeros_like(Nminusmu)
+            Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d)) # E_i(E, N)
+            
+        #    for k, E in enumerate(energy): 
+
+        #        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+
+            isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
+            llei = loss_function(Ei)           # log_10(L(E_i))
+            jl_dE = np.cumsum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+            print(Jacobpmu, jl_dE)
+            zeta_plus[j] = np.cumsum(Jacobpmu[:,l]*dmui*jl_dE / epsilon)             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+
+        zeta_minus = np.zeros_like(Nmplusmu)
 
 for j, Nj in enumerate(Nminusmu):
     
@@ -436,6 +350,95 @@ if True:
 
 exit()
 
+"""
+ds = np.linalg.norm(np.diff(radius_vector[::-1], axis=0), axis=1)    
+bfield = bfield[::-1]
+numb_density = numb_density[::-1]
+
+
+Nmmu  = np.zeros((size, len(mu_ism))) # matrix N x 2
+Jacobmmu = np.zeros((size, len(mu_ism)))
+mu_local_minus = np.zeros((size, len(mu_ism)))
+rev_numb_density = numb_density[::-1]
+rev_bfield        = bfield[::-1]
+B_ism      = bfield[-1]
+
+for i, mui_ism in enumerate(mu_ism):
+
+    for j in range(size):
+
+        n_g = rev_numb_density[j]
+        Bsprime = rev_bfield[j]
+        mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
+        
+        if (mu_local2 <= 0):
+            break
+
+        mu_local_minus[j,i] = np.sqrt(mu_local2)
+
+        Jacobmmu[j,i] = (mu_local_plus[j,i]/mui_ism)*(Bsprime/B_ism)
+        
+        Nmmu[j,i] = Nmmu[j-i,i] + n_g*ds[j] / mu_local_minus[j,i]
+
+Nmirback = Nmmu.copy()*0.0
+B_max = np.max(bfield)
+s_max = np.argmax(bfield[::-1])
+B_ism      = bfield[-1]
+
+for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
+    for s in range(s_max):            # at s
+        N = 0.0#Nmirback[s, i]
+        for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
+            # sprime is the integration variable.
+            if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
+                break
+            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
+            s_mir = s + s_prime
+            dens  = numb_density[s:s_mir]
+            diffs = ds[s:s_mir] 
+            if len(diffs) == 0:
+                break
+            N += np.cumsum(dens*diffs/mu_local)
+        Nmirback[s,i] = N
+
+#NBtotal = np.sum(Nmirback, axis=1) + Nminusmu
+#NFtotal = np.sum(Nmirfor, axis=1) +  Nplusmu
+#Ntotal = NFtotal + NBtotal[::-1]
+
+plt.plot(distance, Nmirfor)    
+plt.title("Column density $N_{mirr}(s)$")
+plt.xlabel("Distance (pc)")
+plt.ylabel(r"$N_+(s) + N_-(s) + N_{mirr}(s)$")
+plt.xscale('log')
+plt.yscale('log')
+
+# Show legend for the plot
+plt.legend()
+
+# Display the plot
+plt.show()
+
+Nmirfor = Npmu.copy()*0.0
+B_max = np.max(bfield)
+s_max = np.argmax(bfield)
+B_ism      = bfield[0]
+
+for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
+    for s in range(s_max):            # at s
+        N = 0.0
+        for s_prime in range(s_max-s):
+            #if (bfield[s_prime] > B_ism*(1-mui_ism**2)):
+            #    break
+            mu_local = np.sqrt(1 - bfield[s_prime]*(1-mui_ism**2)/B_ism )
+            s_mir = s + s_prime
+            dens  = numb_density[s:s_mir]
+            diffs = ds[s:s_mir] 
+            if len(diffs) == 0:
+                break
+            N += np.cumsum(dens*diffs/mu_local)
+        Nmirfor[s,i] = N
+
+"""
 
 for i, mui in enumerate(mu_ism):
 
