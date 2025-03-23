@@ -51,10 +51,10 @@ with open(file_path, mode='r') as file:
     print('File opened successfully')
     # Print every row to verify the values being read
     for row in csv_reader:
-        print("Row:", row)  # Print the row for debugging
+
         if num_file == str(row[0]):
             print("Match found!")
-
+            print("Row:", row)  # Print the row for debugging
     for row in csv_reader:
         if num_file == str(row[0]):
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
