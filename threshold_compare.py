@@ -28,6 +28,8 @@ else:
     case = 'ideal'
     num_file = '430'
 
+print(sys.argv)
+
 cycle = 0 
 reduction_factor_at_numb_density = defaultdict()
 reduction_factor = []
@@ -312,6 +314,14 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
+
+init_files = glob.glob('./x_init*.npy')
+
+if init_files:
+    x_init = np.load(init_files[0], mmap_mode='r')
+else:
+    x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
+
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
 print("rloc                : ", rloc_boundary)
@@ -325,13 +335,6 @@ print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Vol
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
 test_thresh = [100, 10]
-
-init_files = glob.glob('./x_init*.npy')
-
-if init_files:
-    x_init = np.load(init_files[0], mmap_mode='r')
-else:
-    x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
 
 for case in test_thresh:   
 
