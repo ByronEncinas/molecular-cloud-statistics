@@ -126,8 +126,9 @@ for list in file_list:
         SphereDensity = (Density[cloud_sphere]*gr_cm3_to_nuclei_cm3)
         mask  = (SphereDensity > 100)
         radius_core = Radius[mask]
-        print(len(radius_core)/len(cloud_sphere), np.mean(radius_core))
         region_radius = np.max(radius_core)
+        print(len(radius_core)/len(cloud_sphere), np.mean(radius_core), region_radius)
+        
 
         ds = yt.load(filename)
 
