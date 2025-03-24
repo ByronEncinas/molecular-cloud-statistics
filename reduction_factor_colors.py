@@ -43,9 +43,8 @@ FloatType = np.float64
 IntType = np.int32
 
 if len(sys.argv)>4:
-    #python3 arepo_reduction_factor_colors.py 500 0.5 100 430 
 	N=int(sys.argv[1])
-	rloc_boundary=float(sys.argv[2])
+	rloc=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	case = f'{sys.argv[4]}'
 	num_file = f'{sys.argv[5]}'
@@ -53,14 +52,12 @@ if len(sys.argv)>4:
 		sys.argv.append('NO_ID')
 else:
     N            =5_000
-    rloc_boundary=1   
+    rloc=1   
     max_cycles   =500
     case = 'ideal'
     num_file = '430'
 
-cycle = 0 
-reduction_factor_at_numb_density = defaultdict()
-reduction_factor = []
+print(sys.argv)
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -129,7 +126,7 @@ for dim in range(3):  # Loop over x, y, z
 
 densthresh = 100
 
-rloc_boundary = 1 # average size is two parsec, allow them to be a little big bigger before rejection sampling
+rloc = 1 # average size is two parsec, allow them to be a little big bigger before rejection sampling
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -363,7 +360,7 @@ x_init = generate_vectors_in_core(max_cycles, densthresh)
 
 generated_points = generate_vectors_in_core(max_cycles, densthresh)
 
-if True:
+if False:
     x, y = generated_points[:, 0], generated_points[:, 1]
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
@@ -396,7 +393,7 @@ if True:
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
-print("rloc                : ", rloc_boundary)
+print("rloc                : ", rloc)
 print("x_init              : ", x_init)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
@@ -513,12 +510,12 @@ counter = Counter(reduction_factor)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
+with open(os.path.join(children_folder, f'PARAMETER_reduction_{sys.argv[-1]}'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"{peak_den}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
-    file.write(f"rloc (Pc) : {rloc_boundary}\n")
+    file.write(f"rloc (Pc) : {rloc}\n")
     file.write(f"x_init (Pc)        :\n {x_init}\n")
     file.write(f"max_cycles         : {max_cycles}\n")
     file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
@@ -543,16 +540,17 @@ with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
 file_path = os.path.join(children_folder, f'numb_density{sys.argv[-1]}.json')
 with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
 
-file_path = os.path.join(children_folder, f'position_vector{sys.argv[-1]}')
+file_path = os.path.join(children_folder, f'position_vector{sys.argv[-1]}.json')
 with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
 
 """# Graphs"""
-
-reduction_factor = np.array(reduction_factor)
-
+total = len(reduction_factor)
 ones = counter['1']
 
+reduction_factor = np.array(reduction_factor)
 reduction_factor = reduction_factor[reduction_factor != 1.0]
+
+fraction = ones / total
 
 bins=len(reduction_factor)//10 
 
@@ -561,99 +559,20 @@ if bins == 0:
 
 inverse_reduction_factor = np.array([1/reduction_factor[i] for i in range(len(reduction_factor))])
 
-# Create a figure and axes objects
 fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-# Plot histograms on the respective axes
 axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
 axs[0].set_yscale('log')
-axs[0].set_title('Distribution of Reduction Factor (R)')
-axs[0].set_xlabel('Bins')
-axs[0].set_ylabel('Frequency')
+axs[0].set_title(f'Distribution of R for $R \\neq 1$ (fraction = {fraction})')
+axs[0].set_xlabel(f'Reduction factor ({fraction})')
+axs[0].set_ylabel('PDF')
 
 axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
 axs[1].set_yscale('log')
-axs[1].set_title('Disstribution of (1/R)')
-axs[1].set_xlabel('Bins')
-axs[1].set_ylabel('Frequency')
+axs[1].set_title(f'Distribution of 1/R for $R \\neq 1$ (fraction = {fraction})')
+axs[1].set_xlabel(f'Reduction factor ')
+axs[1].set_ylabel('PDF')
 
-# Adjust layout
 plt.tight_layout()
 
-# Save the figure
 plt.savefig(os.path.join(children_folder,f"hist.png"))
-
-if False:
-
-    # Extract data from the dictionary
-    x = np.log10(numb_density_at)   # log10(numb number density)
-    y = np.array(reduction_factor)              # reduction factor R
-
-    # Plot original scatter plot
-    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-    axs.scatter(x, y, marker="x", s=5, color='red', label='Data points')
-    axs.set_title('Histogram of Reduction Factor (R)')
-    axs.set_ylabel('$(R)$')
-    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
-
-    # Compute binned statistics
-    num_bins = 100
-
-    # Median binned statistics
-    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
-    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs.plot(bin_centers, bin_medians, marker="+", color='#17becf', linestyle='-', label='Binned medians')
-
-    # Mean binned statistics
-    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-    axs.plot(bin_centers, bin_means, marker="x", color='pink', linestyle='-', label='Binned means')
-
-    # Overall mean and median
-    overall_mean = np.average(y)
-    overall_median = np.median(y)
-
-    mean = np.ones_like(y) * overall_mean
-    median = np.ones_like(y) * overall_median
-
-    axs.plot(x, mean, color='dimgrey', linestyle='--', label=f'Overall mean ({overall_mean:.2f})')
-    axs.plot(x, median, color='dimgray', linestyle='--', label=f'Overall median ({overall_median:.2f})')
-
-    # Add legend
-    axs.legend()
-
-    plt.savefig(os.path.join(children_folder,f"mean_median.png"))
-    plt.close(fig)
-    #plt.show()
-
-    # Define the number of bins
-    num_bins = 100
-
-    # Compute binned statistics
-    bin_medians, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='median', bins=num_bins)
-    bin_means, bin_edges, binnumber = stats.binned_statistic(x, y, statistic='mean', bins=num_bins)
-
-    # Set Seaborn style
-    sns.set(style="whitegrid")
-
-    # Create the figure and axis
-    fig, axs = plt.subplots(1, 1, figsize=(8, 5))
-
-    # Plot the histograms using Matplotlib
-    axs.hist(bin_edges[:-1], bins=bin_edges, weights=bin_medians, alpha=0.5, label='medians', color='c', edgecolor='darkcyan')
-    axs.hist(bin_edges[:-1], bins=bin_edges, weights=-bin_means, alpha=0.5, label='means', color='m', edgecolor='darkmagenta')
-
-    # Set the labels and title
-    axs.set_title('Histograms of Binned Medians and Means (Inverted)')
-    axs.set_ylabel('$(R)$')
-    axs.set_xlabel('$log_{10}(n_g ($N/cm^{-3}$))$ ')
-
-    # Add legend
-    axs.legend(loc='center')
-
-    # save figure
-    plt.savefig(os.path.join(children_folder,f"mirrored_histograms.png"))
-
-    # Show the plot
-    plt.close(fig)
-    #plt.show()
