@@ -192,6 +192,7 @@ print(Npmu.shape)
 if True:
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, mu_local_plus[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+        plt.legend()
 
     plt.title(r"Evolution of $cos(\alpha(\alpha_i), s)$ along trajectory")
     plt.xlabel("Distance (pc)")
@@ -202,6 +203,7 @@ if True:
 
     for mui in range(Jacobpmu.shape[1]):
         plt.plot(distance, Jacobpmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+        plt.legend()
 
     plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu}{\mu_i}$ along trajectory")
     plt.xlabel("Distance (pc)")
@@ -212,6 +214,7 @@ if True:
 
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+        plt.legend()
 
     plt.title("Column density $N_+(\mu_i)$  ")
     plt.xlabel("Distance (pc)")
@@ -252,7 +255,6 @@ Jstar = 2.4e+15*(1.0e+6)**(0.1)/(Enot**2.8)
 # Energy scale for cosmic rays (1 MeV = 1e+6 eV)
 Estar = 1.0e+6
 
-energy = np.array([1.0e+2*(10)**(14*k/size) for k in range(size)])  # Energy values from 1 to 10^15
 energy = np.logspace(2, 15, size)
 diff_energy = np.array([energy[k]-energy[k-1] for k in range(len(energy))])
 diff_energy[0] = energy[0]
