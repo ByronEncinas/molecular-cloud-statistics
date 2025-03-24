@@ -328,6 +328,8 @@ def get_along_lines(x_init=None, densthresh = 100):
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
+    threshold = threshold - np.ones_like(threshold)
+
     trajectory = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
@@ -481,44 +483,44 @@ for i in range(m):
         # Close the plot
         plt.close(fig)
     
-    if True:
+if True:
+        
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+
+    norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+    cmap = cm.viridis
+
+    ax = plt.figure().add_subplot(projection='3d')
+    radius_vector /= 3.086e+18
+
+    for k in range(m):
+        x=radius_vector[:, k, 0]
+        y=radius_vector[:, k, 1]
+        z=radius_vector[:, k, 2]
+        
+        for l in range(len(x)):
+            color = cmap(norm(magnetic_fields[l, k]))
+            ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
+
+        #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
+        ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+        ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
             
-        from matplotlib import cm
-        from matplotlib.colors import Normalize
+    radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
+    zoom = np.max(radius_to_origin)
+    ax.set_xlim(-zoom,zoom)
+    ax.set_ylim(-zoom,zoom)
+    ax.set_zlim(-zoom,zoom)
+    ax.set_xlabel('x [Pc]')
+    ax.set_ylabel('y [Pc]')
+    ax.set_zlabel('z [Pc]')
+    ax.set_title('Magnetic field morphology')
 
-        norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
-        cmap = cm.viridis
-
-        ax = plt.figure().add_subplot(projection='3d')
-        radius_vector /= 3.086e+18
-
-        for k in range(m):
-            x=radius_vector[:, k, 0]
-            y=radius_vector[:, k, 1]
-            z=radius_vector[:, k, 2]
-            
-            for l in range(len(x)):
-                color = cmap(norm(magnetic_fields[l, k]))
-                ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
-
-            #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-            ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-            ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-                
-        radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
-        zoom = np.max(radius_to_origin)
-        ax.set_xlim(-zoom,zoom)
-        ax.set_ylim(-zoom,zoom)
-        ax.set_zlim(-zoom,zoom)
-        ax.set_xlabel('x [Pc]')
-        ax.set_ylabel('y [Pc]')
-        ax.set_zlabel('z [Pc]')
-        ax.set_title('Magnetic field morphology')
-
-        # Add a colorbar
-        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
-        cbar.set_label('Magnetic Field Strength')
-        plt.savefig(os.path.join(new_folder,f"FieldTopology{i}.png"), bbox_inches='tight')
-        plt.show()
+    # Add a colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+    cbar.set_label('Magnetic Field Strength')
+    plt.savefig(os.path.join(new_folder,f"FieldTopology.png"), bbox_inches='tight')
+    plt.show()

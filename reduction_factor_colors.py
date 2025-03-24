@@ -293,6 +293,8 @@ def get_along_lines(x_init=None, densthresh = 100):
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
     volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
+    threshold = threshold - np.ones_like(threshold)
+
     trajectory = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
@@ -431,7 +433,7 @@ for cycle in range(max_cycles):
     numb_density = numb_density[1:]
 
     try:
-        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False)  # this plots
+        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=True)  # this plots
     except AttributeError as e:
         raise AttributeError(f"Function 'smooth_pocket_finder' raised an error: {str(e)}")
     
@@ -441,6 +443,7 @@ for cycle in range(max_cycles):
     
     globalmax_index = global_info[0]
     globalmax_field = global_info[1]
+    print(p_r, len(distance))
 
     x_r = distance[p_r]
     B_r = bfield[p_r]
