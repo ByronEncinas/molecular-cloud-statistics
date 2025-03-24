@@ -126,8 +126,6 @@ for dim in range(3):  # Loop over x, y, z
 
 densthresh = 100
 
-rloc = 1 # average size is two parsec, allow them to be a little big bigger before rejection sampling
-
 def get_along_lines(x_init=None, densthresh = 100):
 
     dx = 0.5
@@ -330,32 +328,23 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0):
+def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
+    import numpy as np
     from scipy.spatial import cKDTree
-
+    np.random.seed(seed)
     valid_vectors = []
-    
-    # Build a KDTree for nearest neighbor search
-    tree = cKDTree(Pos)  # Pos contains Voronoi cell positions
-    
+    tree = cKDTree(Pos)
     while len(valid_vectors) < max_cycles:
         points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
         distances = np.linalg.norm(points, axis=1)
-        
-        # Keep only points inside the sphere
         inside_sphere = points[distances <= rloc]
-
-        # Find the nearest Voronoi cell for each point
         _, nearest_indices = tree.query(inside_sphere)
-
-        # Get the densities of the corresponding Voronoi cells
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
         valid_points = inside_sphere[valid_mask]
-
         valid_vectors.extend(valid_points)
-
-    return np.array(valid_vectors[:max_cycles])
-
+    valid_vectors = np.array(valid_vectors)
+    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
+    return valid_vectors[random_indices]
 x_init = generate_vectors_in_core(max_cycles, densthresh)
 
 generated_points = generate_vectors_in_core(max_cycles, densthresh)
@@ -408,10 +397,7 @@ radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_o
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-# Create the new arepo_npys directory
 os.makedirs(children_folder, exist_ok=True)
-
-# flow control to repeat calculations in no peak situations
 
 m = magnetic_fields.shape[1]
 
@@ -464,25 +450,21 @@ for cycle in range(max_cycles):
 
     print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
     
-    """How to find index of Bl?"""
-
     print("Maxima Values related to pockets: ", len(index_pocket), p_i)
 
     try:
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
         B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
         B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-        success = True  # Flag to track if try was successful
+        success = True 
 
     except:
         R = 1
         reduction_factor.append(R)
         numb_density_at.append(n_r)
         pos_red[tupi] = R
-        success = False  # Set flag to False if there's an exception
+        success = False 
         continue
-
-    # Only execute this block if try was successful
     if success:
         if B_r / B_l < 1:
             R = 1 - np.sqrt(1 - B_r / B_l)
