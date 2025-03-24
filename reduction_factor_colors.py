@@ -288,12 +288,10 @@ def get_along_lines(x_init=None, densthresh = 100):
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
-    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
-    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
-    volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
-
-    threshold = threshold - np.ones_like(threshold)
+    radius_vector = np.append(line_rev[::-1, :, :], line[:,:,:], axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[:,:], axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities[:,:], axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes[:,:], axis=0)
 
     trajectory = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
