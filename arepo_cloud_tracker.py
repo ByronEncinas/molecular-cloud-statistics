@@ -89,7 +89,7 @@ for list in file_list:
         yc = Pos[:, 1]
         zc = Pos[:, 2]
 
-        region_radius = 0.005
+        region_radius = 0.1
             
         if fileno == 0:
             CloudCord = Pos[np.argmax(Density), :]
@@ -120,7 +120,8 @@ for list in file_list:
         prev_time = time_value
 
         import seaborn as sns
-
+        from yt import units as u
+        """
         cloud_sphere = ((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2 < region_radius**2)
         Radius = np.sqrt((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2)[cloud_sphere]
         SphereDensity = (Density[cloud_sphere]*gr_cm3_to_nuclei_cm3)
@@ -128,8 +129,8 @@ for list in file_list:
         radius_core = Radius[mask]
         region_radius = np.max(radius_core)
         print(len(radius_core)/len(cloud_sphere), np.mean(radius_core), region_radius)
-        
-
+        region_radius = np.max(radius_core)*1.2
+        """
         ds = yt.load(filename)
 
         sp = yt.SlicePlot(
@@ -137,7 +138,7 @@ for list in file_list:
             'z', 
             ('gas', 'density'), 
             center=[CloudCord[0], CloudCord[1], CloudCord[2]],
-            width=region_radius*1.2
+            width=region_radius * u.pc
         )
 
         sp.annotate_sphere(
@@ -146,10 +147,8 @@ for list in file_list:
             circle_args={"color": "black", "linewidth": 2}  # Styling for the sphere
         )
         sp.annotate_timestamp(redshift=False)
-        sp.annotate_scale()
 
         sp.save(os.path.join(parent_folder, f"{typpe}_{snap}_slice_z.png"))
         
-        region_radius = np.max(radius_core)*1.2
         
         continue

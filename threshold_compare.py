@@ -55,7 +55,6 @@ with open(file_path, mode='r') as file:
             print("Match found!")
             print("Row:", row)  # Print the row for debugging
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
-            print(Center, " Found")
             snap =str(row[0])
             time_value = float(row[1])
             peak_den =  float(row[5])
@@ -321,13 +320,7 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
-
-init_files = glob.glob('./x_init*.npy')
-
-if init_files:
-    x_init = np.load(init_files[0], mmap_mode='r')
-else:
-    x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
+x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
@@ -346,8 +339,6 @@ test_thresh = [100, 10]
 for case in test_thresh:   
 
     radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
-
-    os.makedirs(children_folder, exist_ok=True)
 
     m = magnetic_fields.shape[1]
 
@@ -381,31 +372,22 @@ for case in test_thresh:
         B_r = bfield[p_r]
         n_r = numb_density[p_r]
 
-        # finds index at which to insert p_r and be kept sorted
         p_i = find_insertion_point(index_pocket, p_r)
-
-        print("random index: ", p_r, "assoc. B(s_r), n_g(s_r):",B_r, n_r, "peak's index: ", index_pocket)
         
-        """How to find index of Bl?"""
-
         print("Maxima Values related to pockets: ", len(index_pocket), p_i)
 
         try:
-            # possible error is len(index_pocket) is only one or two elements
             closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
             B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
             B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-            success = True  # Flag to track if try was successful
-
+            success = True  
         except:
             R = 1
             reduction_factor.append(R)
             numb_density_at.append(n_r)
             pos_red[tupi] = R
-            success = False  # Set flag to False if there's an exception
+            success = False 
             continue
-
-        # Only execute this block if try was successful
         if success:
             if B_r / B_l < 1:
                 R = 1 - np.sqrt(1 - B_r / B_l)
@@ -457,130 +439,47 @@ for case in test_thresh:
     counter = Counter(reduction_factor)
     pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-    file_path = os.path.join(children_folder, f'reduction_factor{case}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder, f'reduction_factor_{case}_{sys.argv[-1]}.json')
     with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
 
-    file_path = os.path.join(children_folder, f'numb_density{case}_{sys.argv[-1]}.json')
+    file_path = os.path.join(children_folder, f'numb_density_{case}_{sys.argv[-1]}.json')
     with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
 
-    file_path = os.path.join(children_folder, f'position_vector{case}_{sys.argv[-1]}')
+    file_path = os.path.join(children_folder, f'position_vector_{case}_{sys.argv[-1]}')
     with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
 
     """# Graphs"""
 
-    reduction_factor = np.array(reduction_factor)
-
-    ones = counter['1']
-
     reduction_factor = reduction_factor[reduction_factor != 1.0]
+    numb_density_at = numb_density_at[reduction_factor != 1.0]
 
     bins=len(reduction_factor)//10 
-
     if bins == 0:
         raise ValueError("No valid data found: bins cannot be zero.")
 
-    inverse_reduction_factor = [1/reduction_factor[i] for i in range(len(reduction_factor))]
+    total = len(reduction_factor)
+    ones = counter['1']
+
+    reduction_factor = np.array(reduction_factor)
+    reduction_factor = reduction_factor[reduction_factor != 1.0]
+    fraction = ones / total
+    inverse_reduction_factor = np.array([1/reduction_factor[i] for i in range(len(reduction_factor))])
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-    axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black')
+    axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
     axs[0].set_yscale('log')
-    axs[0].set_title('Histogram of Reduction Factor (R)')
-    axs[0].set_xlabel('Bins')
-    axs[0].set_ylabel('Frequency')
+    axs[0].set_title(f'Distribution of R for $R \\neq 1$ (fraction = {fraction})')
+    axs[0].set_xlabel(f'Reduction factor ({fraction})')
+    axs[0].set_ylabel('PDF')
 
-    axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black')
+    axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
     axs[1].set_yscale('log')
-    axs[1].set_title('Histogram of Inverse Reduction Factor (1/R)')
-    axs[1].set_xlabel('Bins')
-    axs[1].set_ylabel('Frequency')
+    axs[1].set_title(f'Distribution of 1/R for $R \\neq 1$ (fraction = {fraction})')
+    axs[1].set_xlabel(f'Reduction factor ')
+    axs[1].set_ylabel('PDF')
 
-    # Adjust layout
     plt.tight_layout()
 
+
     plt.savefig(os.path.join(children_folder,f"hist_nth={case}.png"))
-
-    log_density_data = np.log10(numb_density)
-    max_log_den = np.max(log_density_data)
-
-    def stats(n, density_data, reduction_data):
-        sample_r = []
-        for i in range(0, len(density_data)):
-            if np.abs(np.log10(density_data[i]/n)) < 1:
-                sample_r.append(reduction_data[i])
-        sample_r.sort()
-        if len(sample_r) == 0:
-            mean = None
-            median = None
-            ten = None
-        else:
-            mean = sum(sample_r)/len(sample_r)
-            median = np.quantile(sample_r, .5)
-            ten = np.quantile(sample_r, .1)
-
-        return [mean, median, ten, len(sample_r)]
-    
-    hist_reduction_factor = reduction_factor[reduction_factor != 1]
-    hist_numb_density     = numb_density[reduction_factor != 1]
-
-    Npoints = len(reduction_factor)
-    x_n = np.logspace(2, max_log_den, Npoints)
-    mean_vec = np.zeros(Npoints)
-    median_vec = np.zeros(Npoints)
-    ten_vec = np.zeros(Npoints)
-    sample_size = np.zeros(Npoints)
-    for i in range(0, Npoints):
-        s = stats(x_n[i], numb_density, reduction_factor)
-        mean_vec[i] = s[0]
-        median_vec[i] = s[1]
-        ten_vec[i] = s[2]
-        sample_size[i] = s[3]
-
-    num_bins = Npoints//10  # Define the number of bins as a variable
-
-    rdcut = []
-    for i in range(0, len(hist_reduction_factor)):
-        if numb_density[i] > 100:
-            rdcut = rdcut + [hist_reduction_factor[i]]
-
-    fig = plt.figure(figsize = (18, 6))
-    ax1 = fig.add_subplot(131)
-    ax1.hist(rdcut, num_bins) 
-    ax1.set_xlabel('Reduction factor', fontsize = 20)
-    ax1.set_ylabel('number', fontsize = 20)
-    plt.setp(ax1.get_xticklabels(), fontsize = 16)
-    plt.setp(ax1.get_yticklabels(), fontsize = 16)
-
-    ax2 = fig.add_subplot(132)
-    l1, = ax2.plot(x_n, mean_vec)
-    l2, = ax2.plot(x_n, median_vec)
-    l3, = ax2.plot(x_n, ten_vec)
-    plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
-    plt.xscale('log')
-    plt.ylim(0.25, 1.05)
-    ax2.set_ylabel(f'Reduction factor ({len(reduction_factor)})', fontsize = 20)
-    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
-    plt.setp(ax2.get_xticklabels(), fontsize = 16)
-    plt.setp(ax2.get_yticklabels(), fontsize = 16)
-
-    global_mean = np.mean(reduction_factor)
-    global_median = np.median(reduction_factor)
-
-    ax2.text(0.98, global_mean, f'Global_Mean = {global_mean:.3f}', ha='right', va='bottom', fontsize=12, color=l1.get_color())
-    ax2.text(0.98, global_median, f'Global_Median = {global_median:.3f}', ha='right', va='bottom', fontsize=12, color=l2.get_color())
-
-    ax3 = fig.add_subplot(133)
-    l0, = ax3.plot(x_n, sample_size)
-    plt.xscale('log')
-    ax3.set_ylabel(f'Sample size', fontsize = 20)
-    ax3.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
-    plt.setp(ax3.get_xticklabels(), fontsize = 16)
-    plt.setp(ax3.get_yticklabels(), fontsize = 16)
-
-    fig.subplots_adjust(left = .1)
-    fig.subplots_adjust(bottom = .15)
-    fig.subplots_adjust(top = .98)
-    fig.subplots_adjust(right = .98)
-
-    plt.savefig(os.path.join(children_folder,f"{case}_rnv_{num_file}.png"))
-    plt.close(fig)

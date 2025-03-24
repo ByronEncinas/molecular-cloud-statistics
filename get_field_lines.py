@@ -73,7 +73,6 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdi
     
     return x_final, abs_local_fields_1, local_densities, CellVol
 
-
 FloatType = np.float64
 IntType = np.int32
 
@@ -85,10 +84,10 @@ if len(sys.argv)>2:
 	case = str(sys.argv[5])
 else:
     N            =2000
-    rloc=1   
+    rloc         =1   
     max_cycles   =10
     num_file = '430'
-    case = 'amb'
+    case = 'ideal'
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -133,14 +132,22 @@ snap = []
 time_value = []
 
 with open(file_path, mode='r') as file:
-    csv_reader = csv.reader(file)
-    next(csv_reader)
+    csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
+    next(csv_reader)  # Skip the header row
+    print('File opened successfully')
+
     for row in csv_reader:
         if num_file == str(row[0]):
+            print("Match found!")
+            print("Row:", row)  # Print the row for debugging
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             snap =str(row[0])
             time_value = float(row[1])
             peak_den =  float(row[5])
+try:
+    print(Center)
+except:
+    raise ValueError('Center is not defined')
 
 CloudCord = Center.copy()
 
@@ -156,8 +163,6 @@ for dim in range(3):  # Loop over x, y, z
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
 densthresh = 100
-
-rloc = 1.0
 
 def get_along_lines(x_init=None, densthresh = 100):
 
@@ -442,19 +447,19 @@ for i in range(m):
         # Create a figure and axes for the subplot layout
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
-        axs[0,0].plot(path_distance*length_unit, mag_field, linestyle="--", color="m")
+        axs[0,0].plot(path_distance, mag_field, linestyle="--", color="m")
         axs[0,0].set_xlabel("s (cm)")
         axs[0,0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
         axs[0,0].set_title("Magnetic FIeld")
         axs[0,0].grid(True)
 		
-        axs[0,1].plot(path_distance*length_unit, linestyle="--", color="m")
+        axs[0,1].plot(path_distance, linestyle="--", color="m")
         axs[0,1].set_xlabel("# steps")
         axs[0,1].set_ylabel("$s$ cm")
         axs[0,1].set_title("Distance Away of $n_g^{max}(r)$ ")
         axs[0,1].grid(True)
 
-        axs[1,0].plot(path_distance*length_unit, numb_density, linestyle="--", color="m")
+        axs[1,0].plot(path_distance, numb_density, linestyle="--", color="m")
         axs[1,0].set_yscale('log')
         axs[1,0].set_xlabel("s (cm)")
         axs[1,0].set_ylabel("$N_g(s)$ cm^-3")

@@ -30,6 +30,8 @@ gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 boltzmann_constant_cgs = 1.380649e-16
 grav_constant_cgs = 6.67430e-8
 hydrogen_mass = 1.6735e-24
+cm_to_pc = 3.086 * 10**18  # cm per parsec
+cm_to_AU = 1.496 * 10**13  # cm per AU
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
@@ -133,8 +135,6 @@ def fibonacci_sphere(samples=1000):
     z = radius * np.sin(theta)
     return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
 
-def temperature(KE, N):
-    return (2./3.)*KE/(N*boltzmann_constant_cgs)
 
 """ b_ionization_model Methods """
 """ c_reduction_factor Methods """
