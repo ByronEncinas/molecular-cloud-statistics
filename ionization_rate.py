@@ -7,16 +7,13 @@ import glob
 
 line = str(sys.argv[-1])
 
-origin_folder = 'getLines/430'
+origin_folder = 'arepo_npys/stepsizetest/0.2/'
 
 radius_vector  = np.array(np.load(os.path.join(origin_folder, f'ArePositions{line}.npy'), mmap_mode='r'))
 distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{line}.npy'), mmap_mode='r'))
 bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{line}.npy'), mmap_mode='r'))
 numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{line}.npy'), mmap_mode='r'))
-volume         = np.array(np.load(os.path.join(origin_folder, f'ArepoVolumes{line}.npy'), mmap_mode='r'))
 radius         = np.linalg.norm(radius_vector, axis=-1)
-
-
 
 if True: # smoothing of bfield
 
@@ -27,14 +24,10 @@ if True: # smoothing of bfield
     radius_vector = radius_vector[inter][1:]
     bfield        = bfield[inter]
     numb_density  = numb_density[inter][1:]
-    print(distance.shape, ds.shape)
     ds_norm = ds/np.max(ds)
-    
     field = bfield[1:] *1.0e+6 # in micro Gauss
-
     grad = np.abs(np.gradient(field))
     adaptive_sigma = 3*ds_norm/np.mean(ds_norm) #(ds > np.mean(ds))
-    print(adaptive_sigma.shape, ds_norm.shape,field.shape)
     adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
 
     if False:
@@ -120,51 +113,56 @@ if True: # smoothing of bfield
         plt.savefig(f"./PocketMeanComparison{cycle}.png")
     
     bfield = adaptive_gaussian_smoothed.copy()
-
+    distance = distance[1:]
     print(distance.shape, bfield.shape, numb_density.shape)
 
-    distance = distance[1:]
+if True:
+    """ Calculate Effective Column Densities """
 
-""" Calculate Effective Column Densities """
+    plt.figure(figsize=(8, 5))
+    plt.plot(distance, numb_density, label="Number Density")
+    plt.yscale('log')
+    plt.xlabel("Distance (cm)")
+    plt.ylabel("Number Density (cm$^{-3}$)")
+    plt.title("Number Density Profile")
+    plt.legend()
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.savefig('Density.png')  # Save as PNG with high resolution
 
-plt.figure(figsize=(8, 5))
-plt.plot(distance, numb_density, label="Number Density")
-plt.yscale('log')
-plt.xlabel("Distance (cm)")
-plt.ylabel("Number Density (cm$^{-3}$)")
-plt.title("Number Density Profile")
-plt.legend()
-plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-#plt.show()
+    #plt.show()
 
-plt.figure(figsize=(8, 5))
-plt.plot(distance, bfield, label="Magnetic Field Strength", color="red")
-plt.xlabel("Distance (cm)")
-plt.ylabel("Magnetic Field Strength ($\mu$G)")
-plt.title("Magnetic Field Strength Profile")
-plt.legend()
-plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-#plt.show()
+    plt.figure(figsize=(8, 5))
+    plt.plot(distance, bfield, label="Magnetic Field Strength", color="red")
+    plt.xlabel("Distance (cm)")
+    plt.ylabel("Magnetic Field Strength ($\mu$G)")
+    plt.title("Magnetic Field Strength Profile")
+    plt.legend()
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.savefig('Bfield.png')  # Save as PNG with high resolution
+    #plt.show()
 
-Npluseff = np.cumsum(numb_density*ds)
-Nminuseff = np.cumsum(numb_density[::-1]*ds[::-1])
+    Npluseff = np.cumsum(numb_density*ds)
+    Nminuseff = np.cumsum(numb_density[::-1]*ds[::-1])
 
-fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(distance, Npluseff, label=r'$N_{\rm plus}^{\rm eff}$', color='blue', linewidth=2)
-ax.plot(distance, Nminuseff[::-1], label=r'$N_{\rm minus}^{\rm eff}$', color='red', linestyle='--', linewidth=2)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(Npluseff, label=r'$N_{\rm plus}^{\rm eff}$', color='blue', linewidth=2)
+    ax.plot(Nminuseff[::-1], label=r'$N_{\rm minus}^{\rm eff}$', color='red', linewidth=2)
 
-ax.set_xlabel('Path Distance (pc)', fontsize=14)
-ax.set_ylabel(r'Effective Column Density', fontsize=14)
-ax.set_title('Effective Column Densities vs Distance', fontsize=16)
-ax.grid(True)
-ax.legend(fontsize=12)
-#plt.show()
+    ax.set_xlabel('Path Distance (pc)', fontsize=14)
+    ax.set_ylabel(r'Effective Column Density', fontsize=14)
+    ax.set_title('Effective Column Densities vs Distance', fontsize=16)
+    ax.set_yscale('log')
+    ax.grid(True)
+    ax.legend(fontsize=12)
+    plt.savefig('Neff.png')  # Save as PNG with high resolution
+
+    plt.show()
 
 """ Column Densities N_+(mu, s) & N_-(mu, s)"""
 
 size = ds.shape[0]
 
-mu_ism = np.linspace(0.0, 1.0, num=5)#np.array([1.0,0.9,0.8])#
+mu_ism = np.logspace(-1, 0, num=100)#np.array([1.0,0.9,0.8])#
 dmui = np.insert(np.diff(mu_ism), 0, mu_ism[0])
 
 Npmu  = np.zeros((size, len(mu_ism)))
@@ -190,47 +188,38 @@ for i, mui_ism in enumerate(mu_ism):
         Npmu[j, i] = Npmu[j - 1, i] + n_g * ds[j] / mu_local_plus[j, i] if j > 0 else n_g * ds[j] / mu_local_plus[j, i]
 
 print(Npmu.shape)
-# Matrix N x # mu_i
-
-# Nplusmu = np.sum(Jacobpmu*Npmu*dmui, axis=1) 
-# Nminusmu = np.sum(Jacobmmu*Nmmu*dmui, axis=1)
 
 if True:
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, mu_local_plus[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-        plt.legend()
 
     plt.title(r"Evolution of $cos(\alpha(\alpha_i), s)$ along trajectory")
     plt.xlabel("Distance (pc)")
     plt.ylabel(r"$cos(\alpha(\alpha_i), s)$")
     plt.xscale('log')
-    plt.legend()
+    plt.savefig('Juiplus.png')  # Save as PNG with high resolution
     plt.show()
 
     for mui in range(Jacobpmu.shape[1]):
         plt.plot(distance, Jacobpmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-        plt.legend()
 
     plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu}{\mu_i}$ along trajectory")
     plt.xlabel("Distance (pc)")
-    plt.ylabel(r"$cos(\alpha(\alpha_i), s)$")
+    plt.ylabel(r"$\frac{\partial \mu}{\partial \mu_i}$")
     plt.xscale('log')
-    plt.legend()
+    plt.savefig('Juiplus.png')  # Save as PNG with high resolution
     plt.show()
 
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
-        plt.legend()
 
     plt.title("Column density $N_+(\mu_i)$  ")
     plt.xlabel("Distance (pc)")
     plt.ylabel(r"$N_+(\mu_i, s)$")
     plt.xscale('log')
     plt.yscale('log')
-    plt.legend()
+    plt.savefig('Nmuiplus.png')  # Save as PNG with high resolution
     plt.show()
-
-#NFtotal = np.sum(Nmirfor, axis=1)
 
 """ Parameters """
 
@@ -264,6 +253,7 @@ Jstar = 2.4e+15*(1.0e+6)**(0.1)/(Enot**2.8)
 Estar = 1.0e+6
 
 energy = np.array([1.0e+2*(10)**(14*k/size) for k in range(size)])  # Energy values from 1 to 10^15
+energy = np.logspace(2, 15, size)
 diff_energy = np.array([energy[k]-energy[k-1] for k in range(len(energy))])
 diff_energy[0] = energy[0]
 
@@ -272,30 +262,104 @@ loss_function = lambda z: Lstar*(Estar/z)**d
 
 """ Ionization Rate for N = N(s) """
 
-zeta_plus = np.zeros_like(Npmu)
+print(Jacobpmu.shape, dmui.shape)
+print("mu_i:", mu_ism.shape)
+print("N(mu_i):", Npmu[:,0].shape)
+print("mu(mu_i, Nj):", mu_local_plus.shape)
+print("J(mu_i, Nj):", Jacobpmu.shape)
+
+zeta_plus_mui = np.zeros_like(Npmu)
+zeta_plus = np.zeros_like(distance)
 
 for l, mui in enumerate(mu_ism):
 
-    for i, mu_ in enumerate(mu_local_plus[:,l]):
+    for j, Nj in enumerate(Npmu[:,i]):
+        
+        mu_ = mu_local_plus[j,l]
+        if mu_ == 0:
+            break
 
-        for j, Nj in enumerate(Npmu[i,:]):
-            
-            jl_dE = 0.0
+        jl_dE = 0.0
 
-            Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d)) # E_i(E, N)
-            
-        #    for k, E in enumerate(energy): 
+        #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
+        Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
 
-        #        Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) # E_i(E, N)
+        isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+        llei = loss_function(Ei)                       # log_10(L(E_i))
+        jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+    
+        zeta_plus_mui[j, i] = jl_dE / epsilon
+    
+zeta_plus =  np.sum(Jacobpmu * zeta_plus_mui * dmui.reshape(-1, 1).flatten(), axis = 1) #np.dot(Jacobpmu*zeta_plus_mui*dmui.reshape(-1, 1).flatten())
 
-            isms = ism_spectrum(Ei)            # log_10(j_i(E_i))
-            llei = loss_function(Ei)           # log_10(L(E_i))
-            jl_dE = np.cumsum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
-            print(Jacobpmu, jl_dE)
-            zeta_plus[j] = np.cumsum(Jacobpmu[:,l]*dmui*jl_dE / epsilon)             # jacobian * jl_dE/epsilon #  \sum_k j_i(E_i)L(E_i) \Delta E_k / \epsilon
+#plt.plot(Npmu, zeta_plus_mui)
+plt.plot(Npmu[:,-1], zeta_plus,label='$\zeta_+(N)$')
+plt.xscale('log')
+plt.yscale('log')
+plt.grid(True)
+plt.savefig('zeta_plus.png')  # Save as PNG with high resolution
+plt.show()
+plt.close()  # Close the figure after saving to free up memory
 
-        zeta_minus = np.zeros_like(Nmplusmu)
+Nmmu  = np.zeros((size, len(mu_ism)))
+Jacobmmu = np.zeros((size, len(mu_ism)))
+mu_local_minus = np.zeros((size, len(mu_ism)))
+bfield = bfield[::-1]
+numb_density = numb_density[::-1]
+B_ism     = bfield[0]
 
+for i, mui_ism in enumerate(mu_ism):
+
+    for j in range(size):
+
+        n_g = numb_density[j]
+        Bsprime = bfield[j]
+        mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
+        
+        if (mu_local2 <= 0):
+            break
+        
+        mu_local_minus[j,i] = np.sqrt(mu_local2)
+
+        Jacobmmu[j,i] = (mu_local_minus[j,i]/mui_ism)*(Bsprime/B_ism)
+        
+        Nmmu[j, i] = Nmmu[j - 1, i] + n_g * ds[j] / mu_local_minus[j, i] if j > 0 else n_g * ds[j] / mu_local_minus[j, i]
+
+zeta_minus_mui = np.zeros_like(Npmu)
+zeta_minus = np.zeros_like(distance)
+
+for l, mui in enumerate(mu_ism):
+    # initial mu_i conveys a mu(mu_i, N)
+
+    for j, Nj in enumerate(Nmmu[:,i]):
+        
+        mu_ = mu_local_minus[j,l]
+        if mu_ == 0:
+            break
+
+        jl_dE = 0.0
+
+        #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
+        Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+
+        isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+        llei = loss_function(Ei)                       # log_10(L(E_i))
+        jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+    
+        zeta_minus_mui[j, i] = jl_dE / epsilon
+    
+zeta_minus =  np.sum(Jacobmmu * zeta_minus_mui * dmui.reshape(-1, 1).flatten(), axis = 1) #np.dot(Jacobpmu*zeta_plus_mui*dmui.reshape(-1, 1).flatten())
+
+print(zeta_minus.shape)
+plt.plot(Nmmu[:,-1], zeta_minus,label='$\zeta_-(N)$')
+plt.xscale('log')
+plt.yscale('log')
+plt.grid(True)
+plt.savefig('zeta_minus.png')  # Save as PNG with high resolution
+plt.show()
+
+
+exit()
 for j, Nj in enumerate(Nminusmu):
     
     jl_dE = 0.0

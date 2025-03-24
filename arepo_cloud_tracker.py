@@ -89,7 +89,7 @@ for list in file_list:
         yc = Pos[:, 1]
         zc = Pos[:, 2]
 
-        region_radius = 0.1
+        region_radius = 0.005
             
         if fileno == 0:
             CloudCord = Pos[np.argmax(Density), :]
