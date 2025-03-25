@@ -15,7 +15,7 @@ if len(sys.argv)>4:
     #python3 arepo_reduction_factor_colors.py N rloc max_cycles num_file SLURM_JOB_ID
     #python3 arepo_reduction_factor_colors.py 500 0.5 100 430 
 	N=int(sys.argv[1])
-	rloc_boundary=float(sys.argv[2])
+	rloc=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
 	case = f'{sys.argv[4]}'
 	num_file = f'{sys.argv[5]}'
@@ -23,7 +23,7 @@ if len(sys.argv)>4:
 		sys.argv.append('NO_ID')
 else:
     N            =5_000
-    rloc_boundary=1   # rloc_boundary for boundary region of the cloud
+    rloc=1   # rloc for boundary region of the cloud
     max_cycles   =500
     case = 'ideal'
     num_file = '430'
@@ -161,10 +161,6 @@ def get_along_lines(x_init=None, densthresh = 100):
             max_threshold = np.max(threshold)
         
         x[un_masked] = aux
-        print(np.log10(dens[:3]))
-        
-        #print(threshold)
-        # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
@@ -225,8 +221,6 @@ def get_along_lines(x_init=None, densthresh = 100):
             unique_unmasked_max_threshold = np.max(threshold_rev)
             max_threshold = np.max(threshold_rev)
 
-        #print(max_threshold, unique_unmasked_max_threshold)
-        print(np.log10(dens[:3]))
         x[un_masked_rev] = aux
 
         line_rev[k+1,:,:] = x
@@ -276,6 +270,7 @@ def get_along_lines(x_init=None, densthresh = 100):
     # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
+    column = np.zeros_like(magnetic_fields)
 
     print("Magnetic fields shape:", magnetic_fields.shape)
     print("Radius vector shape:", radius_vector.shape)
@@ -283,24 +278,31 @@ def get_along_lines(x_init=None, densthresh = 100):
 
     m = magnetic_fields.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
-	
-    for _n in range(m): # Iterate over the first dimension
-        prev = radius_vector[0, _n, :]
-        for k in range(magnetic_fields.shape[0]):  # Iterate over the first dimension
-            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
-            cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur, prev)
-            trajectory[k,_n] = trajectory[k-1,_n] + diff_rj_ri            
-            prev = radius_vector[k, _n, :]
-    
-    trajectory[0,:]  = 0.0
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
-    trajectory      *= 1.0* 3.086e+18                                # from Parsec to cm
-    magnetic_fields *= 1.0* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+	
+    for _n in range(m):  # Iterate over the first dimension
+        prev = radius_vector[0, _n, :]
+        trajectory[0, _n] = 0  # Initialize first row
+        column[0, _n] = 0      # Initialize first row
+        
+        for k in range(1, magnetic_fields.shape[0]):  # Start from k = 1 to avoid indexing errors
+            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
+            
+            cur = radius_vector[k, _n, :]
+            diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
+
+            trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
+            column[k, _n] = column[k-1, _n] + numb_densities[k, _n] * diff_rj_ri            
+            
+            prev = cur  # Store current point as previous point
+
+    radius_vector   *= 1.0#* 3.086e+18                                # from Parsec to cm
+    trajectory      *= 1.0#* 3.086e+18                                # from Parsec to cm
+    magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3) 
 
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev]
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     import numpy as np
@@ -320,11 +322,11 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
-x_init = generate_vectors_in_core(max_cycles, 100, rloc_boundary)
+x_init = generate_vectors_in_core(max_cycles, max_cycles, rloc)
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
-print("rloc                : ", rloc_boundary)
+print("rloc                : ", rloc)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
 print("Center              : ", Center) # 256
@@ -334,11 +336,26 @@ print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
 print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
 
+import concurrent.futures
+from scipy.ndimage import gaussian_filter1d
+
 test_thresh = [100, 10]
 
-for case in test_thresh:   
+def process_case(case):
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init, case)
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th
 
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
+# Use ProcessPoolExecutor to parallelize the loop
+with concurrent.futures.ProcessPoolExecutor() as executor:
+    results = list(executor.map(process_case, test_thresh))
+
+# The 'results' will contain the return values from the 'process_case' function for each case
+for i, result in enumerate(results):
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = result
+
+    case = test_thresh[i]
+
+    #radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
 
     m = magnetic_fields.shape[1]
 
@@ -359,6 +376,14 @@ for case in test_thresh:
         distance = trajectory[_from:_to,cycle]
         numb_density = numb_densities[_from:_to,cycle]
         tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+
+        ds = np.diff(distance) 
+        adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
+        bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+        
+        bfield = bfield[1:]
+        distance = distance[1:]
+        numb_density = numb_density[1:]
 
         pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
         index_pocket, field_pocket = pocket[0], pocket[1]
@@ -420,7 +445,7 @@ for case in test_thresh:
         file.write(f"{peak_den}\n")
         file.write(f"Cores Used: {os.cpu_count()}\n")
         file.write(f"Snap Time (Myr): {time_value}\n")
-        file.write(f"rloc (Pc) : {rloc_boundary}\n")
+        file.write(f"rloc (Pc) : {rloc}\n")
         file.write(f"x_init (Pc)        :\n {x_init}\n")
         file.write(f"max_cycles         : {max_cycles}\n")
         file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
