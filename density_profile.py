@@ -371,6 +371,7 @@ def columns_get_along_lines(x_init=None, densthresh = 100):
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
         x += dx_vec * directions
+        print(np.log10(dens[:3]))
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
