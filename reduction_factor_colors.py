@@ -422,16 +422,17 @@ for cycle in range(max_cycles):
     numb_density = numb_densities[_from:_to,cycle]
     tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-    bfield = bfield[1:]
     ds = np.diff(distance) 
     adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
     bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
-
+    
+    bfield = bfield[1:]
     distance = distance[1:]
     numb_density = numb_density[1:]
+    p_r = N  - _from
 
     try:
-        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=True)  # this plots
+        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False)  # this plots
     except AttributeError as e:
         raise AttributeError(f"Function 'smooth_pocket_finder' raised an error: {str(e)}")
     
