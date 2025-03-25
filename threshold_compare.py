@@ -339,11 +339,11 @@ print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Vol
 import concurrent.futures
 from scipy.ndimage import gaussian_filter1d
 
-test_thresh = [100, 10]
+test_thresh = [100, 10, 10e+4]
 
 def process_case(case):
     radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init, case)
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd
 
 # Use ProcessPoolExecutor to parallelize the loop
 with concurrent.futures.ProcessPoolExecutor() as executor:
