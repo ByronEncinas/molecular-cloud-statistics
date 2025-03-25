@@ -446,36 +446,23 @@ for i in range(m):
     print(f"finished line {i+1}/{max_cycles}",(time.time()-start_time)/60)
 
     if True:
-        # Create a figure and axes for the subplot layout
-        fig, axs = plt.subplots(2, 2, figsize=(8, 6))
+        fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 
-        axs[0,0].plot(path_distance, mag_field, linestyle="--", color="m")
-        axs[0,0].set_xlabel("s (cm)")
-        axs[0,0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
-        axs[0,0].set_title("Magnetic FIeld")
-        axs[0,0].grid(True)
-		
-        axs[0,1].plot(path_distance, linestyle="--", color="m")
-        axs[0,1].set_xlabel("# steps")
-        axs[0,1].set_ylabel("$s$ cm")
-        axs[0,1].set_title("Distance Away of $n_g^{max}(r)$ ")
-        axs[0,1].grid(True)
+        # Plot magnetic field (B)
+        axs[0].plot(path_distance, mag_field, linestyle="--", color="m")
+        axs[0].set_xlabel("s (cm)")
+        axs[0].set_ylabel("$B(s)$ $\mu$ G (cgs)")
+        axs[0].set_title("Magnetic Field")
+        axs[0].grid(True)
 
-        axs[1,0].plot(path_distance, numb_density, linestyle="--", color="m")
-        axs[1,0].set_yscale('log')
-        axs[1,0].set_xlabel("s (cm)")
-        axs[1,0].set_ylabel("$N_g(s)$ cm^-3")
-        axs[1,0].set_title("Number Density (Nucleons/cm^3) ")
-        axs[1,0].grid(True)
-		
-        axs[1,1].plot(volume, linestyle="-", color="black")
-        axs[1,1].set_yscale('log')
-        axs[1,1].set_xlabel("# steps")
-        axs[1,1].set_ylabel("$V(s) cm^3 $ (cgs)")
-        axs[1,1].set_title("Cells Volume along Path")
-        axs[1,1].grid(True)
+        # Plot number density (N_g)
+        axs[1].plot(path_distance, numb_density, linestyle="--", color="m")
+        axs[1].set_yscale('log')
+        axs[1].set_xlabel("s (cm)")
+        axs[1].set_ylabel("$N_g(s)$ cm$^{-3}$")
+        axs[1].set_title("Number Density (Nucleons/cm$^3$)")
+        axs[1].grid(True)
 
-        # Adjust layout to prevent overlap
         plt.tight_layout()
 
         plt.savefig(os.path.join(new_folder,f"mosaic{i}.png"))
