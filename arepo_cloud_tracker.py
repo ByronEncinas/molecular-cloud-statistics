@@ -67,10 +67,8 @@ for list in file_list:
             typpe = 'amb'
         else:
             typpe = 'ideal'
-        print(typpe, snap)
         parent_folder = "cloud_tracker_slices/"+typpe 
         children_folder = os.path.join(parent_folder, 'ct_'+snap)
-        print(children_folder)
         os.makedirs(children_folder, exist_ok=True)
         Boxsize = data['Header'].attrs['BoxSize']
 

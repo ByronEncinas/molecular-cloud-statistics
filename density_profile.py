@@ -111,7 +111,7 @@ if filename == None:
 
 snap = filename.split(".")[0][-3:]
 
-new_folder = os.path.join(f"./density_profiles/{case}/", num_file)
+new_folder = os.path.join(f"density_profiles/{NeffOrStability}" , f'/{case}/{snap}')
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -186,10 +186,6 @@ elif NeffOrStability == 'S':
     directions = fibonacci_sphere(max_cycles)
     m = directions.shape[0]
     x_init = np.zeros((m,3))
-
- 
-new_folder = os.path.join(f"density_profiles/{NeffOrStability}" , snap)
-os.makedirs(new_folder, exist_ok=True)
 
 def energies_get_along_lines(x_init):
     m = x_init.shape[0]
@@ -540,9 +536,6 @@ print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
-
-os.makedirs(new_folder, exist_ok=True)
-
 
 if NeffOrStability == 'S':
     radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, col_energies = energies_get_along_lines(x_init)

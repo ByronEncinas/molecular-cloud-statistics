@@ -24,7 +24,8 @@ time_unit = length_unit / velocity_unit  # s
 seconds_in_myr = 1e6 * 365.25 * 24 * 3600  # s/Myr
 myrs_to_code_units = seconds_in_myr / time_unit
 code_units_to_gr_cm3 = 6.771194847794873e-23
-gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2*1.00794) * code_units_to_gr_cm3
+mean_molecular_weight_ism = 2.35
+gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23 # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is
 parsec_to_cm3 = 3.086e+18
 gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 boltzmann_constant_cgs = 1.380649e-16
@@ -284,15 +285,12 @@ def smooth_pocket_finder(bfield, cycle=0, plot=False):
 
     return (indexes, peaks), (index_global_max, upline)
 
-
-
 def find_insertion_point(array, val):
 
     for i in range(len(array)):
         if val < array[i]:
             return i  # Insert before index i
     return len(array)  # Insert at the end if p_r is greater than or equal to all elements
-
 
 def find_vector_in_array(radius_vector, x_init):
     """

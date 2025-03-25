@@ -1,9 +1,11 @@
 from library import *
 from scipy.ndimage import gaussian_filter1d
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import os, sys
 import glob
+
 
 line = str(sys.argv[-1])
 
@@ -116,7 +118,7 @@ if True: # smoothing of bfield
     distance = distance[1:]
     print(distance.shape, bfield.shape, numb_density.shape)
 
-if True:
+if False:
     """ Calculate Effective Column Densities """
 
     plt.figure(figsize=(8, 5))
@@ -162,7 +164,7 @@ if True:
 
 size = ds.shape[0]
 
-mu_ism = np.logspace(-1, 0, num=100)#np.array([1.0,0.9,0.8])#
+mu_ism = np.array([1.0])#np.logspace(-1, 0, num=10)#
 dmui = np.insert(np.diff(mu_ism), 0, mu_ism[0])
 
 Npmu  = np.zeros((size, len(mu_ism)))
@@ -183,7 +185,7 @@ for i, mui_ism in enumerate(mu_ism):
         
         mu_local_plus[j,i] = np.sqrt(mu_local2)
 
-        Jacobpmu[j,i] = (mu_local_plus[j,i]/mui_ism)*(Bsprime/B_ism)
+        Jacobpmu[j,i] = (mu_local_plus[j,i]/mui_ism)*(Bsprime/B_ism)*dmui[i]
         
         Npmu[j, i] = Npmu[j - 1, i] + n_g * ds[j] / mu_local_plus[j, i] if j > 0 else n_g * ds[j] / mu_local_plus[j, i]
 
@@ -201,17 +203,6 @@ if True:
     plt.savefig('Juiplus.png')  # Save as PNG with high resolution
     plt.show()
 
-    for mui in range(Jacobpmu.shape[1]):
-        plt.plot(distance, Jacobpmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-        plt.legend()
-
-    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu}{\mu_i}$ along trajectory")
-    plt.xlabel("Distance (pc)")
-    plt.ylabel(r"$\frac{\partial \mu}{\partial \mu_i}$")
-    plt.xscale('log')
-    plt.savefig('Juiplus.png')  # Save as PNG with high resolution
-    plt.show()
-
     for mui in range(Npmu.shape[1]):
         plt.plot(distance, Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
         plt.legend()
@@ -223,6 +214,17 @@ if True:
     plt.yscale('log')
     plt.savefig('Nmuiplus.png')  # Save as PNG with high resolution
     plt.show()
+
+for mui in range(Jacobpmu.shape[1]):
+    plt.plot(distance, Jacobpmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+    plt.legend()
+
+plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu}{\mu_i}$ along trajectory")
+plt.xlabel("Distance (pc)")
+plt.ylabel(r"$\frac{\partial \mu}{\partial \mu_i}$")
+plt.xscale('log')
+plt.savefig('Juiplus.png')  # Save as PNG with high resolution
+plt.show()
 
 """ Parameters """
 
@@ -262,6 +264,23 @@ diff_energy[0] = energy[0]
 ism_spectrum = lambda x: Jstar*(x/Estar)**a
 loss_function = lambda z: Lstar*(Estar/z)**d
 
+column_density = np.logspace(19, 27, size)
+"""  
+\mathcal{L} & \mathcal{H} Model: Protons
+
+"""
+model_H = [1.001098610761e7, -4.231294690194e6,  7.921914432011e5,
+          -8.623677095423e4,  6.015889127529e3, -2.789238383353e2,
+           8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3,
+          -9.937499546711e-6
+]
+
+
+model_L = [-3.331056497233e+6,  1.207744586503e+6,-1.913914106234e+5,
+            1.731822350618e+4, -9.790557206178e+2, 3.543830893824e+1, 
+           -8.034869454520e-1,  1.048808593086e-2,-6.188760100997e-5, 
+            3.122820990797e-8]
+
 """ Ionization Rate for N = N(s) """
 
 print(Jacobpmu.shape, dmui.shape)
@@ -276,33 +295,33 @@ zeta_plus = np.zeros_like(distance)
 for l, mui in enumerate(mu_ism):
 
     for j, Nj in enumerate(Npmu[:,i]):
-        
         mu_ = mu_local_plus[j,l]
-        if mu_ == 0:
+        if mu_ <= 0:
             break
 
-        jl_dE = 0.0
+        for k,E in enumerate(energy):
 
-        #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
-        Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+            jl_dE = 0.0
 
-        isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
-        llei = loss_function(Ei)                       # log_10(L(E_i))
-        jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
-    
+            #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
+            Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+
+            isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+            llei = loss_function(Ei)                       # log_10(L(E_i))
+            jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+        
         zeta_plus_mui[j, i] = jl_dE / epsilon
-    
-zeta_plus =  np.sum(Jacobpmu * zeta_plus_mui * dmui.reshape(-1, 1).flatten(), axis = 1) #np.dot(Jacobpmu*zeta_plus_mui*dmui.reshape(-1, 1).flatten())
 
-#plt.plot(Npmu, zeta_plus_mui)
-plt.plot(Npmu[:,-1], zeta_plus,label='$\zeta_+(N)$')
+plt.plot(Npmu, zeta_plus_mui)
+#plt.plot(Npmu[:,-1], zeta_plus)    
+plt.legend()
 plt.xscale('log')
 plt.yscale('log')
 plt.grid(True)
 plt.savefig('zeta_plus.png')  # Save as PNG with high resolution
 plt.show()
-plt.close()  # Close the figure after saving to free up memory
-
+plt.close()
+exit()
 Nmmu  = np.zeros((size, len(mu_ism)))
 Jacobmmu = np.zeros((size, len(mu_ism)))
 mu_local_minus = np.zeros((size, len(mu_ism)))
@@ -349,10 +368,9 @@ for l, mui in enumerate(mu_ism):
         jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
     
         zeta_minus_mui[j, i] = jl_dE / epsilon
-    
-zeta_minus =  np.sum(Jacobmmu * zeta_minus_mui * dmui.reshape(-1, 1).flatten(), axis = 1) #np.dot(Jacobpmu*zeta_plus_mui*dmui.reshape(-1, 1).flatten())
 
-print(zeta_minus.shape)
+zeta_minus = np.sum(Jacobmmu * dmui[:, np.newaxis] * zeta_minus_mui, axis=0)
+
 plt.plot(Nmmu[:,-1], zeta_minus,label='$\zeta_-(N)$')
 plt.xscale('log')
 plt.yscale('log')
