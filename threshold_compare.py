@@ -1,4 +1,5 @@
 from scipy.ndimage import gaussian_filter1d
+from collections import Counter
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
@@ -139,7 +140,7 @@ def get_along_lines(x_init=None):
     threshold2_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
-    line_rev[0,:,:] = x_init
+    line_rev[0,:,:] = x_init 
 
     x = x_init.copy()
 
@@ -184,7 +185,6 @@ def get_along_lines(x_init=None):
             max_threshold = np.max(threshold)
         
         x[un_masked] = aux
-
         print(np.log10(dens[:3]))
 
         line[k+1,:,:]    = x
@@ -293,7 +293,7 @@ def get_along_lines(x_init=None):
     volumes_rev = volumes_rev[:, updated_mask]
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
-    
+
     radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
     magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
@@ -395,7 +395,11 @@ for cycle in range(max_cycles):
 
     ds = np.diff(distance) 
     adaptive_sigma = 3*ds/np.mean(ds)
-    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+    if 0.0 in ds:
+        ds[ds == 0.0] = 1.0e-5  # Replace zeros with a small value to avoid sigma = 0
+        bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+    else:
+        bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
     
     distance = distance[1:]
     numb_density = numb_density[1:]
@@ -575,9 +579,6 @@ for cycle in range(max_cycles):
     else:
         print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
-
-from collections import Counter
-
 counter = Counter(reduction_factor2)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red2.items()}
@@ -609,7 +610,7 @@ print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 counter = Counter(reduction_factor2)
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-file_path = os.path.join(children_folder, f'reduction_factor2_100_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'reduction_factor_100_{sys.argv[-1]}.json')
 with open(file_path, 'w') as json_file: json.dump(reduction_factor2, json_file)
 
 file_path = os.path.join(children_folder, f'numb_density_100_{sys.argv[-1]}.json')
