@@ -1,3 +1,4 @@
+from scipy.ndimage import gaussian_filter1d
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,14 +7,13 @@ from library import *
 import csv, glob, os, sys, time
 import h5py, json
 
+
 start_time = time.time()
 
 FloatType = np.float64
 IntType = np.int32
 
 if len(sys.argv)>4:
-    #python3 arepo_reduction_factor_colors.py N rloc max_cycles num_file SLURM_JOB_ID
-    #python3 arepo_reduction_factor_colors.py 500 0.5 100 430 
 	N=int(sys.argv[1])
 	rloc=float(sys.argv[2])
 	max_cycles   =int(sys.argv[3])
@@ -23,14 +23,13 @@ if len(sys.argv)>4:
 		sys.argv.append('NO_ID')
 else:
     N            =5_000
-    rloc=1   # rloc for boundary region of the cloud
-    max_cycles   =500
+    rloc         =0.5   
+    max_cycles   =50
     case = 'ideal'
     num_file = '430'
 
 print(sys.argv)
 
-cycle = 0 
 reduction_factor_at_numb_density = defaultdict()
 reduction_factor = []
 
@@ -92,13 +91,22 @@ Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
 Volume   = Mass/Density
-
-print(filename, "Loaded (1) :=: time ", (time.time()-start_time)/60.)
-
 CloudCord = Center.copy()
-
 VoronoiPos-=Center
 Pos-=Center
+
+print("Cores Used          : ", os.cpu_count())
+print("Steps in Simulation : ", 2*N)
+print("rloc                : ", rloc)
+print("max_cycles          : ", max_cycles)
+print("Boxsize             : ", Boxsize) # 256
+print("Center              : ", Center) # 256
+print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
+print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
+print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
+print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
+print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
+
 
 for dim in range(3):  # Loop over x, y, z
     pos_from_center = Pos[:, dim]
@@ -106,7 +114,11 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-def get_along_lines(x_init=None, densthresh = 100):
+def get_along_lines(x_init=None):
+    """
+    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
+    This way, all data is part of a comparison between 10 and 100 
+    """
 
     dx = 0.5
 
@@ -117,12 +129,14 @@ def get_along_lines(x_init=None, densthresh = 100):
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
     threshold = np.zeros((m,)).astype(int) # one value for each
+    threshold2 = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
     threshold_rev = np.zeros((m,)).astype(int) # one value for each
+    threshold2_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init
@@ -134,24 +148,33 @@ def get_along_lines(x_init=None, densthresh = 100):
     vol = Volume[cells]
     densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
     dens = densities[0,:] * gr_cm3_to_nuclei_cm3
-
     k=0
 
-    mask = dens > densthresh # True if not finished
-    un_masked = np.logical_not(mask)
+    mask  = dens > 10# 1 if not finished
+    un_masked = np.logical_not(mask) # 1 if finished
+
+    mask2 = dens > 100
+    un_masked2 = np.logical_not(mask2) # 1 if finished
+
+    print(np.log10(dens[:3]))
 
     while np.any(mask):
 
         # Create a mask for values that are 10^2 N/cm^3 above the threshold
-        mask = dens > densthresh # 1 if not finished
+        mask  = dens > 10 # 1 if not finished
         un_masked = np.logical_not(mask) # 1 if finished
 
+        mask2 = dens > 100
+        un_masked2 = np.logical_not(mask2) # 1 if finished
+
         aux = x[un_masked]
+        aux2 =x[un_masked2]
 
         x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
-        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+        threshold  += mask.astype(int)  # Increment threshold count only for values still above 100
+        threshold2 += mask2.astype(int)  # Increment threshold count only for values still above 100
 
         if len(threshold[un_masked]) != 0:
             unique_unmasked_max_threshold = np.max(np.unique(threshold[un_masked]))
@@ -162,6 +185,8 @@ def get_along_lines(x_init=None, densthresh = 100):
         
         x[un_masked] = aux
 
+        print(np.log10(dens[:3]))
+
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
@@ -170,14 +195,14 @@ def get_along_lines(x_init=None, densthresh = 100):
         step_diff = max_threshold-unique_unmasked_max_threshold
         
         order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked)/len(mask) > 0.8
+        percentage_clause = np.sum(un_masked)/len(mask) > 0.95
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
                 with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
-                print("80% of lines have concluded ")
+                print("95% of lines have concluded ")
             else:
                 print("All values are False: means all crossed the threshold")
             break    
@@ -195,24 +220,29 @@ def get_along_lines(x_init=None, densthresh = 100):
     densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     
-    print(line_rev.shape)
-
     k=0
 
-    mask_rev = dens > densthresh
+    mask_rev = dens > 10
     un_masked_rev = np.logical_not(mask_rev)
-    
+    mask2_rev = dens > 100
+    un_masked2_rev = np.logical_not(mask2_rev)
+
+
     while np.any((mask_rev)):
 
-        mask_rev = dens > densthresh
+        mask_rev = dens > 10
         un_masked_rev = np.logical_not(mask_rev)
+        mask2_rev = dens > 100
+        un_masked2_rev = np.logical_not(mask2_rev)
 
-        aux = x[un_masked_rev]
+        aux =  x[un_masked_rev]
+        aux2 = x[un_masked2_rev]
 
         x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
         threshold_rev += mask_rev.astype(int)
+        threshold2_rev += mask2_rev.astype(int)
 
         if len(threshold_rev[un_masked_rev]) != 0:
             unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
@@ -231,14 +261,14 @@ def get_along_lines(x_init=None, densthresh = 100):
         step_diff = max_threshold-unique_unmasked_max_threshold
         
         order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.8
+        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
                 with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
-                print("80% of lines have concluded ")
+                print("95% of lines have concluded ")
             else:
                 print("All values are False: means all crossed the threshold")
             break
@@ -249,6 +279,8 @@ def get_along_lines(x_init=None, densthresh = 100):
     
     threshold = threshold[updated_mask].astype(int)
     threshold_rev = threshold_rev[updated_mask].astype(int)
+    threshold2 = threshold[updated_mask].astype(int)
+    threshold2_rev = threshold_rev[updated_mask].astype(int)
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
     line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
@@ -262,12 +294,11 @@ def get_along_lines(x_init=None, densthresh = 100):
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
-    radius_vector = np.append(line_rev[::-1, :, :], line, axis=0)
-    magnetic_fields = np.append(bfields_rev[::-1, :], bfields, axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities, axis=0)
-    volumes_all = np.append(volumes_rev[::-1, :], volumes, axis=0)
+    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
-    # Initialize trajectory and radius_to_origin with the same shape
     trajectory = np.zeros_like(magnetic_fields)
     radius_to_origin = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
@@ -302,7 +333,7 @@ def get_along_lines(x_init=None, densthresh = 100):
     magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
     volumes_all     *= 1.0#/(3.086e+18**3) 
 
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold_rev], column
+    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold2, threshold_rev, threshold2_rev], column
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     import numpy as np
@@ -322,189 +353,267 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
-x_init = generate_vectors_in_core(max_cycles, max_cycles, rloc)
+x_init = generate_vectors_in_core(max_cycles, 100, rloc)
 
-print("Cores Used          : ", os.cpu_count())
-print("Steps in Simulation : ", 2*N)
-print("rloc                : ", rloc)
-print("max_cycles          : ", max_cycles)
-print("Boxsize             : ", Boxsize) # 256
-print("Center              : ", Center) # 256
-print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
-print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
-print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
+radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init)
 
-import concurrent.futures
-from scipy.ndimage import gaussian_filter1d
+m = magnetic_fields.shape[1]
 
-test_thresh = [100, 10, 10e+4]
+threshold, threshold2, threshold_rev, threshold2_rev = th 
+# [.............th_rev....AA......th....................]
+# [.............th_rev....A......th....................]
+# [.............th_rev....A......th....................]
 
-def process_case(case):
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init, case)
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd
+reduction_factor = list()
+numb_density_at  = list()
 
-# Use ProcessPoolExecutor to parallelize the loop
-with concurrent.futures.ProcessPoolExecutor() as executor:
-    results = list(executor.map(process_case, test_thresh))
+min_den_cycle = list()
+pos_red = dict()
 
-# The 'results' will contain the return values from the 'process_case' function for each case
-for i, result in enumerate(results):
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = result
 
-    case = test_thresh[i]
+for cycle in range(max_cycles):
 
-    #radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th = get_along_lines(x_init, case)
+    _from = N +1 - threshold_rev[cycle]
+    _to   = N+ 1 + threshold[cycle] -1 # we sliced line[1:,:,:] so -1
+    p_r = N + 1 - _from
 
-    m = magnetic_fields.shape[1]
+    vector = radius_vector[_from:_to,cycle, :]
+    column = cd[_from:_to,cycle]
+    bfield    = magnetic_fields[_from:_to,cycle]
+    distance = trajectory[_from:_to,cycle]
+    numb_density = numb_densities[_from:_to,cycle]
+    tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
-    threshold, threshold_rev = th
+    print(len(bfield), p_r, threshold[cycle], threshold_rev[cycle])
 
-    reduction_factor = list()
-    numb_density_at  = list()
-    min_den_cycle = list()
-    pos_red = dict()
+    if bfield.shape[0] == 0:
+        R = 1
+        reduction_factor.append(R)
+        numb_density_at.append(n_r)
+        pos_red[tupi] = R
+        continue
 
-    for cycle in range(max_cycles):
+    ds = np.diff(distance) 
+    adaptive_sigma = 3*ds/np.mean(ds)
+    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+    
+    distance = distance[1:]
+    numb_density = numb_density[1:]
 
-        _from = N+1 - threshold_rev[cycle]
-        _to   = N+1 + threshold[cycle]
-        p_r = N + 1 - _from
+    pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
+    index_pocket, field_pocket = pocket[0], pocket[1]
 
-        bfield    = magnetic_fields[_from:_to,cycle]
-        distance = trajectory[_from:_to,cycle]
-        numb_density = numb_densities[_from:_to,cycle]
-        tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+    np.save(os.path.join(children_folder, f"ColumnDensity{cycle}.npy"), column)
+    np.save(os.path.join(children_folder, f"Positions{cycle}.npy"), vector)
+    np.save(os.path.join(children_folder, f"Trajectory{cycle}.npy"), distance)
+    np.save(os.path.join(children_folder, f"NumberDensities{cycle}.npy"), numb_density)
+    np.save(os.path.join(children_folder, f"MagneticFields{cycle}.npy"), bfield)
 
-        ds = np.diff(distance) 
-        adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
-        bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
-        
-        bfield = bfield[1:]
-        distance = distance[1:]
-        numb_density = numb_density[1:]
+    min_den_cycle.append(min(numb_density))
+    
+    globalmax_index = global_info[0]
+    globalmax_field = global_info[1]
 
-        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
-        index_pocket, field_pocket = pocket[0], pocket[1]
+    x_r = distance[p_r]
+    B_r = bfield[p_r]
+    n_r = numb_density[p_r]
 
-        min_den_cycle.append(min(numb_density))
-        
-        globalmax_index = global_info[0]
-        globalmax_field = global_info[1]
+    p_i = find_insertion_point(index_pocket, p_r)
+    
+    print("Maxima Values related to pockets: ", len(index_pocket), p_i)
 
-        x_r = distance[p_r]
-        B_r = bfield[p_r]
-        n_r = numb_density[p_r]
-
-        p_i = find_insertion_point(index_pocket, p_r)
-        
-        print("Maxima Values related to pockets: ", len(index_pocket), p_i)
-
-        try:
-            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-            B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
-            B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
-            success = True  
-        except:
+    try:
+        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
+        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+        success = True  
+    except:
+        R = 1
+        reduction_factor.append(R)
+        numb_density_at.append(n_r)
+        pos_red[tupi] = R
+        success = False 
+        continue
+    if success:
+        if B_r / B_l < 1:
+            R = 1 - np.sqrt(1 - B_r / B_l)
+            reduction_factor.append(R)
+            numb_density_at.append(n_r)
+            pos_red[tupi] = R
+        else:
             R = 1
             reduction_factor.append(R)
             numb_density_at.append(n_r)
             pos_red[tupi] = R
-            success = False 
-            continue
-        if success:
-            if B_r / B_l < 1:
-                R = 1 - np.sqrt(1 - B_r / B_l)
-                reduction_factor.append(R)
-                numb_density_at.append(n_r)
-                pos_red[tupi] = R
-            else:
-                R = 1
-                reduction_factor.append(R)
-                numb_density_at.append(n_r)
-                pos_red[tupi] = R
 
-        print("Closest local maxima 'p':", closest_values)
-        print("Bs: ", B_r, "ns: ", n_r)
-        print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+    print("Closest local maxima 'p':", closest_values)
+    print("Bs: ", B_r, "ns: ", n_r)
+    print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
-        if B_r/B_l < 1:
-            print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+    if B_r/B_l < 1:
+        print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+    else:
+        print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+
+
+counter = Counter(reduction_factor)
+
+pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
+
+with open(os.path.join(children_folder, f'PARAMETER_reduction10_{sys.argv[-1]}'), 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"{peak_den}\n")
+    file.write(f"Run ID: {sys.argv[-1]}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
+    file.write(f"rloc (Pc) : {rloc}\n")
+    file.write(f"Density Threshold : 10\n")
+    file.write(f"x_init (Pc)        :\n {x_init}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
+    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+
+
+print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
+
+counter = Counter(reduction_factor)
+pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
+
+file_path = os.path.join(children_folder, f'reduction_factor10_{sys.argv[-1]}.json')
+with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
+
+file_path = os.path.join(children_folder, f'numb_density10_{sys.argv[-1]}.json')
+with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
+
+file_path = os.path.join(children_folder, f'position_vector10_{sys.argv[-1]}')
+with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
+
+reduction_factor2 = list()
+numb_density_at2  = list()
+pos_red2 = dict()
+
+for cycle in range(max_cycles):
+
+    _from = N +1 - threshold2_rev[cycle]
+    _to   = N+ 1 + threshold2[cycle] -1 # we sliced line[1:,:,:] so -1
+    p_r = N + 1 - _from
+
+    bfield    = magnetic_fields[_from:_to,cycle]
+    distance = trajectory[_from:_to,cycle]
+    numb_density = numb_densities[_from:_to,cycle]
+    tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
+    print(len(bfield), p_r, threshold2[cycle], threshold2_rev[cycle])
+
+    if bfield.shape[0] == 0:
+        R = 1
+        reduction_factor2.append(R)
+        numb_density_at2.append(n_r)
+        pos_red[tupi] = R
+        continue
+
+    ds = np.diff(distance) 
+    adaptive_sigma = 3*ds/np.mean(ds)
+    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+    
+    distance = distance[1:]
+    numb_density = numb_density[1:]
+
+    pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
+    index_pocket, field_pocket = pocket[0], pocket[1]
+
+    min_den_cycle.append(min(numb_density))
+    
+    globalmax_index = global_info[0]
+    globalmax_field = global_info[1]
+
+    x_r = distance[p_r]
+    B_r = bfield[p_r]
+    n_r = numb_density[p_r]
+
+    p_i = find_insertion_point(index_pocket, p_r)
+    
+    print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+
+    try:
+        closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+        B_l = min([bfield[closest_values[0]], bfield[closest_values[1]]])
+        B_h = max([bfield[closest_values[0]], bfield[closest_values[1]]])
+        success = True  
+    except:
+        R = 1
+        reduction_factor2.append(R)
+        numb_density_at2.append(n_r)
+        pos_red2[tupi] = R
+        success = False 
+        continue
+    if success:
+        if B_r / B_l < 1:
+            R = 1 - np.sqrt(1 - B_r / B_l)
+            reduction_factor2.append(R)
+            numb_density_at2.append(n_r)
+            pos_red2[tupi] = R
         else:
-            print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+            R = 1
+            reduction_factor2.append(R)
+            numb_density_at2.append(n_r)
+            pos_red2[tupi] = R
 
-    from collections import Counter
+    print("Closest local maxima 'p':", closest_values)
+    print("Bs: ", B_r, "ns: ", n_r)
+    print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
-    counter = Counter(reduction_factor)
-
-    pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
-
-    with open(os.path.join(children_folder, 'PARAMETER_reduction'), 'w') as file:
-        file.write(f"{filename}\n")
-        file.write(f"{peak_den}\n")
-        file.write(f"Cores Used: {os.cpu_count()}\n")
-        file.write(f"Snap Time (Myr): {time_value}\n")
-        file.write(f"rloc (Pc) : {rloc}\n")
-        file.write(f"x_init (Pc)        :\n {x_init}\n")
-        file.write(f"max_cycles         : {max_cycles}\n")
-        file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
-        file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
-        file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
-        file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
-        file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
-        file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
-        file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
-        file.write(f"Smallest Density (N/cm^3)  : {np.log10(Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3)} \n")
-        file.write(f"Biggest  Density (N/cm^3) : {np.log10(Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3)}\n")
-        file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-
-    print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
-
-    counter = Counter(reduction_factor)
-    pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
-
-    file_path = os.path.join(children_folder, f'reduction_factor_{case}_{sys.argv[-1]}.json')
-    with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
-
-    file_path = os.path.join(children_folder, f'numb_density_{case}_{sys.argv[-1]}.json')
-    with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
-
-    file_path = os.path.join(children_folder, f'position_vector_{case}_{sys.argv[-1]}')
-    with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
-
-    """# Graphs"""
-
-    reduction_factor = reduction_factor[reduction_factor != 1.0]
-    numb_density_at = numb_density_at[reduction_factor != 1.0]
-
-    bins=len(reduction_factor)//10 
-    if bins == 0:
-        raise ValueError("No valid data found: bins cannot be zero.")
-
-    total = len(reduction_factor)
-    ones = counter['1']
-
-    reduction_factor = np.array(reduction_factor)
-    reduction_factor = reduction_factor[reduction_factor != 1.0]
-    fraction = ones / total
-    inverse_reduction_factor = np.array([1/reduction_factor[i] for i in range(len(reduction_factor))])
-
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-
-    axs[0].hist(reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
-    axs[0].set_yscale('log')
-    axs[0].set_title(f'Distribution of R for $R \\neq 1$ (fraction = {fraction})')
-    axs[0].set_xlabel(f'Reduction factor ({fraction})')
-    axs[0].set_ylabel('PDF')
-
-    axs[1].hist(inverse_reduction_factor, bins=bins, color='skyblue', edgecolor='black', density=True)
-    axs[1].set_yscale('log')
-    axs[1].set_title(f'Distribution of 1/R for $R \\neq 1$ (fraction = {fraction})')
-    axs[1].set_xlabel(f'Reduction factor ')
-    axs[1].set_ylabel('PDF')
-
-    plt.tight_layout()
+    if B_r/B_l < 1:
+        print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+    else:
+        print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
 
-    plt.savefig(os.path.join(children_folder,f"hist_nth={case}.png"))
+from collections import Counter
+
+counter = Counter(reduction_factor2)
+
+pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red2.items()}
+
+with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'), 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"{peak_den}\n")
+    file.write(f"Run ID: {sys.argv[-1]}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
+    file.write(f"Density Threshold : 100\n")
+    file.write(f"rloc (Pc) : {rloc}\n")
+    file.write(f"x_init (Pc)        :\n {x_init}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Boxsize (Pc)       : {Boxsize} Pc\n")
+    file.write(f"Center (Pc, Pc, Pc): {CloudCord[0]}, {CloudCord[1]}, {CloudCord[2]} \n")
+    file.write(f"Posit Max Density (Pc, Pc, Pc): {Pos[np.argmax(Density), :]}\n")
+    file.write(f"Smallest Volume (Pc^3)   : {Volume[np.argmin(Volume)]} \n")
+    file.write(f"Biggest  Volume (Pc^3)   : {Volume[np.argmax(Volume)]}\n")
+    file.write(f"Smallest Density (M☉/Pc^3)  : {Density[np.argmax(Volume)]} \n")
+    file.write(f"Biggest  Density (M☉/Pc^3) : {Density[np.argmin(Volume)]}\n")
+    file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
+    file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+
+
+print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
+
+counter = Counter(reduction_factor2)
+pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
+
+file_path = os.path.join(children_folder, f'reduction_factor2_100_{sys.argv[-1]}.json')
+with open(file_path, 'w') as json_file: json.dump(reduction_factor2, json_file)
+
+file_path = os.path.join(children_folder, f'numb_density_100_{sys.argv[-1]}.json')
+with open(file_path, 'w') as json_file: json.dump(numb_density_at2, json_file)
+
+file_path = os.path.join(children_folder, f'position_vector_100_{sys.argv[-1]}')
+with open(file_path, 'w') as json_file: json.dump(pos_red2, json_file)

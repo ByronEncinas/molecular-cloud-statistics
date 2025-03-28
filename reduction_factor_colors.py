@@ -1,43 +1,15 @@
 from scipy.ndimage import gaussian_filter1d
 from mpl_toolkits.mplot3d import Axes3D
+import os, h5py, json,sys,os,csv,glob,time
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import concurrent.futures
 import numpy as np
-from scipy import stats
-import seaborn as sns
 from library import *
-import os
-import h5py
-import json
-import sys
-import time
-import csv
-import glob
 
 start_time = time.time()
 
-
-"""  
-Analysis of reduction factor
-
-$$N(s) 1 - \sqrt{1-B(s)/B_l}$$
-
-Parameters
-
-Attribute: UnitLength_in_cm = 3.086e+18
-Attribute: UnitMass_in_g = 1.99e+33
-Attribute: UnitVelocity_in_cm_per_s = 100000.0
-
-Name: PartType0/Coordinates
-    Attribute: to_cgs = 3.086e+18
-Name: PartType0/Density
-    Attribute: to_cgs = 6.771194847794873e-23
-Name: PartType0/Masses
-    Attribute: to_cgs = 1.99e+33
-Name: PartType0/Velocities
-    Attribute: to_cgs = 100_000.0
-Name: PartType0/MagneticField
-"""
+densthresh = 100
 
 FloatType = np.float64
 IntType = np.int32
@@ -56,8 +28,8 @@ else:
     max_cycles   =500
     case = 'ideal'
     num_file = '430'
+    sys.argv.append('NO_ID')
 
-print(sys.argv)
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -124,8 +96,6 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-densthresh = 100
-
 def get_along_lines(x_init=None, densthresh = 100):
 
     dx = 0.5
@@ -161,8 +131,6 @@ def get_along_lines(x_init=None, densthresh = 100):
     un_masked = np.logical_not(mask)
 
     while np.any(mask):
-
-        # Create a mask for values that are 10^2 N/cm^3 above the threshold
         mask = dens > densthresh # 1 if not finished
         un_masked = np.logical_not(mask) # 1 if finished
 
@@ -171,7 +139,7 @@ def get_along_lines(x_init=None, densthresh = 100):
         x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         dens = dens * gr_cm3_to_nuclei_cm3
 
-        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+        threshold += mask.astype(int)
 
         if len(threshold[un_masked]) != 0:
             unique_unmasked_max_threshold = np.max(np.unique(threshold[un_masked]))
@@ -182,9 +150,6 @@ def get_along_lines(x_init=None, densthresh = 100):
         
         x[un_masked] = aux
         print(np.log10(dens[:3]))
-        
-        #print(threshold)
-        # print(max_threshold, unique_unmasked_max_threshold)
 
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
@@ -194,14 +159,15 @@ def get_along_lines(x_init=None, densthresh = 100):
         step_diff = max_threshold-unique_unmasked_max_threshold
         
         order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked)/len(mask) > 0.8
+        percentage_clause = np.sum(un_masked)/len(mask) > 0.95
 
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
                 with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask]}\n")
-                print("80% of lines have concluded ")
+
+                print("95% of lines have concluded ")
             else:
                 print("All values are False: means all crossed the threshold")
             break    
@@ -245,7 +211,6 @@ def get_along_lines(x_init=None, densthresh = 100):
             unique_unmasked_max_threshold = np.max(threshold_rev)
             max_threshold = np.max(threshold_rev)
 
-        #print(max_threshold, unique_unmasked_max_threshold)
         print(np.log10(dens[:3]))
         x[un_masked_rev] = aux
 
@@ -257,14 +222,14 @@ def get_along_lines(x_init=None, densthresh = 100):
         step_diff = max_threshold-unique_unmasked_max_threshold
         
         order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.8
+        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
                 with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
                     file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
                     file.write(f"{x_init[mask_rev]}\n")
-                print("80% of lines have concluded ")
+                print("95% of lines have concluded ")
             else:
                 print("All values are False: means all crossed the threshold")
             break
@@ -288,10 +253,10 @@ def get_along_lines(x_init=None, densthresh = 100):
     bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
     
-    radius_vector = np.append(line_rev[::-1, :, :], line[:,:,:], axis=0)
-    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[:,:], axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities[:,:], axis=0)
-    volumes_all = np.append(volumes_rev[::-1, :], volumes[:,:], axis=0)
+    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
+    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
+    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
+    volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
     trajectory = np.zeros_like(magnetic_fields)
     column = np.zeros_like(magnetic_fields)
@@ -302,20 +267,19 @@ def get_along_lines(x_init=None, densthresh = 100):
     print("Numb densities shape:", numb_densities.shape)
 
     m = magnetic_fields.shape[1]
-    print("Surviving lines: ", m, "out of: ", max_cycles)
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
 	
-    for _n in range(m):  # Iterate over the first dimension
+    for _n in range(m):
         prev = radius_vector[0, _n, :]
-        trajectory[0, _n] = 0  # Initialize first row
-        column[0, _n] = 0      # Initialize first row
+        trajectory[0, _n] = 0
+        column[0, _n] = 0
         
-        for k in range(1, magnetic_fields.shape[0]):  # Start from k = 1 to avoid indexing errors
+        for k in range(1, magnetic_fields.shape[0]):
             radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
             
             cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
+            diff_rj_ri = magnitude(cur - prev)
 
             trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
             column[k, _n] = column[k-1, _n] + numb_densities[k, _n] * diff_rj_ri            
@@ -345,9 +309,8 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     valid_vectors = np.array(valid_vectors)
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
-x_init = generate_vectors_in_core(max_cycles, densthresh)
 
-generated_points = generate_vectors_in_core(max_cycles, densthresh)
+x_init = generate_vectors_in_core(max_cycles, densthresh)
 
 if False:
     x, y = generated_points[:, 0], generated_points[:, 1]
@@ -380,19 +343,6 @@ if False:
     plt.savefig(os.path.join(parent_folder, f'./x_init_geq_{densthresh}.png'))
     plt.close(fig)
 
-print("Cores Used          : ", os.cpu_count())
-print("Steps in Simulation : ", 2*N)
-print("rloc                : ", rloc)
-print("x_init              : ", x_init)
-print("max_cycles          : ", max_cycles)
-print("Boxsize             : ", Boxsize) # 256
-print("Center              : ", Center) # 256
-print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
-print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
-print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
-print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
-print(f"Biggest  Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmin(Volume)]}")
-
 radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init, densthresh)
 
 print("Elapsed Time: ", (time.time() - start_time)/60.)
@@ -416,6 +366,7 @@ for cycle in range(max_cycles):
     _to   = N+1 + threshold[cycle]
     p_r = N + 1 - _from
 
+    vector = radius_vector[_from:_to,cycle]
     column_dens  = cd[_from:_to,cycle]
     bfield    = magnetic_fields[_from:_to,cycle]
     distance = trajectory[_from:_to,cycle]
@@ -425,14 +376,19 @@ for cycle in range(max_cycles):
     ds = np.diff(distance) 
     adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
     bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+
+    np.save(os.path.join(children_folder, f"ColumnDensity{cycle}.npy"), column_dens)
+    np.save(os.path.join(children_folder, f"Positions{cycle}.npy"), vector)
+    np.save(os.path.join(children_folder, f"Trajectory{cycle}.npy"), distance)
+    np.save(os.path.join(children_folder, f"NumberDensities{cycle}.npy"), numb_density)
+    np.save(os.path.join(children_folder, f"MagneticFields{cycle}.npy"), bfield)
     
-    bfield = bfield[1:]
     distance = distance[1:]
     numb_density = numb_density[1:]
     p_r = N  - _from
 
     try:
-        pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False)  # this plots
+        pocket, global_info = pocket_finder(bfield, cycle, plot=False)  # this plots
     except AttributeError as e:
         raise AttributeError(f"Function 'smooth_pocket_finder' raised an error: {str(e)}")
     
@@ -497,6 +453,7 @@ pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for k
 with open(os.path.join(children_folder, f'PARAMETER_reduction_{sys.argv[-1]}'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"{peak_den}\n")
+    file.write(f"Run ID: {sys.argv[-1]}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc}\n")
@@ -560,3 +517,43 @@ axs[1].set_ylabel('PDF')
 plt.tight_layout()
 
 plt.savefig(os.path.join(children_folder,f"hist.png"))
+
+if True:
+        
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+
+    norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+    cmap = cm.viridis
+
+    ax = plt.figure().add_subplot(projection='3d')
+    radius_vector /= 3.086e+18
+
+    for k in range(m):
+        x=radius_vector[:, k, 0]
+        y=radius_vector[:, k, 1]
+        z=radius_vector[:, k, 2]
+        
+        for l in range(len(x)):
+            color = cmap(norm(magnetic_fields[l, k]))
+            ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
+
+        ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
+        ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
+            
+    radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
+    zoom = np.max(radius_to_origin)
+    ax.set_xlim(-zoom,zoom)
+    ax.set_ylim(-zoom,zoom)
+    ax.set_zlim(-zoom,zoom)
+    ax.set_xlabel('x [Pc]')
+    ax.set_ylabel('y [Pc]')
+    ax.set_zlabel('z [Pc]')
+    ax.set_title('Magnetic field morphology')
+
+    # Add a colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+    cbar.set_label('Magnetic Field Strength')
+    plt.savefig(os.path.join(children_folder,f"FieldTopology.png"), bbox_inches='tight')
