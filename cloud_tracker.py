@@ -87,7 +87,7 @@ for list in file_list:
         yc = Pos[:, 1]
         zc = Pos[:, 2]
 
-        region_radius = 0.1
+        region_radius = 0.5
             
         if fileno == 0:
             CloudCord = Pos[np.argmax(Density), :]
@@ -104,9 +104,6 @@ for list in file_list:
             else:
                 print(f"Warning: No particles found within region_radius of {region_radius} around CloudCord.")
             
-            #CloudVelocity = np.sum(Momentums[cloud_sphere], axis=0) / np.sum(Mass[cloud_sphere])
-            #delta_time_seconds = abs(time_value - prev_time) * seconds_in_myr
-            #UpdatedCord = CloudCord - CloudVelocity * km_to_parsec * delta_time_seconds
             if np.any(cloud_sphere):
                 CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
                 PeakDensity = Density[cloud_sphere][np.argmax(Density[cloud_sphere])]*gr_cm3_to_nuclei_cm3
@@ -119,16 +116,7 @@ for list in file_list:
 
         import seaborn as sns
         from yt import units as u
-        """
-        cloud_sphere = ((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2 < region_radius**2)
-        Radius = np.sqrt((xc - CloudCord[0])**2 + (yc - CloudCord[1])**2 + (zc - CloudCord[2])**2)[cloud_sphere]
-        SphereDensity = (Density[cloud_sphere]*gr_cm3_to_nuclei_cm3)
-        mask  = (SphereDensity > 100)
-        radius_core = Radius[mask]
-        region_radius = np.max(radius_core)
-        print(len(radius_core)/len(cloud_sphere), np.mean(radius_core), region_radius)
-        region_radius = np.max(radius_core)*1.2
-        """
+
         ds = yt.load(filename)
 
         sp = yt.SlicePlot(

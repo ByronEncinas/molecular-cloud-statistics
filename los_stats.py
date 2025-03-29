@@ -54,10 +54,12 @@ FloatType = np.float64
 IntType = np.int32
 
 """ 
-python3  los_stats.py 2000 ideal 430 10 S/N > R430TST.txt 2> R430TST_error.txt &
+python3 los_stats.py 2000 ideal 430 50 S > ELOS430TST.txt 2> ELOS430TST_error.txt &
+python3 los_stats.py 2000 ideal 430 50 N > NLOS430TST.txt 2> NLOS430TST_error.txt &
+
 
 S : Stability
-N : Column densities at
+N : Column densities
 
 """
 if len(sys.argv)>2:
@@ -118,7 +120,7 @@ if filename == None:
 
 snap = filename.split(".")[0][-3:]
 
-new_folder = os.path.join(f"./los_stats/{case}/", num_file)
+new_folder = os.path.join(f"los_stats/{NeffOrStability}/{case}" , snap)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -183,9 +185,7 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     valid_vectors = np.array(valid_vectors)
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
- 
-new_folder = os.path.join(f"los_stats/{NeffOrStability}/{case}" , snap)
-os.makedirs(new_folder, exist_ok=True)
+
 
 def energies_get_along_lines(x_init=None):
     m = x_init.shape[0]
@@ -225,7 +225,6 @@ def energies_get_along_lines(x_init=None):
 
     mask = dens > 100 # True if continue
     un_masked = np.logical_not(mask)
-    ratio = (energy_magnetic[0, :]+energy_thermal[0, :])/energy_grav[0, :] 
     
     while np.any(mask):
         # Update mask for values that are 10^2 N/cm^3 above the threshold
@@ -258,8 +257,6 @@ def energies_get_along_lines(x_init=None):
         bfields[k + 1, :] = bfield
         densities[k + 1, :] = dens
         eff_column_densities[k + 1, :] = eff_column_densities[k, :] + dens * (dx_vec*parsec_to_cm3)
-        
-        print(f"Eff. Column Densities: {eff_column_densities[k + 1, 0]:5e}")
 
         rad = np.linalg.norm(x[:, :], axis=1)
         grav_potential += -(4 * np.pi) ** 2 * (dens ** 2) * (rad * parsec_to_cm3) ** 4 * (dx_vec * parsec_to_cm3)
@@ -272,9 +269,15 @@ def energies_get_along_lines(x_init=None):
         energy_thermal[k + 1, :]  = energy_thermal[k, :] + (3 / 2) * pressure * (4*np.pi*(rad*parsec_to_cm3))**2*(dx_vec*parsec_to_cm3)
         temperature[k+1,:] =(pressure * 4 * np.pi * (rad * parsec_to_cm3)**2) * (dx_vec * parsec_to_cm3)/ (dens * boltzmann_constant_cgs)
 
-        if np.log10(ratio) > 1.5:
-            break 
+        ratio = (energy_magnetic[k+1, :]+energy_thermal[k+1, :])/energy_grav[k+1, :]
 
+        if np.any(energy_grav[k+1, :] ==1.0e-6):
+
+            stab_mask = np.log10(ratio) > 1.5
+
+            if np.all(stab_mask):
+                break
+        
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
             break
@@ -311,8 +314,7 @@ def energies_get_along_lines(x_init=None):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature]
 
-
-def get_line_of_sight(x_init=None):
+def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -327,14 +329,13 @@ def get_line_of_sight(x_init=None):
     densities = np.zeros((N+1,m))
     volumes   = np.zeros((N+1,m))
     threshold = np.zeros((m,)).astype(int) # one value for each
-    threshold2 = np.zeros((m,)).astype(int) # one value for each
+
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
     volumes_rev   = np.zeros((N+1,m))
     threshold_rev = np.zeros((m,)).astype(int) # one value for each
-    threshold2_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init 
@@ -348,61 +349,43 @@ def get_line_of_sight(x_init=None):
     dens = densities[0,:] * gr_cm3_to_nuclei_cm3
     k=0
 
-    mask  = dens > 10# 1 if not finished
+    mask  = dens > 100# 1 if not finished
     un_masked = np.logical_not(mask) # 1 if finished
-
-    mask2 = dens > 100
-    un_masked2 = np.logical_not(mask2) # 1 if finished
-
-    print(np.log10(dens[:3]))
 
     while np.any(mask):
 
-        # Create a mask for values that are 10^2 N/cm^3 above the threshold
-        mask  = dens > 10 # 1 if not finished
-        un_masked = np.logical_not(mask) # 1 if finished
+        mask = dens > 100  # True if continue
+        un_masked = np.logical_not(mask)
 
-        mask2 = dens > 100
-        un_masked2 = np.logical_not(mask2) # 1 if finished
-
-        aux = x[un_masked]
-        aux2 =x[un_masked2]
-
-        x, bfield, dens, vol = Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        dens = dens * gr_cm3_to_nuclei_cm3
-
-        threshold  += mask.astype(int)  # Increment threshold count only for values still above 100
-        threshold2 += mask2.astype(int)  # Increment threshold count only for values still above 100
-
-        if len(threshold[un_masked]) != 0:
-            unique_unmasked_max_threshold = np.max(np.unique(threshold[un_masked]))
-            max_threshold = np.max(threshold)
-        else:
-            unique_unmasked_max_threshold = np.max(threshold)
-            max_threshold = np.max(threshold)
+        # Perform Heun step and update values
+        _, bfield, dens, vol, ke, pressure = Heun_step(
+            x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
+        )
         
-        x[un_masked] = aux
+        mass_dens = dens * code_units_to_gr_cm3
+        pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
+        dens *= gr_cm3_to_nuclei_cm3
+        
+        vol[un_masked] = 0
+
+        non_zero = vol > 0
+        if len(vol[non_zero]) == 0:
+            break
+
+        dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
+
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        x += dx_vec * directions
+        
         print(np.log10(dens[:3]))
 
         line[k+1,:,:]    = x
-        volumes[k+1,:]   = vol
-        bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
 
-        step_diff = max_threshold-unique_unmasked_max_threshold
-        
-        order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked)/len(mask) > 0.95
-
-        if np.all(un_masked) or (order_clause and percentage_clause): 
-            if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
-                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
-                    file.write(f"{x_init[mask]}\n")
-                print("95% of lines have concluded ")
-            else:
-                print("All values are False: means all crossed the threshold")
-            break    
+        if np.all(un_masked):
+            print("All values are False: means all density < 10^2")
+            break
 
         k += 1
     
@@ -419,55 +402,42 @@ def get_line_of_sight(x_init=None):
     
     k=0
 
-    mask_rev = dens > 10
+    mask_rev = dens > 100
     un_masked_rev = np.logical_not(mask_rev)
-    mask2_rev = dens > 100
-    un_masked2_rev = np.logical_not(mask2_rev)
-
 
     while np.any((mask_rev)):
 
-        mask_rev = dens > 10
+        mask_rev = dens > 100  # True if continue
         un_masked_rev = np.logical_not(mask_rev)
-        mask2_rev = dens > 100
-        un_masked2_rev = np.logical_not(mask2_rev)
 
-        aux =  x[un_masked_rev]
-        aux2 = x[un_masked2_rev]
-
-        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        dens = dens * gr_cm3_to_nuclei_cm3
-
-        threshold_rev += mask_rev.astype(int)
-        threshold2_rev += mask2_rev.astype(int)
-
-        if len(threshold_rev[un_masked_rev]) != 0:
-            unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
-            max_threshold = np.max(threshold_rev)
-        else:
-            unique_unmasked_max_threshold = np.max(threshold_rev)
-            max_threshold = np.max(threshold_rev)
-
-        x[un_masked_rev] = aux
-
-        line_rev[k+1,:,:] = x
-        volumes_rev[k+1,:] = vol
-        bfields_rev[k+1,:] = bfield
-        densities_rev[k+1,:] = dens 
-                    
-        step_diff = max_threshold-unique_unmasked_max_threshold
+        # Perform Heun step and update values
+        _, bfield, dens, vol, ke, pressure = Heun_step(
+            x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
+        )
         
-        order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
+        mass_dens = dens * code_units_to_gr_cm3
+        pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
+        dens *= gr_cm3_to_nuclei_cm3
+        
+        vol[un_masked_rev] = 0
 
-        if np.all(un_masked_rev) or (order_clause and percentage_clause):
-            if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
-                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
-                    file.write(f"{x_init[mask_rev]}\n")
-                print("95% of lines have concluded ")
-            else:
-                print("All values are False: means all crossed the threshold")
+        non_zero = vol > 0
+        if len(vol[non_zero]) == 0:
+            break
+
+        dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
+
+        threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        x -= dx_vec * directions
+
+        print(np.log10(dens[:3]))
+
+        line_rev[k+1,:,:]    = x
+        densities_rev[k+1,:] = dens
+
+        if np.all(un_masked):
+            print("All values are False: means all density < 10^2")
             break
 
         k += 1
@@ -476,35 +446,22 @@ def get_line_of_sight(x_init=None):
     
     threshold = threshold[updated_mask].astype(int)
     threshold_rev = threshold_rev[updated_mask].astype(int)
-    threshold2 = threshold[updated_mask].astype(int)
-    threshold2_rev = threshold_rev[updated_mask].astype(int)
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
     line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
-    volumes = volumes[:, updated_mask]  # Assuming volumes has shape (m,)
-    bfields = bfields[:, updated_mask]  # Mask applied to second dimension (m)
     densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
 
     # Apply to the reverse arrays in the same way
     line_rev = line_rev[:, updated_mask, :]
-    volumes_rev = volumes_rev[:, updated_mask]
-    bfields_rev = bfields_rev[:, updated_mask]
     densities_rev = densities_rev[:, updated_mask]
 
     radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
-    magnetic_fields = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
-    volumes_all = np.append(volumes_rev[::-1, :], volumes[1:,:], axis=0)
 
-    trajectory = np.zeros_like(magnetic_fields)
-    radius_to_origin = np.zeros_like(magnetic_fields)
-    column = np.zeros_like(magnetic_fields)
+    trajectory = np.zeros_like(densities)
+    column = np.zeros_like(densities)
 
-    print("Magnetic fields shape:", magnetic_fields.shape)
-    print("Radius vector shape:", radius_vector.shape)
-    print("Numb densities shape:", numb_densities.shape)
-
-    m = magnetic_fields.shape[1]
+    m = densities.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
 
     radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
@@ -514,9 +471,7 @@ def get_line_of_sight(x_init=None):
         trajectory[0, _n] = 0  # Initialize first row
         column[0, _n] = 0      # Initialize first row
         
-        for k in range(1, magnetic_fields.shape[0]):  # Start from k = 1 to avoid indexing errors
-            radius_to_origin[k, _n] = magnitude(radius_vector[k, _n, :])
-            
+        for k in range(1, densities.shape[0]):  # Start from k = 1 to avoid indexing errors            
             cur = radius_vector[k, _n, :]
             diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
 
@@ -525,12 +480,9 @@ def get_line_of_sight(x_init=None):
             
             prev = cur  # Store current point as previous point
 
-    radius_vector   *= 1.0#* 3.086e+18                                # from Parsec to cm
     trajectory      *= 1.0#* 3.086e+18                                # from Parsec to cm
-    magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
-    volumes_all     *= 1.0#/(3.086e+18**3) 
 
-    return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold2, threshold_rev, threshold2_rev], column
+    return radius_vector, trajectory, numb_densities, [threshold, threshold_rev], column
 
 
 print("Steps in Simulation: ", N)
@@ -557,9 +509,6 @@ if NeffOrStability == 'S':
 
         cut = threshold[i]
         eff_column = np.max(eff_column_densities[:, i])
-
-        order_total_energy = np.log10(energy_magnetic[:cut, i] + energy_thermal[:cut, i] + energy_grav[:cut, i])
-        print(order_total_energy)
 
         np.save(f"{new_folder}/eff_column_densities_{i}.npy", eff_column_densities[:cut, i])
         np.save(f"{new_folder}/numb_densities_{i}.npy", numb_densities[:cut, i])
@@ -596,8 +545,8 @@ if NeffOrStability == 'S':
         axs['A'].grid(True)
 
         # Plot Energy Ratios
-        axs['B'].plot(trajectory[1:static, i]/AU_to_cm, ratio_m[:static], linestyle="--", color="red", label="Magnetic / Gravity")
-        axs['B'].plot(trajectory[1:static, i]/AU_to_cm, ratio_t[:static], linestyle="--", color="green", label="Thermal / Gravity")
+        axs['B'].plot(trajectory[1:static_value, i]/AU_to_cm, ratio_m[:static_value], linestyle="--", color="red", label="Magnetic / Gravity")
+        axs['B'].plot(trajectory[1:static_value, i]/AU_to_cm, ratio_t[:static_value], linestyle="--", color="green", label="Thermal / Gravity")
         axs['B'].set_xscale('log')
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (AU) along LOS")
@@ -671,12 +620,12 @@ elif NeffOrStability == 'N':
     x_init = generate_vectors_in_core(max_cycles, densthresh, 1.0)
     directions, abs_local_fields, local_densities, _ = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
     print('Directions provided by B field at point')
-    radius_vector, trajectory, numb_densities, [threshold, threshold_rev], eff_column_densities = get_line_of_sight(x_init)
+    radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
+    threshold, threshold_rev = th
     m = numb_densities.shape[1]
+    np.save(f"{new_folder}/thresholds.npy", (threshold, threshold_rev))
     for i in range(m):
         cut = threshold[i]
-        np.save(f"{new_folder}/eff_column_densities_{i}.npy", eff_column_densities[:, i])
-        plt.plot(eff_column_densities[:cut, i])
-        plt.yscale('log')
-    plt.show()
+        np.save(f"{new_folder}/eff_column_densities_{i}.npy", column[:, i])
+
 

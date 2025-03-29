@@ -16,26 +16,13 @@ FloatType = np.float64
 IntType = np.int32
 
 if len(sys.argv)>4:
-	N=int(sys.argv[1])
-	rloc=float(sys.argv[2])
-	max_cycles   =int(sys.argv[3])
-	case = f'{sys.argv[4]}'
-	num_file = f'{sys.argv[5]}'
-	if len(sys.argv) < 6:
-		sys.argv.append('NO_ID')
-else:
-    N            =2_000
-    rloc         =1.0
-    max_cycles   =100
-    case         = 'ideal'
-    num_file     = '430'
-
-if len(sys.argv)>5:
     N             = int(sys.argv[1])
     rloc          = float(sys.argv[2])
     max_cycles    = int(sys.argv[3]) 
     case          = str(sys.argv[4]) 
     num_file      = str(sys.argv[5]) 
+    if len(sys.argv) < 6:
+        sys.argv.append('NO_ID')
 else:
     N               = 2_000
     rloc            = 1.0
@@ -211,6 +198,11 @@ def get_along_lines(x_init=None):
         order_clause = step_diff >= 1_000
         percentage_clause = np.sum(un_masked)/len(mask) > 0.95
 
+
+        if np.all(un_masked):
+            print("All values are False: means all density < 10^2")
+            break
+
         if np.all(un_masked) or (order_clause and percentage_clause): 
             if (order_clause and percentage_clause):
                 with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
@@ -276,6 +268,10 @@ def get_along_lines(x_init=None):
         
         order_clause = step_diff >= 1_000
         percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
+
+        if np.all(un_masked):
+            print("All values are False: means all density < 10^2")
+            break
 
         if np.all(un_masked_rev) or (order_clause and percentage_clause):
             if (order_clause and percentage_clause):
@@ -374,9 +370,6 @@ radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_o
 m = magnetic_fields.shape[1]
 
 threshold, threshold2, threshold_rev, threshold2_rev = th 
-# [.............th_rev....AA......th....................]
-# [.............th_rev....A......th....................]
-# [.............th_rev....A......th....................]
 
 reduction_factor = list()
 numb_density_at  = list()
@@ -414,11 +407,13 @@ for cycle in range(max_cycles):
         distance = distance[:-1]  
         vector = vector[inter][:-1]
         numb_density  = numb_density[inter][:-1]
-        bfield        = bfield[inter]
         column        = column[inter][:-1]
+        bfield        = bfield[inter]
 
         adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
+        adaptive_sigma[adaptive_sigma==0] = 1.0e-1
         bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
+
 
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]

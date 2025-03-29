@@ -6,31 +6,41 @@ import numpy as np
 import os, sys
 import glob
 
-
+print()
 line = str(sys.argv[-1])
 
 origin_folder = 'arepo_npys/stepsizetest/0.2/'
 
-radius_vector  = np.array(np.load(os.path.join(origin_folder, f'ArePositions{line}.npy'), mmap_mode='r'))
-distance       = np.array(np.load(os.path.join(origin_folder, f'ArepoTrajectory{line}.npy'), mmap_mode='r'))
-bfield         = np.array(np.load(os.path.join(origin_folder, f'ArepoMagneticFields{line}.npy'), mmap_mode='r'))
-numb_density   = np.array(np.load(os.path.join(origin_folder, f'ArepoNumberDensities{line}.npy'), mmap_mode='r'))
+origin_folder = 'getLines/ideal/430'
+
+radius_vector  = np.array(np.load(os.path.join(origin_folder, f'Positions{line}.npy'), mmap_mode='r'))
+distance       = np.array(np.load(os.path.join(origin_folder, f'Trajectory{line}.npy'), mmap_mode='r'))
+bfield         = np.array(np.load(os.path.join(origin_folder, f'MagneticFields{line}.npy'), mmap_mode='r'))
+numb_density   = np.array(np.load(os.path.join(origin_folder, f'NumberDensities{line}.npy'), mmap_mode='r'))
 radius         = np.linalg.norm(radius_vector, axis=-1)
+
+unique_values, counts = np.unique(radius_vector[:,0], return_counts=True)
+duplicates = unique_values[counts > 1]
+
+# Iterate over the duplicate values and find their indices
+for duplicate in duplicates:
+    indices = np.where(radius_vector[:,0] == duplicate)[0]
+    print(indices)
 
 if True: # smoothing of bfield
 
     inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
-
     distance = distance[inter]
-    ds = np.abs(np.diff(distance))
-    radius_vector = radius_vector[inter][1:]
+    ds = np.abs(np.diff(distance, n=1))
+    distance = distance[:-1]     # Remove the last element of distance
+    radius_vector = radius_vector[inter][:-1]
+    numb_density  = numb_density[inter][:-1]
     bfield        = bfield[inter]
-    numb_density  = numb_density[inter][1:]
-    ds_norm = ds/np.max(ds)
-    field = bfield[1:] *1.0e+6 # in micro Gauss
-    grad = np.abs(np.gradient(field))
-    adaptive_sigma = 3*ds_norm/np.mean(ds_norm) #(ds > np.mean(ds))
-    adaptive_gaussian_smoothed = np.array([gaussian_filter1d(field, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
+
+    adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
+    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
+
+    print(distance.shape, bfield.shape, numb_density.shape)
 
     if False:
         Rs = []
@@ -113,13 +123,19 @@ if True: # smoothing of bfield
         plt.title('Adaptative Convolution $(B*K)$')
         plt.grid()
         plt.savefig(f"./PocketMeanComparison{cycle}.png")
-    
-    bfield = adaptive_gaussian_smoothed.copy()
-    distance = distance[1:]
-    print(distance.shape, bfield.shape, numb_density.shape)
 
-if False:
+
+if True:
     """ Calculate Effective Column Densities """
+    plt.figure(figsize=(8, 5))
+    plt.plot(distance, bfield, label="Magnetic Field Strength")
+    plt.xlabel("Distance (cm)")
+    plt.ylabel("Magnetic Field Strength ($\mu$G)")
+    plt.title("Magnetic Field Strength Profile")
+    plt.legend()
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.savefig('Bfield.png')  # Save as PNG with high resolution
+    plt.show()
 
     plt.figure(figsize=(8, 5))
     plt.plot(distance, numb_density, label="Number Density")
@@ -133,15 +149,6 @@ if False:
 
     #plt.show()
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(distance, bfield, label="Magnetic Field Strength", color="red")
-    plt.xlabel("Distance (cm)")
-    plt.ylabel("Magnetic Field Strength ($\mu$G)")
-    plt.title("Magnetic Field Strength Profile")
-    plt.legend()
-    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.savefig('Bfield.png')  # Save as PNG with high resolution
-    #plt.show()
 
     Npluseff = np.cumsum(numb_density*ds)
     Nminuseff = np.cumsum(numb_density[::-1]*ds[::-1])
@@ -164,7 +171,7 @@ if False:
 
 size = ds.shape[0]
 
-mu_ism = np.array([1.0])#np.logspace(-1, 0, num=10)#
+mu_ism = np.logspace(-1, 0, num=1)#np.array([1.0])#
 dmui = np.insert(np.diff(mu_ism), 0, mu_ism[0])
 
 Npmu  = np.zeros((size, len(mu_ism)))
@@ -264,7 +271,7 @@ diff_energy[0] = energy[0]
 ism_spectrum = lambda x: Jstar*(x/Estar)**a
 loss_function = lambda z: Lstar*(Estar/z)**d
 
-column_density = np.logspace(19, 27, size)
+Neff = np.logspace(19, 27, size)
 """  
 \mathcal{L} & \mathcal{H} Model: Protons
 
@@ -280,6 +287,8 @@ model_L = [-3.331056497233e+6,  1.207744586503e+6,-1.913914106234e+5,
             1.731822350618e+4, -9.790557206178e+2, 3.543830893824e+1, 
            -8.034869454520e-1,  1.048808593086e-2,-6.188760100997e-5, 
             3.122820990797e-8]
+
+zeta = np.zeros_like(Neff)
 
 """ Ionization Rate for N = N(s) """
 
@@ -299,24 +308,28 @@ for l, mui in enumerate(mu_ism):
         if mu_ <= 0:
             break
 
-        for k,E in enumerate(energy):
+        jl_dE = 0.0
 
-            jl_dE = 0.0
+        #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
+        Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
 
-            #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
-            Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+        isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+        llei = loss_function(Ei)                       # log_10(L(E_i))
 
-            isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
-            llei = loss_function(Ei)                       # log_10(L(E_i))
-            jl_dE += isms*llei*diff_energy[k]  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
-        
+        jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+        print(np.log10(isms[0]),np.log10(llei[0]), np.log10(jl_dE))
+
         zeta_plus_mui[j, i] = jl_dE / epsilon
+
+#for l, mui in enumerate(mu_ism):
+#    print(zeta_plus_mui[:,l])
 
 plt.plot(Npmu, zeta_plus_mui)
 #plt.plot(Npmu[:,-1], zeta_plus)    
 plt.legend()
 plt.xscale('log')
 plt.yscale('log')
+plt.ylim(1.0e-19,1.0e-14)  # Set y-axis limits
 plt.grid(True)
 plt.savefig('zeta_plus.png')  # Save as PNG with high resolution
 plt.show()
