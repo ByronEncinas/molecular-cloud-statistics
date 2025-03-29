@@ -1,13 +1,33 @@
-# Feature/Update
+Fix argument parsing for configurable simulation parameters
 
-- [x] python3 arepo_reduction_factor_colors.py [Allocated Mem] [R Boundary] [No. of Lines] [input_snap] [output_name]
-- [x] Cloud Tracker: run for all available files in 'arepo_data/' and keep track of a cube section surrounding the first cloud, and update that value by looking for np.argmax(Density) inside that cube. Now with peak density as marker for time evolution.
-- [x] Spherical distribution of x_init variable in region with $n_g > n_{threshold}$
-- [ ] Density Threshold Tests: compare reduction factor at different times with different density thresholds 100-50-10 cm$^{-3}$
-- Evolution of R(\vec{r})
-- [ ] Obtain magnetic field lines in the vicinity of a pocket. Chosse an arbitrary pocket, present in a magnetic field line, match the position of the pocket with a coordinate in space $\vec{r}$ and the direction of $\vec{B}(\vec{r}_{pocket})$ such that we want to generate new points perpendicular to the line.
+# library.py
 
+Physical constans
 
-$$
-\{ \vec{r}^i_{new} \}_i^N \perp \vec{B}(\vec{r}_{pocket})
-$$
+# los_stats.py
+
+Enhance argument parsing for simulation configuration
+
+- Improved command-line argument handling to allow users to specify:
+  - N: The number of iterations (default: 4000)
+  - case: The simulation case type ('ideal' or 'amb', default: 'ideal')
+  - num_file: The file number (default: '430')
+  - max_cycles: The maximum number of cycles (default: 100)
+  - NeffOrStability: A flag to specify whether to calculate stability ('S') or column densities ('N', default: 'S')
+  
+- If no command-line arguments are provided, the script will use the default values.
+- This change provides greater flexibility for configuring the simulation through command-line arguments.
+
+# stats.py
+
+Refactor argument parsing for simulation parameters and file handling
+
+- Enhanced command-line argument handling to allow users to specify:
+  - N: The number of iterations (default: 5000)
+  - rloc: The reference location (default: 0.5)
+  - max_cycles: The maximum number of cycles (default: 50)
+  - case: The simulation case type (e.g., 'ideal', default: 'ideal')
+  - num_file: The file number (default: '430')
+  
+- Added logic to append 'NO_ID' to the arguments if less than 6 arguments are provided.
+- Defaults are used if no command-line arguments are given, making it easier to run the script without manual adjustments.
