@@ -29,6 +29,7 @@ else:
     max_cycles      = 100
     case            = 'ideal'
     num_file        = '430'
+    sys.argv.append('NO_ID')
 
 print(sys.argv)
 
@@ -418,11 +419,11 @@ for cycle in range(max_cycles):
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
-    np.save(os.path.join(children_folder, f"ColumnDensity{cycle}.npy"), column)
-    np.save(os.path.join(children_folder, f"Positions{cycle}.npy"), vector)
-    np.save(os.path.join(children_folder, f"Trajectory{cycle}.npy"), distance)
-    np.save(os.path.join(children_folder, f"NumberDensities{cycle}.npy"), numb_density)
-    np.save(os.path.join(children_folder, f"MagneticFields{cycle}.npy"), bfield)
+    np.save(os.path.join(children_folder, f"ColumnDensity{sys.argv[-1]}{cycle}.npy"), column)
+    np.save(os.path.join(children_folder, f"Positions{sys.argv[-1]}{cycle}.npy"), vector)
+    np.save(os.path.join(children_folder, f"Trajectory{sys.argv[-1]}{cycle}.npy"), distance)
+    np.save(os.path.join(children_folder, f"NumberDensities{sys.argv[-1]}{cycle}.npy"), numb_density)
+    np.save(os.path.join(children_folder, f"MagneticFields{sys.argv[-1]}{cycle}.npy"), bfield)
 
     min_den_cycle.append(min(numb_density))
     
