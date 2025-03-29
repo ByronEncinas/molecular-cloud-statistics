@@ -53,6 +53,13 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume):
 FloatType = np.float64
 IntType = np.int32
 
+""" 
+python3  los_stats.py 2000 ideal 430 10 S/N > R430TST.txt 2> R430TST_error.txt &
+
+S : Stability
+N : Column densities at
+
+"""
 if len(sys.argv)>2:
     N             = int(sys.argv[1])
     case         = str(sys.argv[2]) #ideal/amb
@@ -60,10 +67,10 @@ if len(sys.argv)>2:
     max_cycles          = int(sys.argv[4]) 
     NeffOrStability =  str(sys.argv[5]) 
 else:
-    N            = 4_000
-    case        = 'ideal'
-    num_file     = '430'
-    max_cycles          = 100
+    N               = 2_000
+    case            = 'ideal'
+    num_file        = '430'
+    max_cycles      = 100
     NeffOrStability =  'S' # S stability or N column densities
 
 if case == 'ideal':
@@ -111,7 +118,7 @@ if filename == None:
 
 snap = filename.split(".")[0][-3:]
 
-new_folder = os.path.join(f"./density_profiles/{case}/", num_file)
+new_folder = os.path.join(f"./los_stats/{case}/", num_file)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -177,7 +184,7 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
  
-new_folder = os.path.join(f"density_profiles/{NeffOrStability}/{case}" , snap)
+new_folder = os.path.join(f"los_stats/{NeffOrStability}/{case}" , snap)
 os.makedirs(new_folder, exist_ok=True)
 
 def energies_get_along_lines(x_init=None):
@@ -571,7 +578,7 @@ if NeffOrStability == 'S':
         if len(static) > 0:
             static_value = static[0] 
         else:
-            static_value = len(ratio_m)
+            static_value = len(ratio_m) - 1
 
         mosaic = [
             ['A', 'B'],
@@ -580,7 +587,7 @@ if NeffOrStability == 'S':
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
         # Plot Number Density
-        axs['A'].plot(trajectory[1:cut, i]/cm_to_AU, numb_densities[1:cut, i], linestyle="--", color="blue")
+        axs['A'].plot(trajectory[1:cut, i]/AU_to_cm, numb_densities[1:cut, i], linestyle="--", color="blue")
         axs['A'].set_yscale('log')
         axs['A'].set_xscale('log')
         axs['A'].set_xlabel("s (AU) along LOS")
@@ -589,8 +596,8 @@ if NeffOrStability == 'S':
         axs['A'].grid(True)
 
         # Plot Energy Ratios
-        axs['B'].plot(trajectory[1:static, i]/cm_to_AU, ratio_m[:static], linestyle="--", color="red", label="Magnetic / Gravity")
-        axs['B'].plot(trajectory[1:static, i]/cm_to_AU, ratio_t[:static], linestyle="--", color="green", label="Thermal / Gravity")
+        axs['B'].plot(trajectory[1:static, i]/AU_to_cm, ratio_m[:static], linestyle="--", color="red", label="Magnetic / Gravity")
+        axs['B'].plot(trajectory[1:static, i]/AU_to_cm, ratio_t[:static], linestyle="--", color="green", label="Thermal / Gravity")
         axs['B'].set_xscale('log')
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (AU) along LOS")

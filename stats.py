@@ -8,6 +8,7 @@ from library import *
 import csv, glob, os, sys, time
 import h5py, json
 
+# python3 stats.py 1000 10 10 ideal 430 TEST > R430TST.txt 2> R430TST_error.txt &
 
 start_time = time.time()
 
@@ -23,11 +24,24 @@ if len(sys.argv)>4:
 	if len(sys.argv) < 6:
 		sys.argv.append('NO_ID')
 else:
-    N            =5_000
-    rloc         =0.5   
-    max_cycles   =50
-    case = 'ideal'
-    num_file = '430'
+    N            =2_000
+    rloc         =1.0
+    max_cycles   =100
+    case         = 'ideal'
+    num_file     = '430'
+
+if len(sys.argv)>5:
+    N             = int(sys.argv[1])
+    rloc          = float(sys.argv[2])
+    max_cycles    = int(sys.argv[3]) 
+    case          = str(sys.argv[4]) 
+    num_file      = str(sys.argv[5]) 
+else:
+    N               = 2_000
+    rloc            = 1.0
+    max_cycles      = 100
+    case            = 'ideal'
+    num_file        = '430'
 
 print(sys.argv)
 
@@ -79,8 +93,8 @@ if filename is None:
 
 data = h5py.File(filename, 'r')
 header_group = data['Header']
-os.makedirs("threshold_reduction_test", exist_ok=True)
-parent_folder = "threshold_reduction_test/"+ case 
+os.makedirs("stats", exist_ok=True)
+parent_folder = "stats/"+ case 
 children_folder = os.path.join(parent_folder, snap)
 os.makedirs(children_folder, exist_ok=True)
 Boxsize = data['Header'].attrs['BoxSize']

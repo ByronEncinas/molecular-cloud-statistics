@@ -13,26 +13,35 @@ import healpy as hp
 
 """ Toggle Parameters """
 
-outer_radius  = 1 # In Parsecs (Deprecated)
-
 """ Constants and convertion factor """
-km_to_parsec = 1/3.085677581e13  # 1 pc in km
-mass_unit = 1.99e33
+
+hydrogen_mass = 1.6735e-24 # gr
+
+# Unit Conversions
+km_to_parsec = 1 / 3.085677581e13  # 1 pc in km
+pc_to_cm = 3.086 * 10e+18  # cm per parsec
+AU_to_cm = 1.496 * 10e+13  # cm per AU
+parsec_to_cm3 = 3.086e+18  # cm per parsec
+
+# Physical Constants
+mass_unit = 1.99e33  # g
 length_unit = 3.086e18  # cm
 velocity_unit = 1e5  # cm/s
 time_unit = length_unit / velocity_unit  # s
-seconds_in_myr = 1e6 * 365.25 * 24 * 3600  # s/Myr
+seconds_in_myr = 1e6 * 365.25 * 24 * 3600  # seconds in a million years (Myr)
+boltzmann_constant_cgs = 1.380649e-16  # erg/K
+grav_constant_cgs = 6.67430e-8  # cm^3/g/s^2
+hydrogen_mass = 1.6735e-24  # g
+
+# Code Units Conversion Factors
 myrs_to_code_units = seconds_in_myr / time_unit
-code_units_to_gr_cm3 = 6.771194847794873e-23
-mean_molecular_weight_ism = 2.35
-gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23 # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is
-parsec_to_cm3 = 3.086e+18
+code_units_to_gr_cm3 = 6.771194847794873e-23  # conversion from code units to g/cm^3
 gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
-boltzmann_constant_cgs = 1.380649e-16
-grav_constant_cgs = 6.67430e-8
-hydrogen_mass = 1.6735e-24
-cm_to_pc = 3.086 * 10**18  # cm per parsec
-cm_to_AU = 1.496 * 10**13  # cm per AU
+
+# ISM Specific Constants
+mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM
+gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
+
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
@@ -53,7 +62,7 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 	return local_densities
 
 def find_points_and_relative_positions(x, Pos, VoronoiPos):
-    dist, cells = spatial.KDTree(Pos[:]).query(x, k=1)
+    dist, cells = spatial.KDTree(Pos[:]).query(x, k=1, workers=-1)
     rel_pos = VoronoiPos[cells] - x
     return dist, cells, rel_pos
 
