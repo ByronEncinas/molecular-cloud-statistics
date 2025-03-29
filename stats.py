@@ -537,7 +537,7 @@ for cycle in range(max_cycles):
 
     ds = np.diff(distance) 
     adaptive_sigma = 3*ds/np.mean(ds)
-    bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)])
+    bfield = np.array([gaussian_filter1d(bfield, sigma=s, mode='nearest')[i] for i, s in enumerate(adaptive_sigma)])
     
     distance = distance[1:]
     numb_density = numb_density[1:]
