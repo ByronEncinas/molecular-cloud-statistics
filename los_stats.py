@@ -507,18 +507,24 @@ if NeffOrStability == 'S':
 
     for i in range(m):
 
-        cut = threshold[i]
+        cut = threshold[i] - 1
         eff_column = np.max(eff_column_densities[:, i])
 
-        np.save(f"{new_folder}/eff_column_densities_{i}.npy", eff_column_densities[:cut, i])
-        np.save(f"{new_folder}/numb_densities_{i}.npy", numb_densities[:cut, i])
-        np.save(f"{new_folder}/energy_magnetic_{i}.npy", energy_magnetic[:cut, i])
-        np.save(f"{new_folder}/energy_thermal_{i}.npy", energy_thermal[:cut, i])
-        np.save(f"{new_folder}/energy_grav_{i}.npy", energy_grav[:cut, i])
-        np.save(f"{new_folder}/temperature_{i}.npy", temperature[:cut, i])
+        np.save(f"{new_folder}/positions{i}.npy", trajectory[1:cut, i])
+        np.save(f"{new_folder}/eff_column_densities{i}.npy", eff_column_densities[:cut, i])
+        np.save(f"{new_folder}/numb_densities{i}.npy", numb_densities[:cut, i])
+        np.save(f"{new_folder}/energy_magnetic{i}.npy", energy_magnetic[:cut, i])
+        np.save(f"{new_folder}/energy_thermal{i}.npy", energy_thermal[:cut, i])
+        np.save(f"{new_folder}/energy_grav{i}.npy", energy_grav[:cut, i])
+        np.save(f"{new_folder}/temperature{i}.npy", temperature[:cut, i])
 
-        ratio_m = energy_magnetic[1:cut, i] / abs(energy_grav[1:cut, i])
-        ratio_t = energy_thermal[1:cut, i] / abs(energy_grav[1:cut, i])
+        non_zeroes = (energy_grav[1:cut, i] != 0.0)
+        
+        s = trajectory[1:cut, i]
+        n = numb_densities[1:cut, i]
+
+        ratio_m = energy_magnetic[1:cut, i]/ abs(energy_grav[1:cut, i])
+        ratio_t = energy_thermal[1:cut, i]  / abs(energy_grav[1:cut, i])
         ratio_sum = ratio_m + ratio_t
 
         mask = ratio_sum < 10
@@ -536,7 +542,7 @@ if NeffOrStability == 'S':
         fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
 
         # Plot Number Density
-        axs['A'].plot(trajectory[1:cut, i]/AU_to_cm, numb_densities[1:cut, i], linestyle="--", color="blue")
+        axs['A'].plot(s/AU_to_cm, n, linestyle="--", color="blue")
         axs['A'].set_yscale('log')
         axs['A'].set_xscale('log')
         axs['A'].set_xlabel("s (AU) along LOS")
@@ -545,8 +551,8 @@ if NeffOrStability == 'S':
         axs['A'].grid(True)
 
         # Plot Energy Ratios
-        axs['B'].plot(trajectory[1:static_value, i]/AU_to_cm, ratio_m[:static_value], linestyle="--", color="red", label="Magnetic / Gravity")
-        axs['B'].plot(trajectory[1:static_value, i]/AU_to_cm, ratio_t[:static_value], linestyle="--", color="green", label="Thermal / Gravity")
+        axs['B'].plot(s/AU_to_cm, ratio_m, linestyle="--", color="red", label="Magnetic / Gravity")
+        axs['B'].plot(s/AU_to_cm, ratio_t, linestyle="--", color="green", label="Thermal / Gravity")
         axs['B'].set_xscale('log')
         axs['B'].set_yscale('log')
         axs['B'].set_xlabel("s (AU) along LOS")
