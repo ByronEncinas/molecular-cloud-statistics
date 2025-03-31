@@ -75,6 +75,8 @@ else:
     max_cycles      = 100
     NeffOrStability =  'S' # S stability or N column densities
 
+rloc = 0.1
+
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
 elif case == 'amb':
@@ -185,7 +187,6 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     valid_vectors = np.array(valid_vectors)
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
-
 
 def energies_get_along_lines(x_init=None):
     m = x_init.shape[0]
@@ -319,6 +320,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
     """
+    directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
 
     dx = 0.5
 
@@ -357,6 +359,8 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
         mask = dens > 100  # True if continue
         un_masked = np.logical_not(mask)
 
+        #aux = x[un_masked]
+
         # Perform Heun step and update values
         _, bfield, dens, vol, ke, pressure = Heun_step(
             x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
@@ -366,8 +370,9 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
         pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
         dens *= gr_cm3_to_nuclei_cm3
         
-        vol[un_masked] = 0
-
+        #vol[un_masked] = 0
+        print(x[:1], directions[:1], np.log10(dens[:1]))
+        
         non_zero = vol > 0
         if len(vol[non_zero]) == 0:
             break
@@ -378,7 +383,9 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
         x += dx_vec * directions
         
-        print(np.log10(dens[:3]))
+        print(np.log10(dens[:1]))
+
+        #x[un_masked] = aux # all lines that have reached threshold are not to be updated
 
         line[k+1,:,:]    = x
         densities[k+1,:] = dens
@@ -415,11 +422,11 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
             x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
         )
         
-        mass_dens = dens * code_units_to_gr_cm3
         pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
         dens *= gr_cm3_to_nuclei_cm3
         
-        vol[un_masked_rev] = 0
+        #vol[un_masked_rev] = 0
+        print(x[0], np.log10(dens[0]))
 
         non_zero = vol > 0
         if len(vol[non_zero]) == 0:
@@ -431,42 +438,43 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
         x -= dx_vec * directions
 
-        print(np.log10(dens[:3]))
-
         line_rev[k+1,:,:]    = x
         densities_rev[k+1,:] = dens
 
-        if np.all(un_masked):
+        if np.all(un_masked_rev):
             print("All values are False: means all density < 10^2")
             break
 
         k += 1
 
-    updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
+    # updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
     
-    threshold = threshold[updated_mask].astype(int)
-    threshold_rev = threshold_rev[updated_mask].astype(int)
+    #threshold = threshold[updated_mask].astype(int)
+    threshold = threshold.astype(int)
+    #threshold_rev = threshold_rev[updated_mask].astype(int)
+    threshold_rev = threshold_rev.astype(int)
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
-    line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
-    densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
+    # line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
+    # densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
 
     # Apply to the reverse arrays in the same way
-    line_rev = line_rev[:, updated_mask, :]
-    densities_rev = densities_rev[:, updated_mask]
+    # line_rev = line_rev[:, updated_mask, :]
+    # densities_rev = densities_rev[:, updated_mask]
 
     radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
 
-    trajectory = np.zeros_like(densities)
-    column = np.zeros_like(densities)
+    trajectory = np.zeros_like(numb_densities)
+    column = np.zeros_like(numb_densities)
 
-    m = densities.shape[1]
+    m = numb_densities.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
 
-    radius_vector   *= 1.0* 3.086e+18                                # from Parsec to cm
+    radius_vector   *= 1.0* pc_to_cm # 3.086e+18                                # from Parsec to cm
 	
     for _n in range(m):  # Iterate over the first dimension
+        print("Line: ", _n, " Size: ", radius_vector[:, _n, 0].shape)
         prev = radius_vector[0, _n, :]
         trajectory[0, _n] = 0  # Initialize first row
         column[0, _n] = 0      # Initialize first row
@@ -480,7 +488,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
             
             prev = cur  # Store current point as previous point
 
-    trajectory      *= 1.0#* 3.086e+18                                # from Parsec to cm
+    trajectory      *= 1.0#pc_to_cm #* 3.086e+18                                # from Parsec to cm
 
     return radius_vector, trajectory, numb_densities, [threshold, threshold_rev], column
 
@@ -621,9 +629,8 @@ if NeffOrStability == 'S':
             plt.savefig(os.path.join(new_folder,f"FieldTopology{i}.png"), bbox_inches='tight')
             plt.show()
 
-
 elif NeffOrStability == 'N':
-    x_init = generate_vectors_in_core(max_cycles, densthresh, 1.0)
+    x_init = generate_vectors_in_core(max_cycles, densthresh, rloc)
     directions, abs_local_fields, local_densities, _ = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
     print('Directions provided by B field at point')
     radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
@@ -632,6 +639,8 @@ elif NeffOrStability == 'N':
     np.save(f"{new_folder}/thresholds.npy", (threshold, threshold_rev))
     for i in range(m):
         cut = threshold[i]
-        np.save(f"{new_folder}/eff_column_densities_{i}.npy", column[:, i])
+        np.save(f"{new_folder}/ColumnDensities{i}.npy", column[:, i])
+        np.save(f"{new_folder}/Positions{i}.npy", radius_vector[:, i, :])
+        np.save(f"{new_folder}/NumberDensities{i}.npy", numb_densities[:, i])
 
 
