@@ -344,7 +344,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
     x = x_init.copy()
 
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
     densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
@@ -371,7 +371,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
         dens *= gr_cm3_to_nuclei_cm3
         
         #vol[un_masked] = 0
-        print(x[:1], directions[:1], np.log10(dens[:1]))
+        print( np.log10(dens[:1]))
         
         non_zero = vol > 0
         if len(vol[non_zero]) == 0:
@@ -383,8 +383,6 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
         x += dx_vec * directions
         
-        print(np.log10(dens[:1]))
-
         #x[un_masked] = aux # all lines that have reached threshold are not to be updated
 
         line[k+1,:,:]    = x
@@ -400,7 +398,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     
     x = x_init.copy()
 
-    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
 
@@ -408,6 +406,8 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     
     k=0
+    
+    non_zero_rev = vol > 0
 
     mask_rev = dens > 100
     un_masked_rev = np.logical_not(mask_rev)
@@ -428,8 +428,8 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
         #vol[un_masked_rev] = 0
         print(x[0], np.log10(dens[0]))
 
-        non_zero = vol > 0
-        if len(vol[non_zero]) == 0:
+        non_zero_rev = vol > 0
+        if len(vol[non_zero_rev]) == 0:
             break
 
         dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
@@ -468,18 +468,15 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     trajectory = np.zeros_like(numb_densities)
     column = np.zeros_like(numb_densities)
 
-    m = numb_densities.shape[1]
     print("Surviving lines: ", m, "out of: ", max_cycles)
 
-    radius_vector   *= 1.0* pc_to_cm # 3.086e+18                                # from Parsec to cm
-	
-    for _n in range(m):  # Iterate over the first dimension
+    for _n in range(radius_vector.shape[1]):  # Iterate over the first dimension
         print("Line: ", _n, " Size: ", radius_vector[:, _n, 0].shape)
         prev = radius_vector[0, _n, :]
         trajectory[0, _n] = 0  # Initialize first row
         column[0, _n] = 0      # Initialize first row
         
-        for k in range(1, densities.shape[0]):  # Start from k = 1 to avoid indexing errors            
+        for k in range(1, radius_vector.shape[0]):  # Start from k = 1 to avoid indexing errors            
             cur = radius_vector[k, _n, :]
             diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
 
