@@ -27,7 +27,7 @@ else:
     N               = 2_000
     rloc            = 0.1
     max_cycles      = 100
-    case            = 'ideal'
+    case            = 'amb'
     num_file        = '430'
     sys.argv.append('NO_ID')
 
