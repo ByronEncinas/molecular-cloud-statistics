@@ -672,6 +672,7 @@ if True:
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
         plt.savefig(os.path.join(children_folder,f"FieldTopology.png"), bbox_inches='tight')
+        plt.show()
 
     except:
         print("Couldnt print B field structure")
