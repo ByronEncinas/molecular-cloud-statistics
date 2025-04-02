@@ -25,9 +25,9 @@ if len(sys.argv)>4:
         sys.argv.append('NO_ID')
 else:
     N               = 2_000
-    rloc            = 0.1
-    max_cycles      = 100
-    case            = 'amb'
+    rloc            = 1.0
+    max_cycles      = 10
+    case            = 'ideal'
     num_file        = '430'
     sys.argv.append('NO_ID')
 
@@ -117,6 +117,50 @@ for dim in range(3):  # Loop over x, y, z
     boundary_mask = pos_from_center > Boxsize / 2
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
+
+def generate_vectors_in_core(max_cycles, densthresh, rloc=0.1, seed=12345):
+    import numpy as np
+    from scipy.spatial import cKDTree
+    np.random.seed(seed)
+    valid_vectors = []
+    tree = cKDTree(Pos)
+    while len(valid_vectors) < max_cycles:
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
+        distances = np.linalg.norm(points, axis=1)
+        inside_sphere = points[distances <= rloc]
+        _, nearest_indices = tree.query(inside_sphere, workers=-1)
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+        valid_vectors.extend(valid_points)
+    valid_vectors = np.array(valid_vectors)
+    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
+
+    return valid_vectors[random_indices]
+
+x_init = generate_vectors_in_core(max_cycles, 100, rloc=0.1)
+
+import matplotlib.pyplot as plt
+
+# Extract x and y coordinates
+x_coords = x_init[:, 0]
+y_coords = x_init[:, 1]
+
+# Create the plot
+plt.figure(figsize=(6, 6))
+plt.scatter(x_coords, y_coords, color='b', s=10, alpha=0.7)
+
+# Formatting
+plt.xlabel("X Position")
+plt.ylabel("Y Position")
+plt.title("Generated Vectors in the XY Plane")
+plt.axhline(0, color='gray', linestyle='--', linewidth=0.5)  # Add a horizontal reference line
+plt.axvline(0, color='gray', linestyle='--', linewidth=0.5)  # Add a vertical reference line
+plt.grid(True)
+plt.savefig('./Vectors.png')
+#plt.savefig(os.path.join(children_folder, f"GeneratedVectors_{sys.argv[-1]}.png"), bbox_inches='tight')
+# Show the plot
+plt.show()
+
 
 def get_along_lines(x_init=None):
     """
@@ -260,6 +304,7 @@ def get_along_lines(x_init=None):
             max_threshold = np.max(threshold_rev)
 
         x[un_masked_rev] = aux
+        print(np.log10(dens[:3]))
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
@@ -271,7 +316,7 @@ def get_along_lines(x_init=None):
         order_clause = step_diff >= 1_000
         percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
 
-        if np.all(un_masked):
+        if np.all(un_masked_rev):
             print("All values are False: means all density < 10^2")
             break
 
@@ -347,26 +392,6 @@ def get_along_lines(x_init=None):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold2, threshold_rev, threshold2_rev], column
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=0.1, seed=12345):
-    import numpy as np
-    from scipy.spatial import cKDTree
-    np.random.seed(seed)
-    valid_vectors = []
-    tree = cKDTree(Pos)
-    while len(valid_vectors) < max_cycles:
-        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
-        distances = np.linalg.norm(points, axis=1)
-        inside_sphere = points[distances <= rloc]
-        _, nearest_indices = tree.query(inside_sphere, workers=-1)
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
-        valid_points = inside_sphere[valid_mask]
-        valid_vectors.extend(valid_points)
-    valid_vectors = np.array(valid_vectors)
-    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
-    return valid_vectors[random_indices]
-
-x_init = generate_vectors_in_core(max_cycles, 100, rloc)
-
 radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init)
 
 m = magnetic_fields.shape[1]
@@ -386,11 +411,12 @@ for cycle in range(max_cycles):
     _to   = N+ 1 + threshold[cycle] -1 # we sliced line[1:,:,:] so -1
     p_r = N + 1 - _from
 
-    vector = radius_vector[_from:_to,cycle, :].copy()
-    column = cd[_from:_to,cycle].copy()
-    bfield    = magnetic_fields[_from:_to,cycle].copy()
-    distance = trajectory[_from:_to,cycle].copy()
-    numb_density = numb_densities[_from:_to,cycle].copy()
+    vector = radius_vector
+    column = cd
+    bfield    = magnetic_fields
+    distance = trajectory
+    numb_density = numb_densities
+    p_r = N + 1
     tupi = f"{x_init[cycle,0]},{x_init[cycle,1]},{x_init[cycle,2]}"
 
     print(len(bfield), p_r, threshold[cycle], threshold_rev[cycle])
@@ -403,19 +429,16 @@ for cycle in range(max_cycles):
         continue
         
     if True:
-        inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
-        distance = distance[inter]
         ds = np.abs(np.diff(distance, n=1))
         distance = distance[:-1]  
-        vector = vector[inter][:-1]
-        numb_density  = numb_density[inter][:-1]
-        column        = column[inter][:-1]
-        bfield        = bfield[inter]
+        vector = vector[:-1]
+        numb_density  = numb_density[:-1]
+        column        = column[:-1]
+        bfield        = bfield
 
         adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
         adaptive_sigma[adaptive_sigma==0] = 1.0e-1
         bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
-
 
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
@@ -437,7 +460,7 @@ for cycle in range(max_cycles):
 
     p_i = find_insertion_point(index_pocket, p_r)
     
-    print("Maxima Values related to pockets: ", len(index_pocket), p_i)
+    #print("Maxima Values related to pockets: ", len(index_pocket), p_i)
 
     try:
         closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
@@ -463,14 +486,14 @@ for cycle in range(max_cycles):
             numb_density_at.append(n_r)
             pos_red[tupi] = R
 
-    print("Closest local maxima 'p':", closest_values)
-    print("Bs: ", B_r, "ns: ", n_r)
-    print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
+    #print("Closest local maxima 'p':", closest_values)
+    #print("Bs: ", B_r, "ns: ", n_r)
+    #print("Bi: ", bfield[closest_values[0]], "Bj: ", bfield[closest_values[1]])
 
-    if B_r/B_l < 1:
-        print(" B_r/B_l =", B_r/B_l, "< 1 ") 
-    else:
-        print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
+    #if B_r/B_l < 1:
+        #print(" B_r/B_l =", B_r/B_l, "< 1 ") 
+    #else:
+        #print(" B_r/B_l =", B_r/B_l, "> 1 so CRs are not affected => R = 1") 
 
 
 counter = Counter(reduction_factor)
