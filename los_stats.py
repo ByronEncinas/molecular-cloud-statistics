@@ -67,7 +67,7 @@ if len(sys.argv)>6:
     case              = str(sys.argv[2]) #ideal/amb
     num_file          = str(sys.argv[3]) 
     max_cycles        = int(sys.argv[4]) 
-    NeffOrStability   =  str(sys.argv[5]) 
+    NeffOrStability   = str(sys.argv[5]) 
     seed              = int(sys.argv[6])
 else:
     N               = 2_000
@@ -76,7 +76,6 @@ else:
     max_cycles      = 100
     NeffOrStability =  'S' # S stability or N column densities
     seed            = 12345
-
 
 rloc = 0.1
 
@@ -390,6 +389,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
         line[k+1,:,:]    = x
         densities[k+1,:] = dens
+        bfields[k+1,:] = bfield
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
@@ -443,6 +443,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
         line_rev[k+1,:,:]    = x
         densities_rev[k+1,:] = dens
+        bfields_rev[k+1,:] = bfield
 
         if np.all(un_masked_rev):
             print("All values are False: means all density < 10^2")
@@ -467,6 +468,8 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
     radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
+    magnetic_field = np.append(bfields_rev[::-1, :, :], bfields[1:,:,:], axis=0)
+
 
     trajectory = np.zeros_like(numb_densities)
     column = np.zeros_like(numb_densities)
@@ -639,8 +642,9 @@ elif NeffOrStability == 'N':
     np.save(f"{new_folder}/thresholds.npy", (threshold, threshold_rev))
     for i in range(m):
         cut = threshold[i]
-        np.save(f"{new_folder}/ColumnDensities{i}.npy", column[:, i])
-        np.save(f"{new_folder}/Positions{i}.npy", radius_vector[:, i, :])
-        np.save(f"{new_folder}/NumberDensities{i}.npy", numb_densities[:, i])
+        np.save(f"{new_folder}/ColumnDensities{seed}{i}.npy", column[:, i])
+        np.save(f"{new_folder}/Positions{seed}{i}.npy", radius_vector[:, i, :])
+        np.save(f"{new_folder}/NumberDensities{seed}{i}.npy", numb_densities[:, i])
+        np.save(f"{new_folder}/NumberDensities{seed}{i}.npy", numb_densities[:, i])
 
 
