@@ -596,10 +596,20 @@ counter = Counter(reduction_factor2)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red2.items()}
 
+import datetime
+import os, socket
+
+hostname = socket.gethostname()
+
+# Get current datetime
+current_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'), 'w') as file:
     file.write(f"{filename}\n")
-    file.write(f"{peak_den}\n")
+    file.write(f"File Created On: {current_datetime}\n")  # Add current datetime
+    file.write(f"Hostname: {hostname}\n")
     file.write(f"Run ID: {sys.argv[-1]}\n")
+    file.write(f"{peak_den}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"Density Threshold : 100\n")
@@ -616,6 +626,8 @@ with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'
     file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
     file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
     file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
+
+
 
 
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
