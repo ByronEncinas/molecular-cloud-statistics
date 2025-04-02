@@ -94,7 +94,7 @@ for f in file_list:
 if filename == None:
     raise FileNotFoundError
 
-file_path = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
+file_path = f'./{case}_cloud_trajectory.txt'
 
 snap = []
 time_value = []
