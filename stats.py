@@ -25,7 +25,7 @@ if len(sys.argv)>4:
         sys.argv.append('NO_ID')
 else:
     N               = 2_000
-    rloc            = 1.0
+    rloc            = 0.1
     max_cycles      = 100
     case            = 'ideal'
     num_file        = '430'
@@ -43,7 +43,7 @@ elif case == 'amb':
 else:
     subdirectory= ''
 
-file_path       = f'cloud_tracker_slices/{case}/{case}_cloud_trajectory.txt'
+file_path       = f'./{case}_cloud_trajectory.txt'
 
 snap = []
 time_value = []
@@ -346,7 +346,7 @@ def get_along_lines(x_init=None):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes_all, radius_to_origin, [threshold, threshold2, threshold_rev, threshold2_rev], column
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
+def generate_vectors_in_core(max_cycles, densthresh, rloc=0.1, seed=12345):
     import numpy as np
     from scipy.spatial import cKDTree
     np.random.seed(seed)
