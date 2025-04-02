@@ -75,6 +75,7 @@ file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 filename = None
 for f in file_list:
     if num_file in f:
+        print()
         filename = f
 if filename is None:
     raise FileNotFoundError
@@ -622,13 +623,13 @@ print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 counter = Counter(reduction_factor2)
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-file_path = os.path.join(children_folder, f'reduction_factor_100_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'reduction_factor100_{sys.argv[-1]}.json')
 with open(file_path, 'w') as json_file: json.dump(reduction_factor2, json_file)
 
-file_path = os.path.join(children_folder, f'numb_density_100_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'numb_density100_{sys.argv[-1]}.json')
 with open(file_path, 'w') as json_file: json.dump(numb_density_at2, json_file)
 
-file_path = os.path.join(children_folder, f'position_vector_100_{sys.argv[-1]}')
+file_path = os.path.join(children_folder, f'position_vector100_{sys.argv[-1]}')
 with open(file_path, 'w') as json_file: json.dump(pos_red2, json_file)
 
 if True:
