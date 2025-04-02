@@ -8,27 +8,27 @@ from library import *
 import csv, glob, os, sys, time
 import h5py, json
 
-# python3 stats.py 1000 10 10 ideal 430 TEST > R430TST.txt 2> R430TST_error.txt &
+# python3 stats.py 1000 10 10 ideal 430 TEST seed > R430TST.txt 2> R430TST_error.txt &
 
 start_time = time.time()
 
 FloatType = np.float64
 IntType = np.int32
 
-if len(sys.argv)>4:
+if len(sys.argv)>6:
     N             = int(sys.argv[1])
     rloc          = float(sys.argv[2])
     max_cycles    = int(sys.argv[3]) 
     case          = str(sys.argv[4]) 
     num_file      = str(sys.argv[5]) 
-    if len(sys.argv) < 6:
-        sys.argv.append('NO_ID')
+    seed          = int(sys.argv[6])
 else:
     N               = 2_000
     rloc            = 0.1
     max_cycles      = 100
-    case            = 'amb'
+    case            = 'ideal'
     num_file        = '430'
+    seed            = 12345 
     sys.argv.append('NO_ID')
 
 print(sys.argv)
@@ -144,6 +144,75 @@ def get_along_lines(x_init=None):
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init 
+    
+    x = x_init.copy()
+
+    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+
+    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    
+    k=0
+
+    mask_rev = dens > 10
+    un_masked_rev = np.logical_not(mask_rev)
+    mask2_rev = dens > 100
+    un_masked2_rev = np.logical_not(mask2_rev)
+
+
+    while np.any((mask_rev)):
+
+        mask_rev = dens > 10
+        un_masked_rev = np.logical_not(mask_rev)
+        mask2_rev = dens > 100
+        un_masked2_rev = np.logical_not(mask2_rev)
+
+        aux =  x[un_masked_rev]
+        aux2 = x[un_masked2_rev]
+
+        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        dens = dens * gr_cm3_to_nuclei_cm3
+
+        threshold_rev += mask_rev.astype(int)
+        threshold2_rev += mask2_rev.astype(int)
+
+        if len(threshold_rev[un_masked_rev]) != 0:
+            unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
+            max_threshold = np.max(threshold_rev)
+        else:
+            unique_unmasked_max_threshold = np.max(threshold_rev)
+            max_threshold = np.max(threshold_rev)
+
+        x[un_masked_rev] = aux
+        print(np.log10(dens[:3]))
+
+        line_rev[k+1,:,:] = x
+        volumes_rev[k+1,:] = vol
+        bfields_rev[k+1,:] = bfield
+        densities_rev[k+1,:] = dens 
+                    
+        step_diff = max_threshold-unique_unmasked_max_threshold
+        
+        order_clause = step_diff >= 1_000
+        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
+
+        if np.all(un_masked_rev):
+            print("All values are False: means all density < 10^2")
+            break
+
+        if np.all(un_masked_rev) or (order_clause and percentage_clause):
+            if (order_clause and percentage_clause):
+                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
+                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
+                    file.write(f"{x_init[mask_rev]}\n")
+                print("95% of lines have concluded ")
+            else:
+                print("All values are False: means all crossed the threshold")
+            break
+
+        k += 1
 
     x = x_init.copy()
 
@@ -218,74 +287,6 @@ def get_along_lines(x_init=None):
         k += 1
     
     threshold = threshold.astype(int)
-    
-    x = x_init.copy()
-
-    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
-
-    vol = Volume[cells]
-
-    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    
-    k=0
-
-    mask_rev = dens > 10
-    un_masked_rev = np.logical_not(mask_rev)
-    mask2_rev = dens > 100
-    un_masked2_rev = np.logical_not(mask2_rev)
-
-
-    while np.any((mask_rev)):
-
-        mask_rev = dens > 10
-        un_masked_rev = np.logical_not(mask_rev)
-        mask2_rev = dens > 100
-        un_masked2_rev = np.logical_not(mask2_rev)
-
-        aux =  x[un_masked_rev]
-        aux2 = x[un_masked2_rev]
-
-        x, bfield, dens, vol = Heun_step(x, -dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        dens = dens * gr_cm3_to_nuclei_cm3
-
-        threshold_rev += mask_rev.astype(int)
-        threshold2_rev += mask2_rev.astype(int)
-
-        if len(threshold_rev[un_masked_rev]) != 0:
-            unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
-            max_threshold = np.max(threshold_rev)
-        else:
-            unique_unmasked_max_threshold = np.max(threshold_rev)
-            max_threshold = np.max(threshold_rev)
-
-        x[un_masked_rev] = aux
-
-        line_rev[k+1,:,:] = x
-        volumes_rev[k+1,:] = vol
-        bfields_rev[k+1,:] = bfield
-        densities_rev[k+1,:] = dens 
-                    
-        step_diff = max_threshold-unique_unmasked_max_threshold
-        
-        order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
-
-        if np.all(un_masked_rev):
-            print("All values are False: means all density < 10^2")
-            break
-
-        if np.all(un_masked_rev) or (order_clause and percentage_clause):
-            if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
-                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
-                    file.write(f"{x_init[mask_rev]}\n")
-                print("95% of lines have concluded ")
-            else:
-                print("All values are False: means all crossed the threshold")
-            break
-
-        k += 1
 
     updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
     
@@ -365,7 +366,7 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=0.1, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
-x_init = generate_vectors_in_core(max_cycles, 100, rloc)
+x_init = generate_vectors_in_core(max_cycles, 100, rloc, seed)
 
 radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, th, cd = get_along_lines(x_init)
 
@@ -480,7 +481,7 @@ pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for k
 with open(os.path.join(children_folder, f'PARAMETER_reduction10_{sys.argv[-1]}'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"{peak_den}\n")
-    file.write(f"Run ID: {sys.argv[-1]}\n")
+    file.write(f"Run ID/seed: {sys.argv[-1]}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc}\n")
@@ -608,7 +609,7 @@ with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'
     file.write(f"{filename}\n")
     file.write(f"File Created On: {current_datetime}\n")  # Add current datetime
     file.write(f"Hostname: {hostname}\n")
-    file.write(f"Run ID: {sys.argv[-1]}\n")
+    file.write(f"Run ID/seed: {sys.argv[-1]}\n")
     file.write(f"{peak_den}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")

@@ -62,18 +62,21 @@ S : Stability
 N : Column densities
 
 """
-if len(sys.argv)>2:
-    N             = int(sys.argv[1])
-    case         = str(sys.argv[2]) #ideal/amb
+if len(sys.argv)>6:
+    N                 = int(sys.argv[1])
+    case              = str(sys.argv[2]) #ideal/amb
     num_file          = str(sys.argv[3]) 
-    max_cycles          = int(sys.argv[4]) 
-    NeffOrStability =  str(sys.argv[5]) 
+    max_cycles        = int(sys.argv[4]) 
+    NeffOrStability   =  str(sys.argv[5]) 
+    seed              = int(sys.argv[6])
 else:
     N               = 2_000
     case            = 'ideal'
     num_file        = '430'
     max_cycles      = 100
     NeffOrStability =  'S' # S stability or N column densities
+    seed            = 12345
+
 
 rloc = 0.1
 
@@ -627,7 +630,7 @@ if NeffOrStability == 'S':
             plt.show()
 
 elif NeffOrStability == 'N':
-    x_init = generate_vectors_in_core(max_cycles, densthresh, rloc)
+    x_init = generate_vectors_in_core(max_cycles, densthresh, rloc, seed)
     directions, abs_local_fields, local_densities, _ = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
     print('Directions provided by B field at point')
     radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
