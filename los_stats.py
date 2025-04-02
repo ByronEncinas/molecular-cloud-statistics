@@ -54,8 +54,8 @@ FloatType = np.float64
 IntType = np.int32
 
 """ 
-python3 los_stats.py 2000 ideal 430 50 S > ELOS430TST.txt 2> ELOS430TST_error.txt &
-python3 los_stats.py 2000 ideal 430 50 N > NLOS430TST.txt 2> NLOS430TST_error.txt &
+python3 los_stats.py 2000 ideal 430 50 S seed > ELOS430TST.txt 2> ELOS430TST_error.txt &
+python3 los_stats.py 2000 ideal 430 50 N seed > NLOS430TST.txt 2> NLOS430TST_error.txt &
 
 
 S : Stability
