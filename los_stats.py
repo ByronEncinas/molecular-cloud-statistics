@@ -468,7 +468,7 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
     radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
-    magnetic_field = np.append(bfields_rev[::-1, :, :], bfields[1:,:,:], axis=0)
+    magnetic_field = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
 
 
     trajectory = np.zeros_like(numb_densities)
