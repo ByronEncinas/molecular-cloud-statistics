@@ -537,12 +537,17 @@ for cycle in range(max_cycles):
         pos_red[tupi] = R
         continue
 
-    ds = np.diff(distance) 
-    adaptive_sigma = 3*ds/np.mean(ds)
-    bfield = np.array([gaussian_filter1d(bfield, sigma=s, mode='nearest')[i] for i, s in enumerate(adaptive_sigma)])
-    
-    distance = distance[1:]
-    numb_density = numb_density[1:]
+    if True:
+        inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
+        distance = distance[inter]
+        ds = np.abs(np.diff(distance, n=1))
+        distance = distance[:-1]     # Remove the last element of distance
+        radius_vector = radius_vector[inter][:-1]
+        numb_density  = numb_density[inter][:-1]
+        bfield        = bfield[inter]
+        adaptive_sigma = 3*ds/np.mean(ds)
+        abfield = np.array([gaussian_filter1d(bfield, sigma=s, mode='nearest')[i] for i, s in enumerate(adaptive_sigma)])
+
 
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
