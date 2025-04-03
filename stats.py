@@ -542,7 +542,6 @@ for cycle in range(max_cycles):
         distance = distance[inter]
         ds = np.abs(np.diff(distance, n=1))
         distance = distance[:-1]     # Remove the last element of distance
-        radius_vector = radius_vector[inter][:-1]
         numb_density  = numb_density[inter][:-1]
         bfield        = bfield[inter]
         adaptive_sigma = 3*ds/np.mean(ds)
