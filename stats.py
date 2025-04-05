@@ -202,16 +202,6 @@ def get_along_lines(x_init=None):
             print("All values are False: means all density < 10^2")
             break
 
-        if np.all(un_masked_rev) or (order_clause and percentage_clause):
-            if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
-                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
-                    file.write(f"{x_init[mask_rev]}\n")
-                print("95% of lines have concluded ")
-            else:
-                print("All values are False: means all crossed the threshold")
-            break
-
         k += 1
 
     x = x_init.copy()
@@ -273,16 +263,6 @@ def get_along_lines(x_init=None):
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
             break
-
-        if np.all(un_masked) or (order_clause and percentage_clause): 
-            if (order_clause and percentage_clause):
-                with open(f'isolated_radius_vectors{snap}.dat', 'a') as file: 
-                    file.write(f"{order_clause} and {percentage_clause} of file {filename}\n")
-                    file.write(f"{x_init[mask]}\n")
-                print("95% of lines have concluded ")
-            else:
-                print("All values are False: means all crossed the threshold")
-            break    
 
         k += 1
     
