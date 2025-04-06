@@ -124,7 +124,7 @@ if filename == None:
 
 snap = filename.split(".")[0][-3:]
 
-new_folder = os.path.join(f"los_stats/{NeffOrStability}/{case}" , snap)
+new_folder = os.path.join(f"thesis_los/{NeffOrStability}/{case}" , snap)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -169,8 +169,6 @@ for dim in range(3):  # Loop over x, y, z
     boundary_mask = pos_from_center > Boxsize / 2
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
-
-densthresh = 100
 
 def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     import numpy as np
@@ -506,6 +504,8 @@ print("Elapsed Time: ", (time.time() - start_time)/60.)
 
 os.makedirs(new_folder, exist_ok=True)
 
+densthresh = 100
+
 if NeffOrStability == 'S':
     # for line os sight with start in center
     directions = fibonacci_sphere(max_cycles)
@@ -515,13 +515,14 @@ if NeffOrStability == 'S':
     m = magnetic_fields.shape[1]
     eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature = col_energies
 
-    np.save(f"{new_folder}/positions.npy", trajectory)
-    np.save(f"{new_folder}/eff_column_densities.npy", eff_column_densities)
-    np.save(f"{new_folder}/numb_densities.npy", numb_densities)
-    np.save(f"{new_folder}/energy_magnetic.npy", energy_magnetic)
-    np.save(f"{new_folder}/energy_thermal.npy", energy_thermal)
-    np.save(f"{new_folder}/energy_grav.npy", energy_grav)
-    np.save(f"{new_folder}/temperature.npy", temperature)
+    np.savez(f"{new_folder}/DataBundle.npz",
+            positions=trajectory,
+            eff_column_densities=eff_column_densities,
+            numb_densities=numb_densities,
+            energy_magnetic=energy_magnetic,
+            energy_thermal=energy_thermal,
+            energy_grav=energy_grav,
+            temperature=temperature)
 
     for i in range(m):
 
@@ -637,10 +638,12 @@ elif NeffOrStability == 'N':
     print('Directions provided by B field at point')
     radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
     threshold, threshold_rev = th
-    np.save(f"{new_folder}/thresholds{seed}.npy", (threshold, threshold_rev))
-    np.save(f"{new_folder}/ColumnDensities{seed}.npy", column)
-    np.save(f"{new_folder}/Positions{seed}.npy", radius_vector)
-    np.save(f"{new_folder}/NumberDensities{seed}.npy", numb_densities)
-    np.save(f"{new_folder}/NumberDensities{seed}.npy", numb_densities)
+    np.savez(os.path.join(new_folder, f"DataBundle{seed}.npz"),
+            thresholds=threshold,
+            thresholds_rev=threshold_rev,
+            column_densities=column,
+            positions=radius_vector,
+            number_densities=numb_densities)
+
 
 

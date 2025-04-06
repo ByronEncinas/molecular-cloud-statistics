@@ -24,7 +24,7 @@ if len(sys.argv)>6:
     seed          = int(sys.argv[6])
 else:
     N               = 2_000
-    rloc            = 0.1
+    rloc            = 10
     max_cycles      = 100
     case            = 'ideal'
     num_file        = '430'
@@ -83,7 +83,7 @@ if filename is None:
 data = h5py.File(filename, 'r')
 header_group = data['Header']
 os.makedirs("stats", exist_ok=True)
-parent_folder = "stats/"+ case 
+parent_folder = "thesis_stats/"+ case 
 children_folder = os.path.join(parent_folder, snap)
 os.makedirs(children_folder, exist_ok=True)
 Boxsize = data['Header'].attrs['BoxSize']
@@ -178,26 +178,14 @@ def get_along_lines(x_init=None):
         threshold_rev += mask_rev.astype(int)
         threshold2_rev += mask2_rev.astype(int)
 
-        if len(threshold_rev[un_masked_rev]) != 0:
-            unique_unmasked_max_threshold = np.max(np.unique(threshold_rev[un_masked_rev]))
-            max_threshold = np.max(threshold_rev)
-        else:
-            unique_unmasked_max_threshold = np.max(threshold_rev)
-            max_threshold = np.max(threshold_rev)
-
         x[un_masked_rev] = aux
-        print(np.log10(dens[:3]))
+        print(np.max(np.log10(dens)))
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
         densities_rev[k+1,:] = dens 
                     
-        step_diff = max_threshold-unique_unmasked_max_threshold
-        
-        order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked_rev)/len(mask_rev) > 0.95
-
         if np.all(un_masked_rev):
             print("All values are False: means all density < 10^2")
             break
@@ -238,27 +226,14 @@ def get_along_lines(x_init=None):
 
         threshold  += mask.astype(int)  # Increment threshold count only for values still above 100
         threshold2 += mask2.astype(int)  # Increment threshold count only for values still above 100
-
-        if len(threshold[un_masked]) != 0:
-            unique_unmasked_max_threshold = np.max(np.unique(threshold[un_masked]))
-            max_threshold = np.max(threshold)
-        else:
-            unique_unmasked_max_threshold = np.max(threshold)
-            max_threshold = np.max(threshold)
-        
+      
         x[un_masked] = aux
-        print(np.log10(dens[:3]))
+        print(np.max(np.log10(dens)))
 
         line[k+1,:,:]    = x
         volumes[k+1,:]   = vol
         bfields[k+1,:]   = bfield
         densities[k+1,:] = dens
-
-        step_diff = max_threshold-unique_unmasked_max_threshold
-        
-        order_clause = step_diff >= 1_000
-        percentage_clause = np.sum(un_masked)/len(mask) > 0.95
-
 
         if np.all(un_masked):
             print("All values are False: means all density < 10^2")
@@ -352,6 +327,7 @@ radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_o
 
 m = magnetic_fields.shape[1]
 
+# th 10  , th2 100   , th_rev 10    , th2_rev 100
 threshold, threshold2, threshold_rev, threshold2_rev = th 
 
 reduction_factor = list()
@@ -360,11 +336,34 @@ numb_density_at  = list()
 min_den_cycle = list()
 pos_red = dict()
 
+
+np.savez(os.path.join(children_folder, f"DataBundle{seed}.npz"),
+         column_density=cd,
+         positions=radius_vector,
+         trajectory=trajectory,
+         number_densities=numb_densities,
+         magnetic_fields=magnetic_fields,
+         thresholds=np.array(th),
+         starting_point=x_init
+         )
+
+"""
+data = np.load(os.path.join(children_folder, f"DataBundle{seed}.npz"))
+
+cd = data['column_density']
+radius_vector = data['positions']
+trajectory = data['trajectory']
+numb_densities = data['number_densities']
+magnetic_fields = data['magnetic_fields']
+th = data['thresholds']
+
 np.save(os.path.join(children_folder, f"ColumnDensity{seed}.npy"), cd)
 np.save(os.path.join(children_folder, f"Positions{seed}.npy"), radius_vector)
 np.save(os.path.join(children_folder, f"Trajectory{seed}.npy"), trajectory)
 np.save(os.path.join(children_folder, f"NumberDensities{seed}.npy"), numb_densities)
 np.save(os.path.join(children_folder, f"MagneticFields{seed}.npy"), magnetic_fields)
+np.save(os.path.join(children_folder, f"Thresholds{seed}.npy"), np.array(th))
+"""
 
 for cycle in range(max_cycles):
 
@@ -610,9 +609,6 @@ with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'
     file.write(f"Smallest Density (N/cm^3)  : {Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3} \n")
     file.write(f"Biggest  Density (N/cm^3) : {Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}\n")
     file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
-
-
-
 
 print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 
