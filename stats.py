@@ -360,6 +360,11 @@ numb_density_at  = list()
 min_den_cycle = list()
 pos_red = dict()
 
+np.save(os.path.join(children_folder, f"ColumnDensity{seed}.npy"), cd)
+np.save(os.path.join(children_folder, f"Positions{seed}.npy"), radius_vector)
+np.save(os.path.join(children_folder, f"Trajectory{seed}.npy"), trajectory)
+np.save(os.path.join(children_folder, f"NumberDensities{seed}.npy"), numb_densities)
+np.save(os.path.join(children_folder, f"MagneticFields{seed}.npy"), magnetic_fields)
 
 for cycle in range(max_cycles):
 
@@ -400,12 +405,6 @@ for cycle in range(max_cycles):
 
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
-
-    np.save(os.path.join(children_folder, f"ColumnDensity{sys.argv[-1]}{cycle}.npy"), column)
-    np.save(os.path.join(children_folder, f"Positions{sys.argv[-1]}{cycle}.npy"), vector)
-    np.save(os.path.join(children_folder, f"Trajectory{sys.argv[-1]}{cycle}.npy"), distance)
-    np.save(os.path.join(children_folder, f"NumberDensities{sys.argv[-1]}{cycle}.npy"), numb_density)
-    np.save(os.path.join(children_folder, f"MagneticFields{sys.argv[-1]}{cycle}.npy"), bfield)
 
     min_den_cycle.append(min(numb_density))
     
@@ -458,10 +457,10 @@ counter = Counter(reduction_factor)
 
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-with open(os.path.join(children_folder, f'PARAMETER_reduction10_{sys.argv[-1]}'), 'w') as file:
+with open(os.path.join(children_folder, f'PARAMETER_reduction10_{seed}'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"{peak_den}\n")
-    file.write(f"Run ID/seed: {sys.argv[-1]}\n")
+    file.write(f"Run ID/seed: {seed}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc}\n")
@@ -485,13 +484,13 @@ print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 counter = Counter(reduction_factor)
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-file_path = os.path.join(children_folder, f'reduction_factor10_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'reduction_factor10_{seed}.json')
 with open(file_path, 'w') as json_file: json.dump(reduction_factor, json_file)
 
-file_path = os.path.join(children_folder, f'numb_density10_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'numb_density10_{seed}.json')
 with open(file_path, 'w') as json_file: json.dump(numb_density_at, json_file)
 
-file_path = os.path.join(children_folder, f'position_vector10_{sys.argv[-1]}')
+file_path = os.path.join(children_folder, f'position_vector10_{seed}')
 with open(file_path, 'w') as json_file: json.dump(pos_red, json_file)
 
 reduction_factor2 = list()
@@ -620,13 +619,13 @@ print(f"Elapsed time: {(time.time() - start_time)/60.} Minutes")
 counter = Counter(reduction_factor2)
 pos_red = {key: value.tolist() if isinstance(value, np.ndarray) else value for key, value in pos_red.items()}
 
-file_path = os.path.join(children_folder, f'reduction_factor100_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'reduction_factor100_{seed}.json')
 with open(file_path, 'w') as json_file: json.dump(reduction_factor2, json_file)
 
-file_path = os.path.join(children_folder, f'numb_density100_{sys.argv[-1]}.json')
+file_path = os.path.join(children_folder, f'numb_density100_{seed}.json')
 with open(file_path, 'w') as json_file: json.dump(numb_density_at2, json_file)
 
-file_path = os.path.join(children_folder, f'position_vector100_{sys.argv[-1]}')
+file_path = os.path.join(children_folder, f'position_vector100_{seed}')
 with open(file_path, 'w') as json_file: json.dump(pos_red2, json_file)
 
 if True:
@@ -668,7 +667,7 @@ if True:
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
-        plt.savefig(os.path.join(children_folder,f"FieldTopology.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(children_folder,f"FieldTopology{seed}.png"), bbox_inches='tight')
 
     except:
         print("Couldnt print B field structure")

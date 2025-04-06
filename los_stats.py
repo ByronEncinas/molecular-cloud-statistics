@@ -2,7 +2,7 @@
 import os, sys, glob, time, csv
 import numpy as np, h5py
 from scipy import spatial
-import matplotlib.pyplot as plt, healpy as hp
+import matplotlib.pyplot as plt
 from library import *
 
 start_time = time.time()
@@ -470,7 +470,6 @@ def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
     magnetic_field = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
 
-
     trajectory = np.zeros_like(numb_densities)
     column = np.zeros_like(numb_densities)
 
@@ -516,18 +515,18 @@ if NeffOrStability == 'S':
     m = magnetic_fields.shape[1]
     eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature = col_energies
 
+    np.save(f"{new_folder}/positions.npy", trajectory)
+    np.save(f"{new_folder}/eff_column_densities.npy", eff_column_densities)
+    np.save(f"{new_folder}/numb_densities.npy", numb_densities)
+    np.save(f"{new_folder}/energy_magnetic.npy", energy_magnetic)
+    np.save(f"{new_folder}/energy_thermal.npy", energy_thermal)
+    np.save(f"{new_folder}/energy_grav.npy", energy_grav)
+    np.save(f"{new_folder}/temperature.npy", temperature)
+
     for i in range(m):
 
         cut = threshold[i] - 1
         eff_column = np.max(eff_column_densities[:, i])
-
-        np.save(f"{new_folder}/positions{i}.npy", trajectory[1:cut, i])
-        np.save(f"{new_folder}/eff_column_densities{i}.npy", eff_column_densities[:cut, i])
-        np.save(f"{new_folder}/numb_densities{i}.npy", numb_densities[:cut, i])
-        np.save(f"{new_folder}/energy_magnetic{i}.npy", energy_magnetic[:cut, i])
-        np.save(f"{new_folder}/energy_thermal{i}.npy", energy_thermal[:cut, i])
-        np.save(f"{new_folder}/energy_grav{i}.npy", energy_grav[:cut, i])
-        np.save(f"{new_folder}/temperature{i}.npy", temperature[:cut, i])
 
         non_zeroes = (energy_grav[1:cut, i] != 0.0)
         
@@ -638,13 +637,10 @@ elif NeffOrStability == 'N':
     print('Directions provided by B field at point')
     radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
     threshold, threshold_rev = th
-    m = numb_densities.shape[1]
-    np.save(f"{new_folder}/thresholds.npy", (threshold, threshold_rev))
-    for i in range(m):
-        cut = threshold[i]
-        np.save(f"{new_folder}/ColumnDensities{seed}{i}.npy", column[:, i])
-        np.save(f"{new_folder}/Positions{seed}{i}.npy", radius_vector[:, i, :])
-        np.save(f"{new_folder}/NumberDensities{seed}{i}.npy", numb_densities[:, i])
-        np.save(f"{new_folder}/NumberDensities{seed}{i}.npy", numb_densities[:, i])
+    np.save(f"{new_folder}/thresholds{seed}.npy", (threshold, threshold_rev))
+    np.save(f"{new_folder}/ColumnDensities{seed}.npy", column)
+    np.save(f"{new_folder}/Positions{seed}.npy", radius_vector)
+    np.save(f"{new_folder}/NumberDensities{seed}.npy", numb_densities)
+    np.save(f"{new_folder}/NumberDensities{seed}.npy", numb_densities)
 
 
