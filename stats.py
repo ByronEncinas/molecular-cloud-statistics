@@ -587,7 +587,7 @@ hostname = socket.gethostname()
 # Get current datetime
 current_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-with open(os.path.join(children_folder, f'PARAMETER_reduction100_{sys.argv[-1]}'), 'w') as file:
+with open(os.path.join(children_folder, f'PARAMETER_reduction100_{seed}'), 'w') as file:
     file.write(f"{filename}\n")
     file.write(f"File Created On: {current_datetime}\n")  # Add current datetime
     file.write(f"Hostname: {hostname}\n")
