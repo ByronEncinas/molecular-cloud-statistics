@@ -342,6 +342,9 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
 #snap_values = np.array(snap_values)
 #time_values = np.array(time_values)
 #peak_den = np.array(peak_den)
+#snap_values = np.array(snap_values)
+#time_values = np.array(time_values)
+#peak_den = np.array(peak_den)
 
 mean_ideal   = []
 median_ideal = []
@@ -351,116 +354,117 @@ median_amb   = []
 ideal_snap  = []
 amb_snap    = []
 
-ideal_time  = []
-amb_time    = []
-
 s_ideal = []
 s_amb   = []
 
+fractions_i = []
+fractions_a = []
+
 for k, v in sorted(R10['ideal'].items()):
-    mean_ideal.append(np.mean( (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k]) )/ np.array(R100['ideal'][k]) ))
-    median_ideal.append(np.median( (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k]) )/ np.array(R100['ideal'][k]) ))
+    mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
+    median_ideal.append(np.median((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
     ideal_snap.append(int(k))
     rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['ideal'][k]), np.array(NR['ideal'][k])) 
-    s_ideal.append(tuple([rdcut, x, mean, median, ten, s_size, k,f]))
-    Delta['ideal'][k] = (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k]) )/ np.array(R100['ideal'][k])
+    s_ideal.append((rdcut, x, mean, median, ten, s_size, k, f))
+    fractions_i.append(float(f))
+    Delta['ideal'][k] = (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])
 
 for k, v in sorted(R10['amb'].items()):
-    mean_amb.append(np.mean( (np.array(R10['amb'][k]) - np.array(R100['amb'][k]) ) / np.array(R100['amb'][k]) ))
-    median_amb.append(np.median( (np.array(R10['amb'][k]) - np.array(R100['amb'][k]) ) / np.array(R100['amb'][k])) )
+    mean_amb.append(np.mean((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
+    median_amb.append(np.median((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
     amb_snap.append(int(k))
     rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['amb'][k]), np.array(NR['amb'][k])) 
-    s_amb.append(tuple([rdcut, x, mean, median, ten, s_size, k, f]))
+    s_amb.append((rdcut, x, mean, median, ten, s_size, k, f))
+    fractions_a.append(float(f))
+    Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])
 
-    Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k]) ) / np.array(R100['amb'][k])
 
+ideal_time = time_values['ideal']
+mean_ir = [np.mean(r) for r in R100['ideal'].values()]
+median_ir = [np.median(r) for r in R100['ideal'].values()]
+amb_time = time_values['amb']
+mean_ar = [np.mean(r) for r in R100['amb'].values()]
+median_ar = [np.median(r) for r in R100['amb'].values()]
 
 fig0, ax0 = plt.subplots()
-
-ax0.plot(ideal_snap, mean_ideal , label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle ='-', color='darkorange')
-ax0.plot(ideal_snap, median_ideal, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle ='--', color='darkorange')
-ax0.plot(amb_snap, mean_amb, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
-ax0.plot(amb_snap, median_amb, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
+ax0.plot(ideal_time, mean_ideal , label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
+ax0.plot(ideal_time, median_ideal, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
+ax0.plot(amb_time, mean_amb, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
+ax0.plot(amb_time, median_amb, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
 ax0.set_ylabel('$(R_{10} - R_{100})/R_{100}$')
 ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 ax0.set_xlabel('Snapshots')
 ax0.legend()
-plt.savefig('./thesis_stats/delta_threshold.png')
+plt.savefig('./delta_threshold.png')
 plt.show()
 
+fig_ideal, ax_ideal = plt.subplots()
+fig_amb, ax_amb = plt.subplots()
 
-fig1, ax1 = plt.subplots()
 
-#print(R100['ideal']['000'])  # see what's inside
-#print(type(R100['ideal']['000'][0]))  # should be float, but likely str
-ideal_time= time_values['ideal']
-amb_time  = time_values['amb']
+print(fractions_i)
 
-mean_ir   = [np.mean(r) for r in R100['ideal'].values()]
-median_ir = [np.median(r) for r in R100['ideal'].values()]
+ax_ideal.scatter(ideal_time, fractions_i, label='fractions', marker='x', color='black')
+ax_ideal.plot(ideal_time, mean_ir, label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
+ax_ideal.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
+ax_ideal.set_ylabel('$R$')
+ax_ideal.set_xlabel('time (Myrs)')
+ax_ideal.legend()
+ax_ideal.set_title("Ideal Case")
 
-mean_ar   = [np.mean(r) for r in R100['amb'].values()]
-median_ar = [np.median(r) for r in R100['amb'].values()]
 
-ax1.plot(ideal_time, mean_ir , label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle ='-', color='darkorange')
-ax1.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle ='--', color='darkorange')
-ax1.plot(amb_time, mean_ar, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
-ax1.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
-ax1.set_ylabel('$R$')
-ax1.set_xlabel('time (Myrs)')
-ax1.legend()
-plt.savefig('./thesis_stats/time_reduction.png')
+
+print(fractions_a)
+
+ax_amb.scatter(amb_time, fractions_a, label='fractions', marker='x', color='black')
+ax_amb.plot(amb_time, mean_ar, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
+ax_amb.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
+ax_amb.set_ylabel('$R$')
+ax_amb.set_xlabel('time (Myrs)')
+ax_amb.legend()
+ax_amb.set_title("Ambipolar Diffusion Case")
+
+fig_ideal.savefig('./time_reduction_ideal.png')
+fig_amb.savefig('./time_reduction_amb.png')
 plt.show()
 
 for tup in s_ideal:
-
-    rdcut, x, mean, median, ten, s_size, no, f= tup
-
+    rdcut, x, mean, median, ten, s_size, no, f = tup
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-
-    ax1.scatter(no, f, label='$f = \frac{ [R = 1] }{ [R] }$', linewidth=1.5, linestyle='-', color='black')
     ax1.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
-    ax1.set_xscale('log')  # Set x-axis to log scale
+    ax1.set_xscale('log')
     ax1.set_ylabel(r'$R$')
-    ax1.set_title(f'$f$ = {f}')
     ax1.set_xlabel('$n_g$')
+    ax1.set_title(f'$f$ = {f}')
     ax1.legend()
-
     ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
-    ax2.set_xscale('log')  # Set x-axis to log scale
+    ax2.set_xscale('log')
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
     ax2.legend()
-    plt.savefig(f'./thesis_stats/reduction_density/ideal/ideal_{no}_reduction_density.png')
+    plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
 for tup in s_amb:
-
     rdcut, x, mean, median, ten, s_size, no, f = tup
-
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-
-    ax1.scatter(no, f, label='$f = \frac{ [R = 1] }{ [R] }$', linewidth=1.5, linestyle='-', color='black')
-    ax1.plot(x, mean , label='mean', linewidth=1.5, linestyle ='-', color='darkorange')
-    ax1.plot(x, median, label='median', linewidth=1.5, linestyle ='--', color='darkorange')
+    ax1.plot(x, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+    ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
     ax1.set_xscale('log')
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
     ax1.legend()
-
-    ax2.plot(x, s_size, label='sample size',linewidth=1.5, linestyle='-', color='darkorange')
-    ax2.set_xscale('log')  # Set x-axis to log scale
+    ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
+    ax2.set_xscale('log')
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
     ax2.legend()
-
-    plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
+    plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
-
 # to export RBundle into R10 and R100
 # R10, R100 = zip(*RBundle)
 
