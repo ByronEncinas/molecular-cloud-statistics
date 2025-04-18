@@ -412,13 +412,13 @@ ax1.legend()
 plt.savefig('./thesis_stats/time_reduction.png')
 plt.show()
 
-
 for tup in s_ideal:
 
     rdcut, x, mean, median, ten, s_size, no, f= tup
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
+    ax1.scatter(no, f, label='$f = \frac{ [R = 1] }{ [R] }$', linewidth=1.5, linestyle='-', color='black')
     ax1.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
@@ -433,7 +433,6 @@ for tup in s_ideal:
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
     ax2.legend()
-
     plt.savefig(f'./thesis_stats/reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
@@ -443,6 +442,7 @@ for tup in s_amb:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
+    ax1.scatter(no, f, label='$f = \frac{ [R = 1] }{ [R] }$', linewidth=1.5, linestyle='-', color='black')
     ax1.plot(x, mean , label='mean', linewidth=1.5, linestyle ='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle ='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
@@ -460,7 +460,6 @@ for tup in s_amb:
 
     plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
-
 
 # to export RBundle into R10 and R100
 # R10, R100 = zip(*RBundle)
