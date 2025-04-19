@@ -378,7 +378,6 @@ for k, v in sorted(R10['amb'].items()):
     fractions_a.append(float(f))
     Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])
 
-
 ideal_time = time_values['ideal']
 mean_ir = [np.mean(r) for r in R100['ideal'].values()]
 median_ir = [np.median(r) for r in R100['ideal'].values()]
@@ -395,7 +394,7 @@ ax0.set_ylabel('$(R_{10} - R_{100})/R_{100}$')
 ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 ax0.set_xlabel('Snapshots')
 ax0.legend()
-plt.savefig('./delta_threshold.png')
+plt.savefig('./thesis_stats/delta_threshold.png')
 plt.show()
 
 fig_ideal, ax_ideal = plt.subplots()
@@ -410,7 +409,7 @@ ax_ideal.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth
 ax_ideal.set_ylabel('$R$')
 ax_ideal.set_xlabel('time (Myrs)')
 ax_ideal.legend()
-ax_ideal.set_title("Ideal Case")
+ax_ideal.set_title("Ideal")
 
 
 
@@ -422,10 +421,77 @@ ax_amb.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, 
 ax_amb.set_ylabel('$R$')
 ax_amb.set_xlabel('time (Myrs)')
 ax_amb.legend()
-ax_amb.set_title("Ambipolar Diffusion Case")
+ax_amb.set_title("Ambipolar Diffusion")
 
-fig_ideal.savefig('./time_reduction_ideal.png')
-fig_amb.savefig('./time_reduction_amb.png')
+
+
+fig_ideal.savefig('./thesis_stats/time_reduction_ideal.png')
+fig_amb.savefig('./thesis_stats/time_reduction_amb.png')
+plt.show()
+
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+fig_ideal, ax_ideal = plt.subplots()
+fig_amb, ax_amb = plt.subplots()
+
+# Ideal main plot
+ax_ideal.scatter(ideal_time, fractions_i, label='fractions', marker='x', color='black')
+ax_ideal.plot(ideal_time, mean_ir, label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
+ax_ideal.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
+ax_ideal.set_ylabel('$R$')
+ax_ideal.set_xlabel('time (Myrs)')
+ax_ideal.legend()
+ax_ideal.set_title("Ideal")
+
+# Zoom-in inset for ideal
+axins_ideal = inset_axes(ax_ideal, width="30%", height="30%", loc='lower right')
+mask_ideal = [t >= 3 for t in ideal_time]
+t_zoom = [t for t, m in zip(ideal_time, mask_ideal) if m]
+f_zoom = [f for f, m in zip(fractions_i, mask_ideal) if m]
+mean_zoom = [m for m, msk in zip(mean_ir, mask_ideal) if msk]
+median_zoom = [m for m, msk in zip(median_ir, mask_ideal) if msk]
+axins_ideal.scatter(t_zoom, f_zoom, marker='x', color='black')
+axins_ideal.plot(t_zoom, mean_zoom, color='darkorange')
+axins_ideal.plot(t_zoom, median_zoom, color='darkorange', linestyle='--')
+axins_ideal.set_title("Zoom $t > 3.5$", fontsize=8)
+
+# Hide x-axis only
+axins_ideal.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+
+# Optional: keep y-axis labels readable
+axins_ideal.tick_params(axis='y', labelsize=8)
+
+# Ambipolar main plot
+ax_amb.scatter(amb_time, fractions_a, label='fractions', marker='x', color='black')
+ax_amb.plot(amb_time, mean_ar, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
+ax_amb.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
+ax_amb.set_ylabel('$R$')
+ax_amb.set_xlabel('time (Myrs)')
+ax_amb.legend()
+ax_amb.set_title("Ambipolar Diffusion")
+
+# Zoom-in inset for amb
+axins_amb = inset_axes(ax_amb, width="30%", height="30%", loc='lower right')
+mask_amb = [t >= 4.2903 for t in amb_time]
+t_zoom = [t for t, m in zip(amb_time, mask_amb) if m]
+f_zoom = [f for f, m in zip(fractions_a, mask_amb) if m]
+mean_zoom = [m for m, msk in zip(mean_ar, mask_amb) if msk]
+median_zoom = [m for m, msk in zip(median_ar, mask_amb) if msk]
+axins_amb.scatter(t_zoom, f_zoom, marker='x', color='black')
+axins_amb.plot(t_zoom, mean_zoom, color='royalblue')
+axins_amb.plot(t_zoom, median_zoom, color='royalblue', linestyle='--')
+axins_amb.set_title("Zoom $t > 4.29$", fontsize=8)
+
+# Hide x-axis only
+axins_amb.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+
+# Optional: keep y-axis labels readable
+axins_amb.tick_params(axis='y', labelsize=8)
+
+
+
+fig_ideal.savefig('./thesis_stats/time_reduction_ideal_win.png')
+fig_amb.savefig('./thesis_stats/time_reduction_amb_win.png')
 plt.show()
 
 for tup in s_ideal:
@@ -444,7 +510,7 @@ for tup in s_ideal:
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
     ax2.legend()
-    plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
+    plt.savefig(f'./thesis_stats/reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
 for tup in s_amb:
@@ -463,7 +529,7 @@ for tup in s_amb:
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
     ax2.legend()
-    plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
+    plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
 # to export RBundle into R10 and R100
 # R10, R100 = zip(*RBundle)
