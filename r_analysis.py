@@ -391,7 +391,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
 #time_values = np.array(time_values)
 #peak_den = np.array(peak_den)
 
-
 mean_ideal   = []
 median_ideal = []
 mean_amb     = []
@@ -406,73 +405,126 @@ s_amb   = []
 fractions_i = []
 fractions_a = []
 
+ideal_time = time_values['ideal']
+amb_time = time_values['amb']
+
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
 # --- IDEAL CASE ---
-labels = list(CD['ideal'].keys())  # snapshot labels
-data = list(CD['ideal'].values())  # column density arrays
+labels = list(CD['ideal'].keys())  
+data = list(CD['ideal'].values())  
+
+round_time = [np.round(t, 6) for t in ideal_time]
 
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Snapshots')
+ax.set_xlabel('Time (Myrs)')
 ax.set_title('Column Density along CR path (ideal)')
 ax.set_yscale('log')
 ax.grid(True)
-step = max(1, len(labels) // 10)  # change 10 to how many labels you want visible
-tick_positions = np.arange(1, len(labels) + 1)
-tick_labels = [label if i % step == 0 else '' for i, label in enumerate(labels)]
-
-ax.set_xticks(tick_positions)
-ax.set_xticklabels(tick_labels, rotation=60)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
-plt.savefig("./thesis_stats/path_cd_ideal.png")
-plt.show()
+plt.savefig("./path_cd_ideal.png")
+plt.close()
+
+
+median = np.array([np.median(arr) for arr in data])
+mean = np.array([np.mean(arr) for arr in data])
+lower_68 = np.array([np.percentile(arr, 16) for arr in data])
+upper_68 = np.array([np.percentile(arr, 84) for arr in data])
+lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
+upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
+
+# X-axis: snapshot indices
+fig, ax = plt.subplots()
+
+ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
+
+ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
+
+ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
+ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
+
+ax.set_ylabel('Effective Column Density')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title(f'Column Density along CR path (ideal)')
+ax.set_yscale('log')
+ax.set_xticks(round_time)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=10)
+ax.grid(True)
+ax.legend(loc='upper left', frameon=True, fontsize=11)
+
+plt.tight_layout()
+plt.savefig(f"./path_cd_ideal_inter.png")
+plt.close()
+
 
 # --- AMB CASE ---
-labels = [np.round(float(t), 6) for t in CD['amb'].keys()]  # snapshot labels
+labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
+round_time = [np.round(t, 6) for t in amb_time]
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Snapshots')
+ax.set_xlabel('Time (Myrs)')
 ax.set_title('Column Density along CR path (amb)')
 ax.set_yscale('log')
 ax.grid(True)
-# Show only every nth label to declutter
-step = max(1, len(labels) // 10)  # change 10 to how many labels you want visible
-tick_positions = np.arange(1, len(labels) + 1)
-tick_labels = [label if i % step == 0 else '' for i, label in enumerate(labels)]
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
+plt.tight_layout()
+plt.savefig("./path_cd_amb.png")
+plt.close()
 
-ax.set_xticks(tick_positions)
-ax.set_xticklabels(tick_labels, rotation=60)
+median = np.array([np.median(arr) for arr in data])
+mean = np.array([np.mean(arr) for arr in data])
+lower_68 = np.array([np.percentile(arr, 16) for arr in data])
+upper_68 = np.array([np.percentile(arr, 84) for arr in data])
+lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
+upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
+
+# X-axis: snapshot indices
+x = np.arange(len(labels))
+
+fig, ax = plt.subplots()
+
+ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
+ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
+ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
+ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
+ax.set_ylabel('Effective Column Density')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title(f'Column Density along path (amb)')
+ax.set_yscale('log')
+ax.set_xticks(round_time)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
+ax.grid(True)
+ax.legend(loc='upper left', frameon=True, fontsize=11)
 
 plt.tight_layout()
-plt.tight_layout()
-plt.savefig("./thesis_stats/path_cd_amb.png")
-plt.show()
+plt.savefig(f"./path_cd_amb_inter.png")
+plt.close()
 
 for k, v in CD['ideal'].items():
-    print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]), " key: ", k)
-
+    #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
     CD['ideal'][k]   =   np.mean(CD['ideal'][k])
 
 for k, v in CD['amb'].items():
-    print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]), " key: ", k)
-
+    #print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]))
     CD['amb'][k]   =   np.mean(CD['amb'][k])
 
-mean_ic = [np.mean(c) for c in CD['ideal'].values()]
-median_ic = [np.median(c) for c in CD['ideal'].values()]
-mean_ac = [np.mean(c) for c in CD['amb'].values()]
-median_ac = [np.median(c) for c in CD['amb'].values()]
+
 
 for k, v in sorted(R10['ideal'].items()):
     mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
     median_ideal.append(np.median((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
-    ideal_snap.append(k)
+    ideal_snap.append(int(k))
     rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['ideal'][k]), np.array(NR['ideal'][k])) 
     s_ideal.append((rdcut, x, mean, median, ten, s_size, k, f))
     fractions_i.append(float(f))
@@ -481,57 +533,78 @@ for k, v in sorted(R10['ideal'].items()):
 for k, v in sorted(R10['amb'].items()):
     mean_amb.append(np.mean((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
     median_amb.append(np.median((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
-    amb_snap.append(k)
+    amb_snap.append(int(k))
     rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['amb'][k]), np.array(NR['amb'][k])) 
     s_amb.append((rdcut, x, mean, median, ten, s_size, k, f))
     fractions_a.append(float(f))
     Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])
 
 
-ideal_time = time_values['ideal']
-mean_ir = [np.mean(r) for r in R100['ideal'].values()]
-median_ir = [np.median(r) for r in R100['ideal'].values()]
-amb_time = time_values['amb']
-mean_ar = [np.mean(r) for r in R100['amb'].values()]
-median_ar = [np.median(r) for r in R100['amb'].values()]
-
 fig0, ax0 = plt.subplots()
 ax0.plot(ideal_time, mean_ideal , label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
 ax0.plot(ideal_time, median_ideal, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
 ax0.plot(amb_time, mean_amb, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
 ax0.plot(amb_time, median_amb, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
-ax0.set_ylabel('$(R_{10} - R_{100})/R_{100}$')
-ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
+ax0.set_ylabel('$\\Delta = (R_{10} - R_{100})/R_{100}$')
+#ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 ax0.set_xlabel('Snapshots')
-ax0.legend()
-plt.savefig('./thesis_stats/delta_threshold.png')
+ax0.legend(frameon=False)
+plt.savefig('./delta_threshold.png')
 plt.close()
+
+mean_ir     = []
+median_ir   = []
+percen25_ir = []
+percen10_ir = []
+
+for s, r in R100['ideal'].items():
+
+    array = np.array(r)
+    r_ideal = array[array<1]
+    mean_ir += [np.mean(r_ideal)]
+    median_ir += [np.median(r_ideal)]
+    percen25_ir += [np.percentile(r_ideal,25)]
+    percen10_ir += [np.percentile(r_ideal,10)]
+
+mean_ar     = []
+median_ar   = []
+percen25_ar = []
+percen10_ar = []
+
+for s, r in R100['amb'].items():
+    array = np.array(r)
+    r_amb = array[array<1]
+    mean_ar += [np.mean(r_amb)]
+    median_ar += [np.median(r_amb)]
+    percen25_ar += [np.percentile(r_amb,25)]
+    percen10_ar += [np.percentile(r_amb,10)]
 
 fig_ideal, ax_ideal = plt.subplots()
 fig_amb, ax_amb = plt.subplots()
 
+ax_ideal.scatter(ideal_time, fractions_i, marker='x', color='black')
+ax_ideal.plot(ideal_time, mean_ir, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+ax_ideal.plot(ideal_time, median_ir, label='median', linewidth=1.5, linestyle='--', color='darkorange')
+ax_ideal.plot(ideal_time, percen25_ir, label='P25', linewidth=1.5, linestyle='dashdot')
+ax_ideal.plot(ideal_time, percen10_ir, label='P10', linewidth=1.5, linestyle='dotted')
 
-ax_ideal.scatter(ideal_time, fractions_i, label='fractions', marker='x', color='black')
-ax_ideal.plot(ideal_time, mean_ir, label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
-ax_ideal.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
-ax_ideal.set_ylabel('$R$')
+ax_ideal.set_ylabel('$R$ (Reduction factor)')
 ax_ideal.set_xlabel('time (Myrs)')
-ax_ideal.legend()
+ax_ideal.legend(frameon=False, fontsize=9)
 ax_ideal.set_title("Ideal")
 
-
-ax_amb.scatter(amb_time, fractions_a, label='fractions', marker='x', color='black')
-ax_amb.plot(amb_time, mean_ar, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
-ax_amb.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
-ax_amb.set_ylabel('$R$')
+ax_amb.scatter(amb_time, fractions_a, marker='x', color='black')
+ax_amb.plot(amb_time, mean_ar, label='mean', linewidth=1.5, linestyle='-', color='royalblue')
+ax_amb.plot(amb_time, median_ar, label='median', linewidth=1.5, linestyle='--', color='royalblue')
+ax_amb.plot(amb_time, percen25_ar, label='P25', linewidth=1.5, linestyle='dashdot')
+ax_amb.plot(amb_time, percen10_ar, label='P10', linewidth=1.5, linestyle='dotted')
+ax_amb.set_ylabel('$R$ (Reduction factor)')
 ax_amb.set_xlabel('time (Myrs)')
-ax_amb.legend()
-ax_amb.set_title("Ambipolar Diffusion")
+ax_amb.legend(frameon=False, fontsize=9)
+#ax_amb.set_title("Ambipolar Diffusion")
 
-
-
-fig_ideal.savefig('./thesis_stats/time_reduction_ideal.png')
-fig_amb.savefig('./thesis_stats/time_reduction_amb.png')
+fig_ideal.savefig('./time_reduction_ideal.png')
+fig_amb.savefig('./time_reduction_amb.png')
 plt.close()
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -539,18 +612,15 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 fig_ideal, ax_ideal = plt.subplots()
 fig_amb, ax_amb = plt.subplots()
 
-print(fractions_i)
-
-# Ideal main plot
 ax_ideal.scatter(ideal_time, fractions_i, label='fractions', marker='x', color='black')
-ax_ideal.plot(ideal_time, mean_ir, label='mean $\\Delta_{ideal}$', linewidth=1.5, linestyle='-', color='darkorange')
-ax_ideal.plot(ideal_time, median_ir, label='median $\\Delta_{ideal}$', linewidth=1.5, linestyle='--', color='darkorange')
-ax_ideal.set_ylabel('$R$')
-ax_ideal.set_xlabel('time (Myrs)')
-ax_ideal.legend()
-ax_ideal.set_title("Ideal")
+ax_ideal.plot(ideal_time, mean_ir, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+ax_ideal.plot(ideal_time, median_ir, label='median', linewidth=1.5, linestyle='--', color='darkorange')
 
-# Zoom-in inset for ideal
+ax_ideal.set_ylabel('$R$ (Reduction factor)')
+ax_ideal.set_xlabel('time (Myrs)')
+ax_ideal.legend(frameon=False)
+#ax_ideal.set_title("Ideal")
+
 axins_ideal = inset_axes(ax_ideal, width="20%", height="20%", loc='lower right')
 mask_ideal = [t >= 3 for t in ideal_time]
 t_zoom = [t for t, m in zip(ideal_time, mask_ideal) if m]
@@ -563,19 +633,14 @@ axins_ideal.plot(t_zoom, median_zoom, color='darkorange', linestyle='--')
 axins_ideal.set_title("Zoom $t > 3.5$", fontsize=8)
 axins_ideal.tick_params(labelsize=8)
 
-
-print(fractions_a)
-
-# Ambipolar main plot
 ax_amb.scatter(amb_time, fractions_a, label='fractions', marker='x', color='black')
-ax_amb.plot(amb_time, mean_ar, label='mean $\\Delta_{amb}$', linewidth=1.5, linestyle='-', color='royalblue')
-ax_amb.plot(amb_time, median_ar, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
-ax_amb.set_ylabel('$R$')
+ax_amb.plot(amb_time, mean_ar, label='mean', linewidth=1.5, linestyle='-', color='royalblue')
+ax_amb.plot(amb_time, median_ar, label='median', linewidth=1.5, linestyle='--', color='royalblue')
+ax_amb.set_ylabel('$R$ (Reduction factor)')
 ax_amb.set_xlabel('time (Myrs)')
-ax_amb.legend()
-ax_amb.set_title("Ambipolar Diffusion")
+ax_amb.legend(frameon=False)
+#ax_amb.set_title("Ambipolar Diffusion")
 
-# Zoom-in inset for amb
 axins_amb = inset_axes(ax_amb, width="20%", height="20%", loc='lower right')
 mask_amb = [t >= 4.2903 for t in amb_time]
 t_zoom = [t for t, m in zip(amb_time, mask_amb) if m]
@@ -585,13 +650,16 @@ median_zoom = [m for m, msk in zip(median_ar, mask_amb) if msk]
 axins_amb.scatter(t_zoom, f_zoom, marker='x', color='black')
 axins_amb.plot(t_zoom, mean_zoom, color='royalblue')
 axins_amb.plot(t_zoom, median_zoom, color='royalblue', linestyle='--')
-axins_amb.set_title("Zoom $t > 3.5$", fontsize=8)
+#axins_amb.set_title("Zoom $t > 3.5$", fontsize=8)
 axins_amb.tick_params(labelsize=8)
 
 
-fig_ideal.savefig('./thesis_stats/time_reduction_ideal_win.png')
-fig_amb.savefig('./thesis_stats/time_reduction_amb_win.png')
+fig_ideal.savefig('./time_reduction_ideal_win.png')
+fig_amb.savefig('./time_reduction_amb_win.png')
 plt.close()
+import os
+os.makedirs('reduction_density/ideal', exist_ok=True)
+os.makedirs('reduction_density/amb', exist_ok=True)
 
 for tup in s_ideal:
     rdcut, x, mean, median, ten, s_size, no, f = tup
@@ -603,13 +671,13 @@ for tup in s_ideal:
     ax1.set_ylabel(r'$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
-    ax1.legend()
+    ax1.legend(frameon=False)
     ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
     ax2.set_xscale('log')
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
-    ax2.legend()
-    plt.savefig(f'./thesis_stats/reduction_density/ideal/ideal_{no}_reduction_density.png')
+    ax2.legend(frameon=False)
+    plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
 for tup in s_amb:
@@ -622,11 +690,11 @@ for tup in s_amb:
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
-    ax1.legend()
+    ax1.legend(frameon=False)
     ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
     ax2.set_xscale('log')
     ax2.set_ylabel(r'Sample size')
     ax2.set_xlabel('$n_g$')
-    ax2.legend()
-    plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
+    ax2.legend(frameon=False)
+    plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
