@@ -312,13 +312,11 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     repeated.add(snap)
                     snap_values[case].append(str(row[0]))
                     time_values[case].append(float(row[1]))
-                    t = float(row[1])
                     peak_den[case].append(float(row[-1]))
-
                     continue
 
                 #print(snap, str(row[0]))
-        print(snap, t, type(t))
+
         #print(snap_values[case][-1], time_values[case][-1], np.log10(peak_den[case][-1]))                    
         # Convert lists to numpy array
 
@@ -358,7 +356,14 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         if False:
             x = radius_vector[numb_densities.shape[0]//2,:,0]/pc_to_cm
             y = radius_vector[numb_densities.shape[0]//2,:,1]/pc_to_cm
+            z = radius_vector[numb_densities.shape[0]//2,:,2]/pc_to_cm
+
+            rloc = 0.1
+            x = x[z<0.02 and z>-0.02]
+            y = y[z<0.02 and z>-0.02]
+            
             log_n = np.log10(numb_densities[numb_densities.shape[0]//2,:])
+
 
             plt.figure(figsize=(6, 5))
             sc = plt.scatter(x, y, c=log_n, cmap='viridis', s=10, edgecolor='none')
@@ -376,21 +381,12 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         r_bundle, r_10, r_100, n_r = evaluate_reduction(magnetic_fields, numb_densities, threshold)
 
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-        CD[case][t]   =  CD[case].get(float(row[1]),  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
-        R10[case][t]  =  R10[case].get(float(row[1]),  list(r_10*0)) + list(r_10)
-        R100[case][t] = R100[case].get(float(row[1]), list(r_100*0)) + list(r_100)
-        NR[case][t] = NR[case].get(float(row[1]), list(n_r*0))+ list(n_r)
+        CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
+        R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
+        R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
+        NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
 
-        #print(case, snap, np.mean(CD[case][snap]), column_density.shape)
-        #        print("\nSnapshot: ", snap)
-        #        print("Threshold 10 cm-3 yields mean(R10): ", np.mean(R10[case][snap]))
-        #        print("Threshold 100cm-3 yields mean(R100): ", np.mean(R100[case][snap]))
-        #        print("Elapsed time: ", readable, '\n')
-
-#snap_values = np.array(snap_values)
-#time_values = np.array(time_values)
-#peak_den = np.array(peak_den)
-
+        
 mean_ideal   = []
 median_ideal = []
 mean_amb     = []
