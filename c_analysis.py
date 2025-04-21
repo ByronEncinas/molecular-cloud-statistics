@@ -98,7 +98,7 @@ ax.grid(True)
 ax.set_xticklabels(round_time, rotation=60)
 ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
-plt.savefig("./LOS_cd_ideal.png")
+plt.savefig("./los_cd_ideal.png")
 plt.close()
 
 
@@ -130,7 +130,7 @@ ax.grid(True)
 ax.legend(loc='upper left', frameon=True, fontsize=11)
 
 plt.tight_layout()
-plt.savefig(f"./LOS_cd_ideal_inter.png")
+plt.savefig(f"./los_cd_ideal_inter.png")
 plt.close()
 
 
@@ -149,7 +149,7 @@ ax.grid(True)
 ax.set_xticklabels(round_time, rotation=60)
 ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
-plt.savefig("./LOS_cd_amb.png")
+plt.savefig("./los_cd_amb.png")
 plt.close()
 
 median = np.array([np.median(arr) for arr in data])
