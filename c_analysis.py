@@ -62,7 +62,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         data = np.load(snap_data, mmap_mode='r')
         threshold = data['thresholds']
         threshold_rev = data['thresholds_rev']        
-        column_density = data['column_densities']
+        column_density = data['column_densities']*pc_to_cm
         radius_vector = data['positions']
         numb_densities = data['number_densities']
 
