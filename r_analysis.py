@@ -550,7 +550,7 @@ ax0.plot(amb_time, mean_amb, label='mean $\\Delta_{amb}$', linewidth=1.5, linest
 ax0.plot(amb_time, median_amb, label='median $\\Delta_{amb}$', linewidth=1.5, linestyle='--', color='royalblue')
 ax0.set_ylabel('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 #ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
-ax0.set_xlabel('Snapshots')
+ax0.set_xlabel('Time (Myrs)')
 ax0.legend(frameon=False)
 plt.subplots_adjust(left=0.15)  # Increase left margin
 plt.savefig('./delta_threshold.png')
@@ -620,12 +620,10 @@ fig_amb, ax_amb = plt.subplots()
 ax_ideal.scatter(ideal_time, fractions_i, label='fractions', marker='x', color='black')
 ax_ideal.plot(ideal_time, mean_ir, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
 ax_ideal.plot(ideal_time, median_ir, label='median', linewidth=1.5, linestyle='--', color='darkorange')
-
 ax_ideal.set_ylabel('$R$ (Reduction factor)')
 ax_ideal.set_xlabel('time (Myrs)')
 ax_ideal.legend(frameon=False)
 #ax_ideal.set_title("Ideal")
-
 axins_ideal = inset_axes(ax_ideal, width="20%", height="20%", loc='lower right')
 mask_ideal = [t >= 3 for t in ideal_time]
 t_zoom = [t for t, m in zip(ideal_time, mask_ideal) if m]
@@ -645,7 +643,6 @@ ax_amb.set_ylabel('$R$ (Reduction factor)')
 ax_amb.set_xlabel('time (Myrs)')
 ax_amb.legend(frameon=False)
 #ax_amb.set_title("Ambipolar Diffusion")
-
 axins_amb = inset_axes(ax_amb, width="20%", height="20%", loc='lower right')
 mask_amb = [t >= 4.2903 for t in amb_time]
 t_zoom = [t for t, m in zip(amb_time, mask_amb) if m]
@@ -659,9 +656,11 @@ axins_amb.plot(t_zoom, median_zoom, color='royalblue', linestyle='--')
 axins_amb.tick_params(labelsize=8)
 
 
+
 fig_ideal.savefig('./time_reduction_ideal_win.png')
 fig_amb.savefig('./time_reduction_amb_win.png')
 plt.close()
+
 import os
 os.makedirs('reduction_density/ideal', exist_ok=True)
 os.makedirs('reduction_density/amb', exist_ok=True)
