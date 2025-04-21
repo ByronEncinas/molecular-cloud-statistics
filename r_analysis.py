@@ -251,8 +251,8 @@ def statistics_reduction(R, N):
     f = ones/total
     ncrit = 100
     mask = R<1
-    R = R[mask]
-    N = N[mask]
+    #R = R[mask]
+    #N = N[mask]
     minimum, maximum = np.min(np.log10(N)), np.max(np.log10(N))
     Npoints = len(R)
 
@@ -386,7 +386,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
 
-        
+
 mean_ideal   = []
 median_ideal = []
 mean_amb     = []
@@ -561,6 +561,7 @@ for s, r in R100['ideal'].items():
     median_ir += [np.median(r_ideal)]
     percen25_ir += [np.percentile(r_ideal,25)]
     percen10_ir += [np.percentile(r_ideal,10)]
+    print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
 
 mean_ar     = []
 median_ar   = []
