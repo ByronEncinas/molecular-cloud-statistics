@@ -60,21 +60,21 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
                     continue
 
         data = np.load(snap_data, mmap_mode='r')
-        
-        column_density = data['column_densities']*pc_to_cm
+        threshold = data['thresholds']
+        threshold_rev = data['thresholds_rev']        
+        column_density = data['column_densities']
         radius_vector = data['positions']
         numb_densities = data['number_densities']
-        threshold = data['thresholds']
-        threshold_rev = data['thresholds_rev']
 
+        N = column_density.shape[0]
         snap_columns_sliced = []
-        for column in enumerate(column_density[0,:]):
-            snap_columns_sliced = []
-            CD[case][float(row[1])] = CD[case].get(float(row[1]), list(column_density[-1, :].tolist() * 0)) + column_density[-1, :].tolist()
-        #  Make sure CD[case] exists and is a dict
-        #CD[case][snap] = CD[case].get(snap, list(column_density[-1, :].tolist() * 0)) + column_density[-1, :].tolist()
+        for i in range(column_density.shape[1]):
+            snap_columns_sliced += [np.max(column_density[:, i])]
         
-        print(np.mean(CD[case][float(row[1])]), "cm^-2")
+        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
+        
+        print(np.mean(CD[case][snap])*(pc_to_cm*2))
+
 
 ideal_time = time_values['ideal']
 amb_time = time_values['amb']
