@@ -73,7 +73,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
         
-        print(np.mean(CD[case][snap])*(pc_to_cm*2))
+        print(np.mean(CD[case][snap]))
 
 
 ideal_time = time_values['ideal']
