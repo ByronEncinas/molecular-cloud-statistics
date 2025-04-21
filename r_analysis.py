@@ -434,28 +434,33 @@ upper_68 = np.array([np.percentile(arr, 84) for arr in data])
 lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
 upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
 
-# X-axis: snapshot indices
+import numpy as np
+
+# Create evenly spaced X indices
+x_idx = np.arange(len(round_time))  # [0, 1, 2, ..., N-1]
+
 fig, ax = plt.subplots()
 
-ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
+# Use indices for plotting
+ax.fill_between(x_idx, lower_95, upper_95, color='pink', label='Interpercentile range (2.5th–97.5th)')
+ax.fill_between(x_idx, lower_68, upper_68, color='red', alpha=0.6, label='Interpercentile range (16th–84th)')
+ax.plot(x_idx, median, color='black', linestyle='--', linewidth=1, label='Median')
+ax.plot(x_idx, mean, color='black', linestyle='-', linewidth=1, label='Mean')
 
-ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
+# Set tick positions and corresponding labels
+ax.set_xticks(x_idx)
+ax.set_xticklabels(round_time, rotation=60)
 
-ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
-ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
-
+# Formatting
 ax.set_ylabel('Effective Column Density')
 ax.set_xlabel('Time (Myrs)')
-ax.set_title(f'Column Density along CR path (ideal)')
+ax.set_title('Column Density along CR path (ideal)')
 ax.set_yscale('log')
-ax.set_xticks(round_time)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=10)
 ax.grid(True)
 ax.legend(loc='upper left', frameon=True, fontsize=11)
 
 plt.tight_layout()
-plt.savefig(f"./path_cd_ideal_inter.png")
+plt.savefig("./path_cd_ideal_inter.png")
 plt.close()
 
 
@@ -484,26 +489,30 @@ upper_68 = np.array([np.percentile(arr, 84) for arr in data])
 lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
 upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
 
-# X-axis: snapshot indices
-x = np.arange(len(labels))
+import numpy as np
+
+# Create evenly spaced X indices
+x_idx = np.arange(len(round_time))  # [0, 1, 2, ..., N-1]
 
 fig, ax = plt.subplots()
 
-ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
-ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
-ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
-ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
+# Use indices for plotting
+ax.fill_between(x_idx, lower_95, upper_95, color='pink', label='Interpercentile range (2.5th–97.5th)')
+ax.fill_between(x_idx, lower_68, upper_68, color='red', alpha=0.6, label='Interpercentile range (16th–84th)')
+ax.plot(x_idx, median, color='black', linestyle='--', linewidth=1, label='Median')
+ax.plot(x_idx, mean, color='black', linestyle='-', linewidth=1, label='Mean')
+
+# Set tick positions and corresponding labels
+ax.set_xticks(x_idx)
+ax.set_xticklabels(round_time, rotation=60)
+
+# Formatting
 ax.set_ylabel('Effective Column Density')
 ax.set_xlabel('Time (Myrs)')
-ax.set_title(f'Column Density along path (amb)')
+ax.set_title('Column Density along CR path (amb)')
 ax.set_yscale('log')
-ax.set_xticks(round_time)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
 ax.grid(True)
 ax.legend(loc='upper left', frameon=True, fontsize=11)
-
-plt.tight_layout()
 plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
@@ -514,8 +523,6 @@ for k, v in CD['ideal'].items():
 for k, v in CD['amb'].items():
     #print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]))
     CD['amb'][k]   =   np.mean(CD['amb'][k])
-
-
 
 for k, v in sorted(R10['ideal'].items()):
     mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
@@ -545,6 +552,7 @@ ax0.set_ylabel('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 #ax0.set_title('$\\Delta = (R_{10} - R_{100})/R_{100}$')
 ax0.set_xlabel('Snapshots')
 ax0.legend(frameon=False)
+plt.subplots_adjust(left=0.15)  # Increase left margin
 plt.savefig('./delta_threshold.png')
 plt.close()
 
