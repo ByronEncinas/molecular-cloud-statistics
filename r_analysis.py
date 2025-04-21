@@ -596,7 +596,7 @@ ax_ideal.plot(ideal_time, percen10_ir, label='P10', linewidth=1.5, linestyle='do
 ax_ideal.set_ylabel('$R$ (Reduction factor)')
 ax_ideal.set_xlabel('time (Myrs)')
 ax_ideal.legend(frameon=False, fontsize=9)
-ax_ideal.set_title("Ideal")
+#ax_ideal.set_title("Ideal")
 
 ax_amb.scatter(amb_time, fractions_a, marker='x', color='black')
 ax_amb.plot(amb_time, mean_ar, label='mean', linewidth=1.5, linestyle='-', color='royalblue')
@@ -635,7 +635,7 @@ median_zoom = [m for m, msk in zip(median_ir, mask_ideal) if msk]
 axins_ideal.scatter(t_zoom, f_zoom, marker='x', color='black')
 axins_ideal.plot(t_zoom, mean_zoom, color='darkorange')
 axins_ideal.plot(t_zoom, median_zoom, color='darkorange', linestyle='--')
-axins_ideal.set_title("Zoom $t > 3.5$", fontsize=8)
+#axins_ideal.set_title("Zoom $t > 3.5$", fontsize=8)
 axins_ideal.tick_params(labelsize=8)
 
 ax_amb.scatter(amb_time, fractions_a, label='fractions', marker='x', color='black')
@@ -665,7 +665,6 @@ plt.close()
 import os
 os.makedirs('reduction_density/ideal', exist_ok=True)
 os.makedirs('reduction_density/amb', exist_ok=True)
-
 for tup in s_ideal:
     rdcut, x, mean, median, ten, s_size, no, f = tup
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
@@ -677,11 +676,15 @@ for tup in s_ideal:
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
     ax1.legend(frameon=False)
-    ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
-    ax2.set_xscale('log')
-    ax2.set_ylabel(r'Sample size')
-    ax2.set_xlabel('$n_g$')
+
+    num_bins = len(rdcut)//10
+    ax2.hist(rdcut, num_bins, density=True)  # Use the num_bins variable here
+    ax2.set_xlabel('Reduction factor', fontsize = 20)
+    ax2.set_ylabel('PDF', fontsize = 20)
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
     ax2.legend(frameon=False)
+    plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
@@ -695,11 +698,13 @@ for tup in s_amb:
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
-    ax1.legend(frameon=False)
-    ax2.plot(x, s_size, label='sample size', linewidth=1.5, linestyle='-', color='darkorange')
-    ax2.set_xscale('log')
-    ax2.set_ylabel(r'Sample size')
-    ax2.set_xlabel('$n_g$')
+    num_bins = len(rdcut)//10
+    ax2.hist(rdcut, num_bins, density=True)  # Use the num_bins variable here
+    ax2.set_xlabel('Reduction factor', fontsize = 20)
+    ax2.set_ylabel('PDF', fontsize = 20)
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
     ax2.legend(frameon=False)
+    plt.tight_layout()
     plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
