@@ -43,11 +43,11 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
     for snap_data in bundle_dir:  # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
 
-        # Path to the input file
-        file_path = f'./{case}_cloud_trajectory.txt'
+        # LOS to the input file
+        file_LOS = f'./{case}_cloud_trajectory.txt'
 
         # Regex pattern to match the line where the first column equals 'snap'
-        with open(file_path, mode='r') as file:
+        with open(file_LOS, mode='r') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # Skip header
             for row in csv_reader:
@@ -76,38 +76,108 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         print(np.mean(CD[case][float(row[1])]), "cm^-2")
 
-labels = list(CD['ideal'].keys())  # snapshot labels
-data = list(CD['ideal'].values())  # column density arrays
+ideal_time = time_values['ideal']
+amb_time = time_values['amb']
 
 from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
+
+# --- IDEAL CASE ---
+labels = list(CD['ideal'].keys())  
+data = list(CD['ideal'].values())  
+
+round_time = [np.round(t, 6) for t in ideal_time]
 
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Snapshots')
-ax.set_title('Column Density along CR path (ideal)')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title('Column Density along CR LOS (ideal)')
 ax.set_yscale('log')
 ax.grid(True)
-ax.xaxis.set_major_locator(MaxNLocator(nbins=10, integer=True))  # max 10 x labels
-plt.xticks(rotation=60)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
-plt.savefig("./los_cd_ideal.png")
-plt.show()
+plt.savefig("./LOS_cd_ideal.png")
+plt.close()
+
+
+median = np.array([np.median(arr) for arr in data])
+mean = np.array([np.mean(arr) for arr in data])
+lower_68 = np.array([np.percentile(arr, 16) for arr in data])
+upper_68 = np.array([np.percentile(arr, 84) for arr in data])
+lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
+upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
+
+# X-axis: snapshot indices
+fig, ax = plt.subplots()
+
+ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
+
+ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
+
+ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
+ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
+
+ax.set_ylabel('Effective Column Density')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title(f'Column Density along CR LOS (ideal)')
+ax.set_yscale('log')
+ax.set_xticks(round_time)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=10)
+ax.grid(True)
+ax.legend(loc='upper left', frameon=True, fontsize=11)
+
+plt.tight_layout()
+plt.savefig(f"./LOS_cd_ideal_inter.png")
+plt.close()
+
 
 # --- AMB CASE ---
 labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
+round_time = [np.round(t, 6) for t in amb_time]
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Snapshots')
-ax.set_title('Column Density along CR path (amb)')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title('Column Density along CR LOS (amb)')
 ax.set_yscale('log')
 ax.grid(True)
-ax.xaxis.set_major_locator(MaxNLocator(nbins=10, integer=True))  # max 10 x labels
-plt.xticks(rotation=60)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
-plt.savefig("./los_cd_amb.png")
-plt.show()
+plt.savefig("./LOS_cd_amb.png")
+plt.close()
 
+median = np.array([np.median(arr) for arr in data])
+mean = np.array([np.mean(arr) for arr in data])
+lower_68 = np.array([np.percentile(arr, 16) for arr in data])
+upper_68 = np.array([np.percentile(arr, 84) for arr in data])
+lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
+upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
+
+# X-axis: snapshot indices
+x = np.arange(len(labels))
+
+fig, ax = plt.subplots()
+
+ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
+ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
+ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
+ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
+ax.set_ylabel('Effective Column Density')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title(f'Column Density along LOS (amb)')
+ax.set_yscale('log')
+ax.set_xticks(round_time)
+ax.set_xticklabels(round_time, rotation=60)
+ax.locator_params(axis='x', nbins=15)
+ax.grid(True)
+ax.legend(loc='upper left', frameon=True, fontsize=11)
+
+plt.tight_layout()
+plt.savefig(f"./los_cd_amb_inter.png")
+plt.close()
