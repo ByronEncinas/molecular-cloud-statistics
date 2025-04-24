@@ -292,8 +292,7 @@ delta = 0.0
 peak_den    = OrderedDict({'ideal': [], 'amb': []})
 snap_values = OrderedDict({'ideal': [], 'amb': []})
 time_values = OrderedDict({'ideal': [], 'amb': []})
-readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-print(readable)
+
 
 for bundle_dir in bundle_dirs: # ideal and ambipolar
     if bundle_dir == []:
@@ -302,7 +301,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
     repeated = set()
     for snap_data in bundle_dir: # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
-        print(snap)
+
         
         # Path to the input file
         file_path = f'./{case}_cloud_trajectory.txt'
@@ -319,8 +318,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     time_values[case].append(float(row[1]))
                     peak_den[case].append(float(row[-1]))
                     readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-                    print(row[0])
-                    continue
+                    break
         # Load lazily
         data = np.load(snap_data, mmap_mode='r')
 
@@ -386,9 +384,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-        print(readable)
-
-exit()
 
 mean_ideal   = []
 median_ideal = []
@@ -514,8 +509,8 @@ ax.legend(loc='upper left', frameon=True, fontsize=11)
 plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
-readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-print(readable)
+
+
 
 for k, v in CD['ideal'].items():
     #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
@@ -557,9 +552,6 @@ plt.subplots_adjust(left=0.15)  # Increase left margin
 plt.savefig('./delta_threshold.png')
 plt.close()
 
-readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-print(readable)
-
 mean_ir     = []
 median_ir   = []
 percen25_ir = []
@@ -573,7 +565,7 @@ for s, r in R100['ideal'].items():
     median_ir += [np.median(r_ideal)]
     percen25_ir += [np.percentile(r_ideal,25)]
     percen10_ir += [np.percentile(r_ideal,10)]
-    print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
+    #print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
 
 mean_ar     = []
 median_ar   = []
@@ -667,16 +659,27 @@ import os
 os.makedirs('./reduction_density/ideal', exist_ok=True)
 os.makedirs('./reduction_density/amb', exist_ok=True)
 
+cur_min = 1.0
+mini = 1.0
+cur_max =0.0
+maxi = 0.0
+
 for i, tup in enumerate(s_ideal):
     rdcut, x, mean, median, ten, s_size, no, f = tup
     r = np.array(rdcut)
     r = r[r<1]
+    cur_min = f
+    if cur_min < mini:
+        mini = cur_min
+    cur_max = f
+    if cur_max > maxi:  
+        maxi = cur_max    
+
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6)) #
     t = np.round(ideal_time[i], 6)
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
-    print("Ideal: ", np.max(r), np.min(r))
     ax0.hist(r, num_bins, density = True)
     ax0.set_xlabel('Reduction factor', fontsize = 20)
     ax0.set_ylabel('PDF', fontsize = 20)
@@ -695,16 +698,28 @@ for i, tup in enumerate(s_ideal):
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
+    
+print("Ideal: ", mini, maxi)
+
+cur_min = 1.0
+mini = 1.0
+cur_max =0.0
+maxi = 0.0
 
 for i, tup in enumerate(s_amb):
     rdcut, x, mean, median, ten, s_size, no, f = tup
     r = np.array(rdcut)
     r = r[r<1]
+    cur_min = f
+    if cur_min < mini:
+        mini = cur_min
+    cur_max = f
+    if cur_max > maxi:  
+        maxi = cur_max       
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
-    print("Amb: ", np.max(r), np.min(r))
     t = np.round(amb_time[i], 6)
     ax0.hist(r, num_bins, density = True)
     ax0.set_xlabel('Reduction factor', fontsize = 20)
@@ -719,7 +734,8 @@ for i, tup in enumerate(s_amb):
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
-
     plt.tight_layout()
     plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
+
+print("Amb: ", mini, maxi)
