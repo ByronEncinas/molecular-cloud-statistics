@@ -292,6 +292,8 @@ delta = 0.0
 peak_den    = OrderedDict({'ideal': [], 'amb': []})
 snap_values = OrderedDict({'ideal': [], 'amb': []})
 time_values = OrderedDict({'ideal': [], 'amb': []})
+readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
+print(readable)
 
 for bundle_dir in bundle_dirs: # ideal and ambipolar
     if bundle_dir == []:
@@ -315,6 +317,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     snap_values[case].append(str(row[0]))
                     time_values[case].append(float(row[1]))
                     peak_den[case].append(float(row[-1]))
+                    readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
+                    print(readable)
                     continue
 
                 #print(snap, str(row[0]))
@@ -387,6 +391,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
+        readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
+        print(readable)
 
 mean_ideal   = []
 median_ideal = []
@@ -512,6 +518,9 @@ ax.legend(loc='upper left', frameon=True, fontsize=11)
 plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
+readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
+print(readable)
+
 for k, v in CD['ideal'].items():
     #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
     CD['ideal'][k]   =   np.mean(CD['ideal'][k])
@@ -551,6 +560,9 @@ ax0.legend(frameon=False)
 plt.subplots_adjust(left=0.15)  # Increase left margin
 plt.savefig('./delta_threshold.png')
 plt.close()
+
+readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
+print(readable)
 
 mean_ir     = []
 median_ir   = []
