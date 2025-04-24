@@ -388,9 +388,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
 
-print("Overall extremes: ", np.max(np.concatenate(list(R100['ideal'].values()))),np.min(np.concatenate(list(R100['ideal'].values()))))
-print("Overall extremes: ", np.max(np.concatenate(list(R100['amb'].values()))),np.min(np.concatenate(list(R100['amb'].values()))))
-
 mean_ideal   = []
 median_ideal = []
 mean_amb     = []
