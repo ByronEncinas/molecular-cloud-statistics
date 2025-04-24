@@ -45,6 +45,7 @@ def pocket_finder(bfield, r, B, img = '', plot=False):
         idx = index_global_max[0]
     except:
         idx = index_global_max
+        print("No global max found")
     upline == bfield[idx]
     ijk = np.argmax(bfield)
     bfield[ijk] = bfield[ijk]*1.001 # if global_max is found in flat region, choose one and scale it 0.001
@@ -698,7 +699,6 @@ for i, tup in enumerate(s_ideal):
     ax1.set_xlabel('$n_g$', fontsize = 16)
     ax1.set_title(f'$f$ = {f}', fontsize = 16)
     ax1.legend(frameon=False)
-
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
@@ -719,6 +719,7 @@ for i, tup in enumerate(s_amb):
     cur_max = f
     if cur_min < mini:
         mini = cur_min
+    print("yes")
     if cur_max > maxi:
         maxi = cur_max
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
