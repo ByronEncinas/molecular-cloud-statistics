@@ -14,6 +14,8 @@ ideal_bundle = sorted(glob.glob('./thesis_stats/ideal/*/DataBundle*.npz'))
 #amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
 #ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
 
+print(ideal_bundle)
+
 bundle_dirs = [ideal_bundle,amb_bundle]
 
 readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
@@ -383,7 +385,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
-        readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
 
 mean_ideal   = []
 median_ideal = []
@@ -401,6 +402,7 @@ fractions_a = []
 
 ideal_time = time_values['ideal']
 amb_time = time_values['amb']
+print(ideal_time)
 
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
@@ -431,6 +433,8 @@ lower_68 = np.array([np.percentile(arr, 16) for arr in data])
 upper_68 = np.array([np.percentile(arr, 84) for arr in data])
 lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
 upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
+
+print(median)
 
 import numpy as np
 
@@ -698,7 +702,7 @@ for i, tup in enumerate(s_ideal):
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
-    
+
 print("Ideal: ", mini, maxi)
 
 cur_min = 1.0
