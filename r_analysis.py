@@ -11,8 +11,8 @@ start_time = time.time()
 amb_bundle   = sorted(glob.glob('./thesis_stats/amb/*/DataBundle*.npz'))
 ideal_bundle = sorted(glob.glob('./thesis_stats/ideal/*/DataBundle*.npz'))
 
-amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
-ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
+#amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
+#ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
 
 bundle_dirs = [ideal_bundle,amb_bundle]
 
@@ -302,6 +302,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
     repeated = set()
     for snap_data in bundle_dir: # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
+        print(snap)
         
         # Path to the input file
         file_path = f'./{case}_cloud_trajectory.txt'
@@ -318,15 +319,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     time_values[case].append(float(row[1]))
                     peak_den[case].append(float(row[-1]))
                     readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-                    print(readable)
+                    print(row[0])
                     continue
-
-                #print(snap, str(row[0]))
-
-        #print(snap_values[case][-1], time_values[case][-1], np.log10(peak_den[case][-1]))                    
-        # Convert lists to numpy array
-
-
         # Load lazily
         data = np.load(snap_data, mmap_mode='r')
 
@@ -349,16 +343,15 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         #print(f"number_densities:{size_in_mb(numb_densities):.2f} MB")
         #print(f"magnetic_fields: {size_in_mb(magnetic_fields):.2f} MB")
         #print(f"thresholds:      {size_in_mb(threshold):.2f} MB")
-
-        total = sum([
-            column_density.nbytes,
-            radius_vector.nbytes,
-            trajectory.nbytes,
-            numb_densities.nbytes,
-            magnetic_fields.nbytes,
-            threshold.nbytes
-        ])
-
+        """
+                total = sum([
+                    column_density.nbytes,
+                    radius_vector.nbytes,
+                    trajectory.nbytes,
+                    numb_densities.nbytes,
+                    magnetic_fields.nbytes,
+                    threshold.nbytes
+                ])
         if False:
             x = radius_vector[numb_densities.shape[0]//2,:,0]/pc_to_cm
             y = radius_vector[numb_densities.shape[0]//2,:,1]/pc_to_cm
@@ -380,6 +373,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
             plt.axis('equal')  # to keep scale of x and y consistent
             plt.tight_layout()
             plt.show()
+        """
 
         #print(f"Elements: ", radius_vector.shape)
         #print(f"\nTotal: {total / 1e6:.2f} MB = {total / 1e9:.2f} GB")
@@ -393,6 +387,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
         print(readable)
+
+exit()
 
 mean_ideal   = []
 median_ideal = []
@@ -668,8 +664,8 @@ fig_amb.savefig('./time_reduction_amb_win.png')
 plt.close()
 
 import os
-os.makedirs('reduction_density/ideal', exist_ok=True)
-os.makedirs('reduction_density/amb', exist_ok=True)
+os.makedirs('./reduction_density/ideal', exist_ok=True)
+os.makedirs('./reduction_density/amb', exist_ok=True)
 
 for i, tup in enumerate(s_ideal):
     rdcut, x, mean, median, ten, s_size, no, f = tup
@@ -725,5 +721,5 @@ for i, tup in enumerate(s_amb):
     ax1.set_title(f'$f$ = {f}')
 
     plt.tight_layout()
-    plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
+    plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
