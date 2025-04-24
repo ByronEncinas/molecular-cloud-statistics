@@ -14,8 +14,7 @@ start_time = time.time()
 
 FloatType = np.float64
 IntType = np.int32
-
-if len(sys.argv)>6:
+if len(sys.argv)>5:
     N             = int(sys.argv[1])
     rloc          = float(sys.argv[2])
     max_cycles    = int(sys.argv[3]) 
@@ -29,9 +28,9 @@ else:
     case            = 'ideal'
     num_file        = '430'
     seed            = 12345 
-    sys.argv.append('NO_ID')
+    sys.argv.append(seed)
 
-print(sys.argv)
+print(sys.argv, N)
 
 reduction_factor_at_numb_density = defaultdict()
 reduction_factor = []
@@ -55,13 +54,12 @@ with open(file_path, mode='r') as file:
     for row in csv_reader:
         if num_file == str(row[0]):
             print("Match found!")
-            print("Row:", row)  # Print the row for debugging
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             snap =str(row[0])
             time_value = float(row[1])
             peak_den =  float(row[5])
 try:
-    print(Center)
+    Center
 except:
     raise ValueError('Center is not defined')
 
@@ -118,12 +116,15 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-def get_along_lines(x_init=None):
+print("Allocation Number: ", N)
+
+
+
+def get_along_lines(x_init=None, N=N):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
     """
-
     dx = 0.5
 
     m = x_init.shape[0]
@@ -161,7 +162,7 @@ def get_along_lines(x_init=None):
     mask2_rev = dens > 100
     un_masked2_rev = np.logical_not(mask2_rev)
 
-
+    repeat = False
     while np.any((mask_rev)):
 
         mask_rev = dens > 10
@@ -181,13 +182,50 @@ def get_along_lines(x_init=None):
         x[un_masked_rev] = aux
         print(np.max(np.log10(dens)))
 
+        if k + 1 >= N:
+            if np.all(un_masked2_rev):
+                print("All values are False: means all density < 10^2")
+                break
+            if repeat == True:
+                x_init_not_finished = x_init[un_masked_rev] # keep un-finished lines
+                x_init              = x_init[mask_rev] # keep finished lines
+                line_rev_not_finished = line[:,un_masked_rev,:]
+                volumes_rev_not_finished = volumes[:,un_masked_rev]
+                bfields_rev_not_finished = bfields[:,un_masked_rev]
+                densities_rev_not_finished = densities[:,un_masked_rev]
+
+                line_rev = line_rev[:,mask_rev,:]
+                volumes_rev = volumes_rev[:,mask_rev]
+                bfields_rev = bfields_rev[:,mask_rev]
+                densities_rev = densities_rev[:,mask_rev]
+                break
+            auxlines = line_rev
+            auxvolumes = volumes_rev
+            auxbfields = bfields_rev
+            auxdensities = densities_rev
+
+            N_old = N
+            N *= 2
+
+            line_rev      = np.zeros((N, m, 3))
+            bfields_rev   = np.zeros((N, m))
+            densities_rev = np.zeros((N, m))
+            volumes_rev   = np.zeros((N, m))
+
+            line_rev[:N_old,:,:]    = auxlines
+            volumes_rev[:N_old,:]   = auxvolumes
+            bfields_rev[:N_old,:]   = auxbfields
+            densities_rev[:N_old,:] = auxdensities
+
+            repeat = True
+
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
         bfields_rev[k+1,:] = bfield
-        densities_rev[k+1,:] = dens 
-                    
+        densities_rev[k+1,:] = dens                  
+
         if np.all(un_masked_rev):
-            print("All values are False: means all density < 10^2")
+            print("All values are False: means all density < 10")
             break
 
         k += 1
@@ -206,8 +244,6 @@ def get_along_lines(x_init=None):
 
     mask2 = dens > 100
     un_masked2 = np.logical_not(mask2) # 1 if finished
-
-    print(np.log10(dens[:3]))
 
     while np.any(mask):
 
@@ -228,27 +264,80 @@ def get_along_lines(x_init=None):
         threshold2 += mask2.astype(int)  # Increment threshold count only for values still above 100
       
         x[un_masked] = aux
-        print(np.max(np.log10(dens)))
 
-        line[k+1,:,:]    = x
-        volumes[k+1,:]   = vol
-        bfields[k+1,:]   = bfield
-        densities[k+1,:] = dens
+        if k + 1 >= N:
+            # if we go over the size of the array, we check if the density threshold 100cm-3 is reached
+            # if not, then resize
+            if np.all(un_masked2):
+                print("All values are False: means all density < 10^2")
+                break
+            if repeat == True:
+                x_init_not_finished = x_init[un_masked] # keep un-finished lines
+                x_init              = x_init[mask]      # keep finished lines
+                line_not_finished = line[:,un_masked,:]
+                volumes_not_finished = volumes[:,un_masked]
+                bfields_not_finished = bfields[:,un_masked]
+                densities_not_finished = densities[:,un_masked]
+
+                line = line[:,mask,:]
+                volumes = volumes[:,mask]
+                bfields = bfields[:,mask]
+                densities = densities[:,mask]
+                break
+            auxlines = line
+            auxvolumes = volumes
+            auxbfields = bfields
+            auxdensities = densities
+
+            N_old = N
+            N *= 2
+
+            line      = np.zeros((N, m, 3))
+            bfields   = np.zeros((N, m))
+            densities = np.zeros((N, m))
+            volumes   = np.zeros((N, m))
+
+            line[:N_old,:,:]    = auxlines
+            volumes[:N_old,:]   = auxvolumes
+            bfields[:N_old,:]   = auxbfields
+            densities[:N_old,:] = auxdensities
+
+            repeat = True
+
+
+        line[k + 1, :, :]      = x
+        volumes[k + 1, :]      = vol
+        bfields[k + 1, :]      = bfield
+        densities[k + 1, :]    = dens
 
         if np.all(un_masked):
-            print("All values are False: means all density < 10^2")
+            print("All values are False: means all density < 10")
             break
 
         k += 1
     
+    unfinished_forward = np.logical_not(mask)
+    unfinished_reverse = np.logical_not(mask_rev)
+    unfinished_total = np.logical_or(unfinished_forward, unfinished_reverse)
+    x_init_unfinished = x_init[unfinished_total]
+
+    
+    np.savez(os.path.join(children_folder, f"uDataBundle{seed}.npz"),
+            u_seed=seed,
+            u_x_init=x_init_unfinished,
+            u_line_rev=line_rev_not_finished,
+            u_line=line_not_finished,
+            u_volumes_rev=volumes_rev_not_finished,
+            u_volumes=volumes_not_finished,
+            u_bfields_rev=bfields_rev_not_finished,
+            u_bfields=bfields_not_finished,
+            u_densities_rev=densities_rev_not_finished,
+            u_densities=densities_not_finished,
+         )
+
     threshold = threshold.astype(int)
 
     updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
-    
-    threshold = threshold[updated_mask].astype(int)
-    threshold_rev = threshold_rev[updated_mask].astype(int)
-    threshold2 = threshold[updated_mask].astype(int)
-    threshold2_rev = threshold_rev[updated_mask].astype(int)
 
     # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
     line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
@@ -365,7 +454,7 @@ np.save(os.path.join(children_folder, f"MagneticFields{seed}.npy"), magnetic_fie
 np.save(os.path.join(children_folder, f"Thresholds{seed}.npy"), np.array(th))
 """
 
-for cycle in range(max_cycles):
+for cycle in range(max_cycles): # 10
 
     _from = N +1 - threshold_rev[cycle]
     _to   = N+ 1 + threshold[cycle] -1 # we sliced line[1:,:,:] so -1
@@ -387,7 +476,7 @@ for cycle in range(max_cycles):
         pos_red[tupi] = R
         continue
         
-    if True:
+    if False:
         inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
         distance = distance[inter]
         ds = np.abs(np.diff(distance, n=1))
@@ -400,7 +489,6 @@ for cycle in range(max_cycles):
         adaptive_sigma = 3*ds/np.mean(ds) #(ds > np.mean(ds))
         adaptive_sigma[adaptive_sigma==0] = 1.0e-1
         bfield = np.array([gaussian_filter1d(bfield, sigma=s)[i] for i, s in enumerate(adaptive_sigma)]) # adapatative stepsize impact extremes (cell size dependent)
-
 
     pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
@@ -496,7 +584,7 @@ reduction_factor2 = list()
 numb_density_at2  = list()
 pos_red2 = dict()
 
-for cycle in range(max_cycles):
+for cycle in range(max_cycles): # 100
 
     _from = N +1 - threshold2_rev[cycle]
     _to   = N+ 1 + threshold2[cycle] -1 # we sliced line[1:,:,:] so -1
@@ -515,7 +603,7 @@ for cycle in range(max_cycles):
         pos_red[tupi] = R
         continue
 
-    if True:
+    if False:
         inter = (abs(np.roll(distance, 1) - distance) != 0) # removing pivot point
         distance = distance[inter]
         ds = np.abs(np.diff(distance, n=1))

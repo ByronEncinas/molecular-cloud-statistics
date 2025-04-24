@@ -516,11 +516,11 @@ plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
 for k, v in CD['ideal'].items():
-    #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
+    print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
     CD['ideal'][k]   =   np.mean(CD['ideal'][k])
 
 for k, v in CD['amb'].items():
-    #print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]))
+    print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]))
     CD['amb'][k]   =   np.mean(CD['amb'][k])
 
 for k, v in sorted(R10['ideal'].items()):
@@ -569,7 +569,7 @@ for s, r in R100['ideal'].items():
     median_ir += [np.median(r_ideal)]
     percen25_ir += [np.percentile(r_ideal,25)]
     percen10_ir += [np.percentile(r_ideal,10)]
-    #print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
+    print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
 
 mean_ar     = []
 median_ar   = []
