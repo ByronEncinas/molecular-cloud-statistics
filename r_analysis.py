@@ -14,7 +14,7 @@ ideal_bundle = sorted(glob.glob('./thesis_stats/ideal/*/DataBundle*.npz'))
 #amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
 #ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
 
-print(ideal_bundle)
+#print(ideal_bundle)
 
 bundle_dirs = [ideal_bundle,amb_bundle]
 
@@ -328,7 +328,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         def size_in_mb(array):
             return array.nbytes / 1e6  # Convert bytes to MB
 
-        column_density = data['column_density']*pc_to_cm
+        column_density = data['column_density']
         radius_vector = data['positions']
         trajectory = data['trajectory']
         numb_densities = data['number_densities']
@@ -402,7 +402,7 @@ fractions_a = []
 
 ideal_time = time_values['ideal']
 amb_time = time_values['amb']
-print(ideal_time)
+#print(ideal_time)
 
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
@@ -434,7 +434,7 @@ upper_68 = np.array([np.percentile(arr, 84) for arr in data])
 lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
 upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
 
-print(median)
+#print(median)
 
 import numpy as np
 
@@ -464,7 +464,6 @@ ax.legend(loc='upper left', frameon=True, fontsize=11)
 plt.tight_layout()
 plt.savefig("./path_cd_ideal_inter.png")
 plt.close()
-
 
 # --- AMB CASE ---
 labels = list(CD['amb'].keys())  # snapshot labels
