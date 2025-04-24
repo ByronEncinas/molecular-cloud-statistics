@@ -388,8 +388,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
 
-print("Overall extremes: ", np.max(R100['ideal'].values()),np.min(R100['ideal'].values()))
-print("Overall extremes: ", np.max(R100['amb'].values()),np.min(R100['amb'].values()))
+#print("Overall extremes: ", np.max(np.concatenate(list(R100['ideal'].values()))),np.min(np.concatenate(list(R100['ideal'].values()))))
+#print("Overall extremes: ", np.max(np.concatenate(list(R100['amb'].values()))),np.min(np.concatenate(list(R100['amb'].values()))))
 
 mean_ideal   = []
 median_ideal = []
@@ -560,6 +560,7 @@ median_ir   = []
 percen25_ir = []
 percen10_ir = []
 
+
 for s, r in R100['ideal'].items():
 
     array = np.array(r)
@@ -568,7 +569,7 @@ for s, r in R100['ideal'].items():
     median_ir += [np.median(r_ideal)]
     percen25_ir += [np.percentile(r_ideal,25)]
     percen10_ir += [np.percentile(r_ideal,10)]
-    print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
+    #print(np.percentile(r_ideal,25), np.percentile(r_ideal,10), np.mean(r_ideal), np.median(r_ideal))
 
 mean_ar     = []
 median_ar   = []
@@ -662,16 +663,27 @@ import os
 os.makedirs('reduction_density/ideal', exist_ok=True)
 os.makedirs('reduction_density/amb', exist_ok=True)
 
+cur_min = 0.0
+mini    =  0.0
+cur_max = 0.0
+maxi    =  0.0
+
 for i, tup in enumerate(s_ideal):
     rdcut, x, mean, median, ten, s_size, no, f = tup
     r = np.array(rdcut)
     r = r[r<1]
+    cur_min = f
+    cur_max = f
+    if cur_min < mini:
+        mini = cur_min
+    if cur_max > maxi:
+        maxi = cur_max
+
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6)) #
     t = np.round(ideal_time[i], 6)
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
-    print("Ideal: ", np.max(r), np.min(r))
     ax0.hist(r, num_bins, density = True)
     ax0.set_xlabel('Reduction factor', fontsize = 20)
     ax0.set_ylabel('PDF', fontsize = 20)
@@ -691,15 +703,28 @@ for i, tup in enumerate(s_ideal):
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
+print("Ideal: ", maxi, mini)
+
+cur_min = 1.0
+mini    =  1.0
+
+cur_max = 0.0
+maxi    =  0.0
+
 for i, tup in enumerate(s_amb):
     rdcut, x, mean, median, ten, s_size, no, f = tup
     r = np.array(rdcut)
     r = r[r<1]
+    cur_min = f
+    cur_max = f
+    if cur_min < mini:
+        mini = cur_min
+    if cur_max > maxi:
+        maxi = cur_max
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
-    print("Amb: ", np.max(r), np.min(r))
     t = np.round(amb_time[i], 6)
     ax0.hist(r, num_bins, density = True)
     ax0.set_xlabel('Reduction factor', fontsize = 20)
@@ -718,3 +743,4 @@ for i, tup in enumerate(s_amb):
     plt.tight_layout()
     plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
+print("Amb: ", maxi, mini)
