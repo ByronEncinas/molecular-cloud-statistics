@@ -3,12 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys, time, glob, re
 import warnings, csv
+
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 
 start_time = time.time()
 
 amb_bundle   = sorted(glob.glob('./thesis_stats/amb/*/DataBundle*.npz'))
 ideal_bundle = sorted(glob.glob('./thesis_stats/ideal/*/DataBundle*.npz'))
+
+amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
+ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
 
 bundle_dirs = [ideal_bundle,amb_bundle]
 
@@ -251,8 +255,8 @@ def statistics_reduction(R, N):
     f = ones/total
     ncrit = 100
     mask = R<1
-    #R = R[mask]
-    #N = N[mask]
+    R = R[mask]
+    N = N[mask]
     minimum, maximum = np.min(np.log10(N)), np.max(np.log10(N))
     Npoints = len(R)
 
@@ -288,8 +292,6 @@ delta = 0.0
 peak_den    = OrderedDict({'ideal': [], 'amb': []})
 snap_values = OrderedDict({'ideal': [], 'amb': []})
 time_values = OrderedDict({'ideal': [], 'amb': []})
-
-
 
 for bundle_dir in bundle_dirs: # ideal and ambipolar
     if bundle_dir == []:
@@ -328,7 +330,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         def size_in_mb(array):
             return array.nbytes / 1e6  # Convert bytes to MB
 
-        column_density = data['column_density']
+        column_density = data['column_density']*pc_to_cm
         radius_vector = data['positions']
         trajectory = data['trajectory']
         numb_densities = data['number_densities']
@@ -386,6 +388,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
 
+print("Overall extremes: ", np.max(R100['ideal'].values),np.min(R100['ideal'].values))
+print("Overall extremes: ", np.max(R100['amb'].values),np.min(R100['amb'].values))
 
 mean_ideal   = []
 median_ideal = []
@@ -496,21 +500,16 @@ x_idx = np.arange(len(round_time))  # [0, 1, 2, ..., N-1]
 
 fig, ax = plt.subplots()
 
-# Use indices for plotting
 ax.fill_between(x_idx, lower_95, upper_95, color='pink', label='Interpercentile range (2.5th–97.5th)')
 ax.fill_between(x_idx, lower_68, upper_68, color='red', alpha=0.6, label='Interpercentile range (16th–84th)')
 ax.plot(x_idx, median, color='black', linestyle='--', linewidth=1, label='Median')
 ax.plot(x_idx, mean, color='black', linestyle='-', linewidth=1, label='Mean')
-
-# Set tick positions and corresponding labels
 ax.set_xticks(x_idx)
 ax.set_xticklabels(round_time, rotation=60)
-
-# Formatting
 ax.set_ylabel('Effective Column Density')
 ax.set_xlabel('Time (Myrs)')
 ax.set_title('Column Density along CR path (amb)')
-ax.set_yscale('log')
+#ax.set_yscale('log')
 ax.grid(True)
 ax.legend(loc='upper left', frameon=True, fontsize=11)
 plt.savefig(f"./path_cd_amb_inter.png")
@@ -655,8 +654,6 @@ axins_amb.plot(t_zoom, median_zoom, color='royalblue', linestyle='--')
 #axins_amb.set_title("Zoom $t > 3.5$", fontsize=8)
 axins_amb.tick_params(labelsize=8)
 
-
-
 fig_ideal.savefig('./time_reduction_ideal_win.png')
 fig_amb.savefig('./time_reduction_amb_win.png')
 plt.close()
@@ -664,32 +661,52 @@ plt.close()
 import os
 os.makedirs('reduction_density/ideal', exist_ok=True)
 os.makedirs('reduction_density/amb', exist_ok=True)
-for tup in s_ideal:
+
+for i, tup in enumerate(s_ideal):
     rdcut, x, mean, median, ten, s_size, no, f = tup
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    r = np.array(rdcut)
+    r = r[r<1]
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6)) #
+    t = np.round(ideal_time[i], 6)
+    num_bins = len(r)//10
+    if num_bins < 10:
+        num_bins = 10
+    print("Ideal: ", np.max(r), np.min(r))
+    ax0.hist(r, num_bins, density = True)
+    ax0.set_xlabel('Reduction factor', fontsize = 20)
+    ax0.set_ylabel('PDF', fontsize = 20)
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
+    ax0.set_title(f'$t$ = {t}  Myrs')
     ax1.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
     ax1.set_xscale('log')
-    ax1.set_ylabel(r'$R$')
-    ax1.set_xlabel('$n_g$')
-    ax1.set_title(f'$f$ = {f}')
+    ax1.set_ylabel(r'$R$', fontsize = 16)
+    ax1.set_xlabel('$n_g$', fontsize = 16)
+    ax1.set_title(f'$f$ = {f}', fontsize = 16)
     ax1.legend(frameon=False)
 
-    num_bins = len(rdcut)//10
-    ax2.hist(rdcut, num_bins, density=True)  # Use the num_bins variable here
-    ax2.set_xlabel('Reduction factor', fontsize = 20)
-    ax2.set_ylabel('PDF', fontsize = 20)
-    plt.setp(ax1.get_xticklabels(), fontsize = 16)
-    plt.setp(ax1.get_yticklabels(), fontsize = 16)
-    ax2.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
 
-for tup in s_amb:
+for i, tup in enumerate(s_amb):
     rdcut, x, mean, median, ten, s_size, no, f = tup
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    r = np.array(rdcut)
+    r = r[r<1]
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
+    num_bins = len(r)//10
+    if num_bins < 10:
+        num_bins = 10
+    print("Amb: ", np.max(r), np.min(r))
+    t = np.round(amb_time[i], 6)
+    ax0.hist(r, num_bins, density = True)
+    ax0.set_xlabel('Reduction factor', fontsize = 20)
+    ax0.set_ylabel('PDF', fontsize = 20)
+    ax0.set_title(f'$t$ = {t}  Myrs')
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
     ax1.plot(x, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
@@ -697,13 +714,7 @@ for tup in s_amb:
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
-    num_bins = len(rdcut)//10
-    ax2.hist(rdcut, num_bins, density=True)  # Use the num_bins variable here
-    ax2.set_xlabel('Reduction factor', fontsize = 20)
-    ax2.set_ylabel('PDF', fontsize = 20)
-    plt.setp(ax1.get_xticklabels(), fontsize = 16)
-    plt.setp(ax1.get_yticklabels(), fontsize = 16)
-    ax2.legend(frameon=False)
+
     plt.tight_layout()
     plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
