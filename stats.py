@@ -162,7 +162,7 @@ def get_along_lines(x_init=None, N=N):
     mask2_rev = dens > 100
     un_masked2_rev = np.logical_not(mask2_rev)
 
-    repeat = False
+    repeat_rev = False
     while np.any((mask_rev)):
 
         mask_rev = dens > 10
@@ -186,7 +186,7 @@ def get_along_lines(x_init=None, N=N):
             if np.all(un_masked2_rev):
                 print("All values are False: means all density < 10^2")
                 break
-            if repeat == True:
+            if repeat_rev == True:
                 x_init_not_finished = x_init[un_masked_rev] # keep un-finished lines
                 x_init              = x_init[mask_rev] # keep finished lines
                 line_rev_not_finished = line[:,un_masked_rev,:]
@@ -217,7 +217,7 @@ def get_along_lines(x_init=None, N=N):
             bfields_rev[:N_old,:]   = auxbfields
             densities_rev[:N_old,:] = auxdensities
 
-            repeat = True
+            repeat_rev = True
 
         line_rev[k+1,:,:] = x
         volumes_rev[k+1,:] = vol
@@ -316,24 +316,27 @@ def get_along_lines(x_init=None, N=N):
 
         k += 1
     
-    unfinished_forward = np.logical_not(mask)
-    unfinished_reverse = np.logical_not(mask_rev)
-    unfinished_total = np.logical_or(unfinished_forward, unfinished_reverse)
-    x_init_unfinished = x_init[unfinished_total]
 
-    
-    np.savez(os.path.join(children_folder, f"uDataBundle{seed}.npz"),
-            u_seed=seed,
-            u_x_init=x_init_unfinished,
-            u_line_rev=line_rev_not_finished,
-            u_line=line_not_finished,
-            u_volumes_rev=volumes_rev_not_finished,
-            u_volumes=volumes_not_finished,
-            u_bfields_rev=bfields_rev_not_finished,
-            u_bfields=bfields_not_finished,
-            u_densities_rev=densities_rev_not_finished,
-            u_densities=densities_not_finished,
-         )
+    if repeat_rev and repeat:
+        unfinished_forward = np.logical_not(mask)
+        unfinished_reverse = np.logical_not(mask_rev)
+        unfinished_total = np.logical_or(unfinished_forward, unfinished_reverse)
+        x_init_unfinished = x_init[unfinished_total]
+
+
+        np.savez(os.path.join(children_folder, f"uDataBundle{seed}.npz"),
+        u_seed=seed,
+        u_x_init=x_init_unfinished,
+        u_line_rev=line_rev_not_finished,
+        u_line=line_not_finished,
+        u_volumes_rev=volumes_rev_not_finished,
+        u_volumes=volumes_not_finished,
+        u_bfields_rev=bfields_rev_not_finished,
+        u_bfields=bfields_not_finished,
+        u_densities_rev=densities_rev_not_finished,
+        u_densities=densities_not_finished,
+        )
+
 
     threshold = threshold.astype(int)
 
@@ -453,7 +456,7 @@ np.save(os.path.join(children_folder, f"NumberDensities{seed}.npy"), numb_densit
 np.save(os.path.join(children_folder, f"MagneticFields{seed}.npy"), magnetic_fields)
 np.save(os.path.join(children_folder, f"Thresholds{seed}.npy"), np.array(th))
 """
-
+N = threshold.shape[0] # number of lines
 for cycle in range(max_cycles): # 10
 
     _from = N +1 - threshold_rev[cycle]
@@ -584,6 +587,8 @@ reduction_factor2 = list()
 numb_density_at2  = list()
 pos_red2 = dict()
 
+N = threshold.shape[0] # number of lines
+
 for cycle in range(max_cycles): # 100
 
     _from = N +1 - threshold2_rev[cycle]
@@ -614,7 +619,7 @@ for cycle in range(max_cycles): # 100
         abfield = np.array([gaussian_filter1d(bfield, sigma=s, mode='nearest')[i] for i, s in enumerate(adaptive_sigma)])
 
 
-    pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=False) # this plots
+    pocket, global_info = smooth_pocket_finder(bfield, cycle, plot=True) # this plots
     index_pocket, field_pocket = pocket[0], pocket[1]
 
     min_den_cycle.append(min(numb_density))

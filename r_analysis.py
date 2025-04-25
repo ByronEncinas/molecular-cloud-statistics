@@ -282,7 +282,7 @@ def statistics_reduction(R, N):
         if N[i] > ncrit: 
             rdcut = rdcut + [R[i]]
 
-    return rdcut, x_n, mean_vec, median_vec, ten_vec, sample_size, f
+    return rdcut, x_n, mean_vec, median_vec, ten_vec, sample_size, f, R, N
 
 R100 = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 R10  = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
@@ -385,6 +385,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
+
+
 
 mean_ideal   = []
 median_ideal = []
@@ -527,8 +529,8 @@ for k, v in sorted(R10['ideal'].items()):
     mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
     median_ideal.append(np.median((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
     ideal_snap.append(int(k))
-    rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['ideal'][k]), np.array(NR['ideal'][k])) 
-    s_ideal.append((rdcut, x, mean, median, ten, s_size, k, f))
+    rdcut, x, mean, median, ten, s_size, f, r_, n_ = statistics_reduction(np.array(R10['ideal'][k]), np.array(NR['ideal'][k])) 
+    s_ideal.append((rdcut, x, mean, median, ten, s_size, k, f, r_, n_))
     fractions_i.append(float(f))
     Delta['ideal'][k] = (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])
 
@@ -536,8 +538,8 @@ for k, v in sorted(R10['amb'].items()):
     mean_amb.append(np.mean((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
     median_amb.append(np.median((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
     amb_snap.append(int(k))
-    rdcut, x, mean, median, ten, s_size, f = statistics_reduction(np.array(R10['amb'][k]), np.array(NR['amb'][k])) 
-    s_amb.append((rdcut, x, mean, median, ten, s_size, k, f))
+    rdcut, x, mean, median, ten, s_size, f, r_, n_ = statistics_reduction(np.array(R10['amb'][k]), np.array(NR['amb'][k])) 
+    s_amb.append((rdcut, x, mean, median, ten, s_size, k, f, r_, n_))
     fractions_a.append(float(f))
     Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])
 
@@ -667,19 +669,28 @@ mini = 1.0
 cur_max =0.0
 maxi = 0.0
 
+
 for i, tup in enumerate(s_ideal):
-    rdcut, x, mean, median, ten, s_size, no, f = tup
+    rdcut, x, mean, median, ten, s_size, no, f, r_, n_ = tup
     r = np.array(rdcut)
     r = r[r<1]
+    t = np.round(ideal_time[i], 6)
     cur_min = f
     if cur_min < mini:
         mini = cur_min
     cur_max = f
     if cur_max > maxi:  
         maxi = cur_max    
+    figR, axR = plt.subplots()
+    axR.scatter(n_, r_, marker ='x', color='darkorange')
+    axR.set_xscale('log')
+    axR.legend(frameon=False)
+    plt.tight_layout()
+    plt.savefig(f'./reduction_density/ideal/ideal_{no}_scatter.png')
+    plt.close()
 
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6)) #
-    t = np.round(ideal_time[i], 6)
+
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
@@ -697,10 +708,11 @@ for i, tup in enumerate(s_ideal):
     ax1.set_xlabel('$n_g$', fontsize = 16)
     ax1.set_title(f'$f$ = {f}', fontsize = 16)
     ax1.legend(frameon=False)
-
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
+
+
 
 print("Ideal: ", mini, maxi)
 
@@ -710,15 +722,24 @@ cur_max =0.0
 maxi = 0.0
 
 for i, tup in enumerate(s_amb):
-    rdcut, x, mean, median, ten, s_size, no, f = tup
+    rdcut, x, mean, median, ten, s_size, no, f, r_, n_ = tup
     r = np.array(rdcut)
     r = r[r<1]
+    t = np.round(ideal_time[i], 6)
     cur_min = f
     if cur_min < mini:
         mini = cur_min
     cur_max = f
     if cur_max > maxi:  
-        maxi = cur_max       
+        maxi = cur_max    
+    figR, axR = plt.subplots()
+    axR.scatter(n_, r_, marker ='x', color='darkorange')
+    axR.set_xscale('log')
+    axR.legend(frameon=False)
+    plt.tight_layout()
+    plt.savefig(f'./reduction_density/ideal/ideal_{no}_scatter.png')
+    plt.close()
+    
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
     num_bins = len(r)//10
     if num_bins < 10:
