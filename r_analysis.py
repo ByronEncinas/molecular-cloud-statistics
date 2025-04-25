@@ -725,7 +725,7 @@ for i, tup in enumerate(s_amb):
     rdcut, x, mean, median, ten, s_size, no, f, r_, n_ = tup
     r = np.array(rdcut)
     r = r[r<1]
-    t = np.round(ideal_time[i], 6)
+    t = np.round(amb_time[i], 6)
     cur_min = f
     if cur_min < mini:
         mini = cur_min
