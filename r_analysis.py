@@ -459,7 +459,7 @@ ax.set_xlabel('Time (Myrs)')
 ax.set_title('Column Density along CR path (ideal)')
 ax.set_yscale('log')
 ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=11)
+ax.legend(loc='upper left', frameon=True, fontsize=16)
 
 plt.tight_layout()
 plt.savefig("./path_cd_ideal_inter.png")
@@ -508,7 +508,7 @@ ax.set_xlabel('Time (Myrs)')
 ax.set_title('Column Density along CR path (amb)')
 #ax.set_yscale('log')
 ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=11)
+ax.legend(loc='upper left', frameon=True, fontsize=16)
 plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
@@ -594,7 +594,7 @@ ax_ideal.plot(ideal_time, percen10_ir, label='P10', linewidth=1.5, linestyle='do
 
 ax_ideal.set_ylabel('$R$ (Reduction factor)')
 ax_ideal.set_xlabel('time (Myrs)')
-ax_ideal.legend(frameon=False, fontsize=9)
+ax_ideal.legend(frameon=False, fontsize=16)
 #ax_ideal.set_title("Ideal")
 
 ax_amb.scatter(amb_time, fractions_a, marker='x', color='black', s=8)
@@ -604,7 +604,7 @@ ax_amb.plot(amb_time, percen25_ar, label='P25', linewidth=1.5, linestyle='dashdo
 ax_amb.plot(amb_time, percen10_ar, label='P10', linewidth=1.5, linestyle='dotted', color='darkorange')
 ax_amb.set_ylabel('$R$ (Reduction factor)')
 ax_amb.set_xlabel('time (Myrs)')
-ax_amb.legend(frameon=False, fontsize=9)
+ax_amb.legend(frameon=False, fontsize=16)
 #ax_amb.set_title("Ambipolar Diffusion")
 
 fig_ideal.savefig('./time_reduction_ideal.png')
