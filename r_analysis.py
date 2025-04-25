@@ -666,7 +666,6 @@ maxi = 0.0
 
 for i, tup in enumerate(s_ideal):
     r_, x, mean, median, ten, s_size, no, f, n_ = tup
-
     r = np.array(r_)
     r = r[r<1]
     t = np.round(ideal_time[i], 6)
@@ -715,6 +714,7 @@ cur_max =0.0
 maxi = 0.0
 
 for i, tup in enumerate(s_amb):
+
     r_, x, mean, median, ten, s_size, no, f, n_ = tup
     r = np.array(r_)
     r = r[r<1]
@@ -731,7 +731,7 @@ for i, tup in enumerate(s_amb):
     axR.set_xscale('log')
     axR.legend(frameon=False)
     plt.tight_layout()
-    plt.savefig(f'./reduction_density/ideal/ideal_{no}_scatter.png')
+    plt.savefig(f'./reduction_density/amb/amb_{no}_scatter.png')
     plt.close()
     
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
