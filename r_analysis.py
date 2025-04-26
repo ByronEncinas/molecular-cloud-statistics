@@ -751,6 +751,7 @@ for i, tup in enumerate(s_amb):
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
+    ax1.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
