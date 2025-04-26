@@ -235,7 +235,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 0.15:
+            if np.abs(np.log10(d_data[i]/n)) < 0.125:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
@@ -262,7 +262,7 @@ def statistics_reduction(R, N):
     minimum, maximum = np.min(np.log10(N)), np.max(np.log10(N))
     Npoints = len(R)
 
-    x_n = np.logspace(2, maximum, Npoints)
+    x_n = np.logspace(minimum, maximum, Npoints)
     mean_vec = np.zeros(Npoints)
     median_vec = np.zeros(Npoints)
     ten_vec = np.zeros(Npoints)
@@ -694,6 +694,7 @@ for i, tup in enumerate(s_ideal):
     ax1.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
+    ax1.scatter(n_, r_, marker ='x', color='dimgrey',alpha=0.5)
     ax1.set_xscale('log')
     ax1.set_ylabel(r'$R$', fontsize = 16)
     ax1.set_xlabel('$n_g$', fontsize = 16)
@@ -736,6 +737,7 @@ for i, tup in enumerate(s_amb):
         num_bins = 10
     t = np.round(amb_time[i], 6)
     ax0.hist(r_, num_bins, density = True)
+    
     ax0.set_xlabel('Reduction factor', fontsize = 20)
     ax0.set_ylabel('PDF', fontsize = 20)
     ax0.set_title(f'$t$ = {t}  Myrs')
@@ -744,6 +746,7 @@ for i, tup in enumerate(s_amb):
     ax1.plot(x, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     ax1.plot(x, median, label='median', linewidth=1.5, linestyle='--', color='darkorange')
     ax1.plot(x, ten, label='10th percentile', linewidth=1.5, linestyle='-', color='royalblue')
+    ax1.scatter(n_, r_, marker ='x', color='dimgrey')
     ax1.set_xscale('log')
     ax1.set_ylabel('$R$')
     ax1.set_xlabel('$n_g$')
