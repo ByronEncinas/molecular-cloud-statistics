@@ -753,7 +753,7 @@ for i, tup in enumerate(s_amb):
     ax1.set_xlabel('$n_g$')
     ax1.set_title(f'$f$ = {f}')
     plt.tight_layout()
-    plt.savefig(f'./thesis_stats/reduction_density/amb/amb_{no}_reduction_density.png')
+    plt.savefig(f'./reduction_density/amb/amb_{no}_reduction_density.png')
     plt.close()
 
 print("Amb: ", mini, maxi)
