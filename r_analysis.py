@@ -235,7 +235,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 1:
+            if np.abs(np.log10(d_data[i]/n)) < 0.2:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
@@ -726,7 +726,7 @@ for i, tup in enumerate(s_amb):
     if cur_max > maxi:  
         maxi = cur_max    
     figR, axR = plt.subplots()
-    axR.scatter(n_, r_, marker ='x', color='darkorange')
+    axR.scatter(x, r_, marker ='x', color='darkorange')
     axR.plot(x, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     axR.set_xscale('log')
     axR.legend(frameon=False)
