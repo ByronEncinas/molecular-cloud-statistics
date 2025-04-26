@@ -235,7 +235,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 0.2:
+            if np.abs(np.log10(d_data[i]/n)) < 0.15:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
