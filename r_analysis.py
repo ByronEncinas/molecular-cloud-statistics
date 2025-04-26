@@ -273,7 +273,7 @@ def statistics_reduction(R, N):
         median_vec[i] = s[1]
         ten_vec[i] = s[2]
         sample_size[i] = s[3]
-
+    
     num_bins = Npoints//10  # Define the number of bins as a variable
 
     return R, x_n, mean_vec, median_vec, ten_vec, sample_size, f, N
@@ -507,9 +507,6 @@ ax.legend(loc='upper left', frameon=True, fontsize=16)
 plt.savefig(f"./path_cd_amb_inter.png")
 plt.close()
 
-
-
-
 for k, v in CD['ideal'].items():
     #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
     CD['ideal'][k]   =   np.mean(CD['ideal'][k])
@@ -665,6 +662,7 @@ maxi = 0.0
 
 for i, tup in enumerate(s_ideal):
     r_, x, mean, median, ten, s_size, no, f, n_ = tup
+    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), no, len(n_))
     r = np.array(r_)
     r = r[r<1]
     t = np.round(ideal_time[i], 6)
@@ -717,7 +715,7 @@ for i, tup in enumerate(s_amb):
     r = np.array(r_)
     r = r[r<1]
     t = np.round(amb_time[i], 6)
-    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), len(no), len(f), len(n_))
+    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), len(no), len(n_))
     cur_min = f
     if cur_min < mini:
         mini = cur_min
