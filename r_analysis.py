@@ -235,7 +235,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 0.1:
+            if np.abs(np.log10(d_data[i]/n)) < 0.2:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
@@ -674,14 +674,14 @@ for i, tup in enumerate(s_ideal):
         maxi = cur_max    
     figR, axR = plt.subplots()
     axR.scatter(n_, r_, marker ='x', color='darkorange')
+    axR.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+
     axR.set_xscale('log')
     axR.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_scatter.png')
     plt.close()
-
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6)) #
-
     num_bins = len(r)//10
     if num_bins < 10:
         num_bins = 10
@@ -724,13 +724,12 @@ for i, tup in enumerate(s_amb):
         maxi = cur_max    
     figR, axR = plt.subplots()
     axR.scatter(n_, r_, marker ='x', color='darkorange')
-    axR.plot(n_, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+    axR.plot(x, mean, label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     axR.set_xscale('log')
     axR.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(f'./reduction_density/amb/amb_{no}_scatter.png')
     plt.close()
-    
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
     num_bins = len(r)//10
     if num_bins < 10:
