@@ -376,6 +376,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
         n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
         cd_1 = np.sum(n_g_mid * ds, axis=0) 
+        cd_1 = cd_1[cd_1>0]
 
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
         #CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
