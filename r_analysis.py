@@ -373,9 +373,10 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         #print(f"\nTotal: {total / 1e6:.2f} MB = {total / 1e9:.2f} GB")
 
         r_bundle, r_10, r_100, n_r = evaluate_reduction(magnetic_fields, numb_densities, threshold)
-        ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
-        n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
-
+        #ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
+        #n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
+        N = column_density.shape[0]
+        snap_columns_sliced = []
         for i in range(column_density.shape[1]):
             snap_columns_sliced += [np.max(column_density[:, i])]
         
