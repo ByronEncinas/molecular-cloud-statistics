@@ -235,7 +235,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 0.2:
+            if np.abs(np.log10(d_data[i]/n)) < 0.1:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
@@ -421,7 +421,6 @@ ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
 plt.savefig("./path_cd_ideal.png")
 plt.close()
-
 
 median = np.array([np.median(arr) for arr in data])
 mean = np.array([np.mean(arr) for arr in data])
@@ -714,11 +713,11 @@ cur_max =0.0
 maxi = 0.0
 
 for i, tup in enumerate(s_amb):
-
     r_, x, mean, median, ten, s_size, no, f, n_ = tup
     r = np.array(r_)
     r = r[r<1]
     t = np.round(amb_time[i], 6)
+    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), len(no), len(f), len(n_))
     cur_min = f
     if cur_min < mini:
         mini = cur_min
@@ -726,8 +725,8 @@ for i, tup in enumerate(s_amb):
     if cur_max > maxi:  
         maxi = cur_max    
     figR, axR = plt.subplots()
-    axR.scatter(x, r_, marker ='x', color='darkorange')
-    axR.plot(x, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
+    axR.scatter(n_, r_, marker ='x', color='darkorange')
+    axR.plot(n_, mean , label='mean', linewidth=1.5, linestyle='-', color='darkorange')
     axR.set_xscale('log')
     axR.legend(frameon=False)
     plt.tight_layout()
@@ -739,7 +738,7 @@ for i, tup in enumerate(s_amb):
     if num_bins < 10:
         num_bins = 10
     t = np.round(amb_time[i], 6)
-    ax0.hist(r, num_bins, density = True)
+    ax0.hist(r_, num_bins, density = True)
     ax0.set_xlabel('Reduction factor', fontsize = 20)
     ax0.set_ylabel('PDF', fontsize = 20)
     ax0.set_title(f'$t$ = {t}  Myrs')
