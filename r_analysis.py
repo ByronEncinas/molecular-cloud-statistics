@@ -375,12 +375,14 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         r_bundle, r_10, r_100, n_r = evaluate_reduction(magnetic_fields, numb_densities, threshold)
         ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
         n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
-        cd_1 = np.sum(n_g_mid * ds, axis=0) 
-        cd_1 = cd_1[cd_1>0]
+
+        for i in range(column_density.shape[1]):
+            snap_columns_sliced += [np.max(column_density[:, i])]
+        
+        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
 
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
         #CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
-        CD[case][snap]   =  CD[case].get(snap,  list(cd_1*0)) + cd_1.tolist()
         R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
