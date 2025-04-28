@@ -377,18 +377,17 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         #n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
         N = column_density.shape[0]
         snap_columns_sliced = []
-        for i in range(column_density.shape[1]):
-            snap_columns_sliced += [np.max(column_density[:, i])]
-        
-        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
+
+        if int(snap) < 400:
+            for i in range(column_density.shape[1]):
+                snap_columns_sliced += [np.max(column_density[:, i])]
+            CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
 
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
         #CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
         R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
         R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
         NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
-
-
 
 mean_ideal   = []
 median_ideal = []
@@ -416,6 +415,8 @@ labels = list(CD['ideal'].keys())
 data = list(CD['ideal'].values())  
 
 round_time = [np.round(t, 6) for t in ideal_time]
+for t in round_time:
+    print("ideal: ", t)
 
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
@@ -437,42 +438,16 @@ upper_68 = np.array([np.percentile(arr, 84) for arr in data])
 lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
 upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
 
-#print(median)
-
-import numpy as np
-
-# Create evenly spaced X indices
-x_idx = np.arange(len(round_time))  # [0, 1, 2, ..., N-1]
-
-fig, ax = plt.subplots()
-
-# Use indices for plotting
-ax.fill_between(x_idx, lower_95, upper_95, color='pink', label='Interpercentile range (2.5th–97.5th)')
-ax.fill_between(x_idx, lower_68, upper_68, color='red', alpha=0.6, label='Interpercentile range (16th–84th)')
-ax.plot(x_idx, median, color='black', linestyle='--', linewidth=1, label='Median')
-ax.plot(x_idx, mean, color='black', linestyle='-', linewidth=1, label='Mean')
-
-# Set tick positions and corresponding labels
-ax.set_xticks(x_idx)
-ax.set_xticklabels(round_time, rotation=60)
-
-# Formatting
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along CR path (ideal)')
-ax.set_yscale('log')
-ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=10)
-
-plt.tight_layout()
-plt.savefig("./path_cd_ideal_inter.png")
-plt.close()
 
 # --- AMB CASE ---
 labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
 round_time = [np.round(t, 6) for t in amb_time]
+
+for t in round_time:
+    print("Amb: ", t)
+
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
@@ -486,35 +461,6 @@ plt.tight_layout()
 plt.savefig("./path_cd_amb.png")
 plt.close()
 
-median = np.array([np.median(arr) for arr in data])
-mean = np.array([np.mean(arr) for arr in data])
-lower_68 = np.array([np.percentile(arr, 16) for arr in data])
-upper_68 = np.array([np.percentile(arr, 84) for arr in data])
-lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
-upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
-
-import numpy as np
-
-# Create evenly spaced X indices
-x_idx = np.arange(len(round_time))  # [0, 1, 2, ..., N-1]
-
-fig, ax = plt.subplots()
-
-ax.fill_between(x_idx, lower_95, upper_95, color='pink', label='Interpercentile range (2.5th–97.5th)')
-ax.fill_between(x_idx, lower_68, upper_68, color='red', alpha=0.6, label='Interpercentile range (16th–84th)')
-ax.plot(x_idx, median, color='black', linestyle='--', linewidth=1, label='Median')
-ax.plot(x_idx, mean, color='black', linestyle='-', linewidth=1, label='Mean')
-
-ax.set_xticks(x_idx)
-ax.set_xticklabels(round_time, rotation=60)
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along CR path (non-ideal)')
-ax.set_yscale('log')
-ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=10)
-plt.savefig(f"./path_cd_amb_inter.png")
-plt.close()
 
 for k, v in CD['ideal'].items():
     #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
@@ -671,14 +617,13 @@ maxi = 0.0
 
 for i, tup in enumerate(s_ideal):
     r_, x, mean, median, ten, s_size, no, f, n_ = tup
-    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), no, len(n_))
+    #print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), no, len(n_))
     r = np.array(r_)
     r = r[r<1]
     t = np.round(ideal_time[i], 6)
     f = np.round(f, 6)
-    if int(no) > 400:
-        continue 
-
+    #    if t > 4.:
+    #        continue 
     cur_min = f
     if cur_min < mini:
         mini = cur_min
@@ -729,9 +674,7 @@ for i, tup in enumerate(s_amb):
     r = r[r<1]
     t = np.round(amb_time[i], 6)
     f = np.round(f, 6)
-    if int(no) > 400:
-        continue
-    print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), len(no), len(n_))
+
     cur_min = f
     if cur_min < mini:
         mini = cur_min
