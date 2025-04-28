@@ -34,7 +34,8 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
 
     repeated = set()
 
-    print(bundle_dir)
+    #
+    #print(bundle_dir)
     if bundle_dir == []:
         continue
     case = str(bundle_dir[0].split('/')[-3])
@@ -75,7 +76,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
         
-        print(np.mean(CD[case][snap]))
+        #print(np.mean(CD[case][snap]))
 
 
 ideal_time = time_values['ideal']
@@ -89,7 +90,8 @@ labels = list(CD['ideal'].keys())
 data = list(CD['ideal'].values())  
 
 round_time = [np.round(t, 6) for t in ideal_time]
-
+for t in round_time:
+    print("ideal: ", t)
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
@@ -141,6 +143,8 @@ labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
 round_time = [np.round(t, 6) for t in amb_time]
+for t in round_time:
+    print("Amb: ", t)
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
