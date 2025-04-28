@@ -42,7 +42,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
     
     for snap_data in bundle_dir:  # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
-        if snap > 400:
+        if int(snap) > 400:
             continue
 
         # LOS to the input file
