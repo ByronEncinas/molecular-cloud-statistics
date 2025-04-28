@@ -30,37 +30,56 @@ CD = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 # Missing: Initialize CD — this must be declared first!
 # CD = OrderedDict({'ideal': {}, 'amb': {}})
 
+ideal_mhd_times = {
+    0.125, 0.25, 0.375, 0.4875, 0.575, 0.65, 0.775, 0.8625,
+    0.9625, 1.0875, 1.1625, 1.2875, 1.4, 1.525, 1.64375, 1.70625,
+    1.78125, 1.9, 2.0125, 2.1375, 2.2625, 2.5125, 2.6375, 2.7625,
+    2.8875, 3.0125, 3.1375, 3.2625, 3.375, 3.5, 3.625, 3.75,
+    3.875, 4.0, 4.125, 4.25, 4.375
+}
+ambipolar_diffusion_times = {
+    0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0,
+    1.125, 1.25, 1.375, 1.5, 1.5875, 1.7125, 1.8375, 1.9625,
+    2.0875, 2.2125, 2.3375, 2.725, 2.95, 3.2, 3.45, 3.7, 3.95,
+    4.2, 4.286719, 4.290137, 4.29035, 4.290399, 4.290417, 4.290426,
+    4.290433, 4.290437, 4.290441, 4.290445, 4.290448, 4.290452,
+    4.290456, 4.29046, 4.290464, 4.290467, 4.290471, 4.290475,
+    4.290479, 4.290483, 4.290487, 4.29049, 4.290492
+}
+
+
 for bundle_dir in bundle_dirs:  # ideal and ambipolar
 
     repeated = set()
-
-    #
     #print(bundle_dir)
     if bundle_dir == []:
         continue
     case = str(bundle_dir[0].split('/')[-3])
     
-    
     for snap_data in bundle_dir:  # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
         if int(snap) > 400:
             continue
-
-        # LOS to the input file
         file_LOS = f'./{case}_cloud_trajectory.txt'
-
-        # Regex pattern to match the line where the first column equals 'snap'
         with open(file_LOS, mode='r') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # Skip header
             for row in csv_reader:
                 if snap == str(row[0]) and snap not in repeated:
+                    if np.round(float(row[1]), 6) in ideal_mhd_times and case == 'ideal':
+                        repeated.add(snap)
+                        snap_values[case].append(str(row[0]))
+                        time_values[case].append(float(row[1]))
+                        peak_den[case].append(float(row[-1]))
+                        continue
 
-                    repeated.add(snap)
-                    snap_values[case].append(str(row[0]))
-                    time_values[case].append(float(row[1]))
-                    peak_den[case].append(float(row[-1]))
-                    continue
+                    if np.round(float(row[1]), 6) in ambipolar_diffusion_times and case == 'amb':
+                        repeated.add(snap)
+                        snap_values[case].append(str(row[0]))
+                        time_values[case].append(float(row[1]))
+                        peak_den[case].append(float(row[-1]))
+                        continue
+
 
         data = np.load(snap_data, mmap_mode='r')
         threshold = data['thresholds']
@@ -75,9 +94,6 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
             snap_columns_sliced += [np.max(column_density[:, i])]
         
         CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
-        
-        #print(np.mean(CD[case][snap]))
-
 
 ideal_time = time_values['ideal']
 amb_time = time_values['amb']
@@ -89,9 +105,9 @@ import matplotlib.pyplot as plt
 labels = list(CD['ideal'].keys())  
 data = list(CD['ideal'].values())  
 
+
 round_time = [np.round(t, 6) for t in ideal_time]
-for t in round_time:
-    print("ideal: ", t)
+
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
