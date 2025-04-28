@@ -675,6 +675,10 @@ for i, tup in enumerate(s_ideal):
     r = np.array(r_)
     r = r[r<1]
     t = np.round(ideal_time[i], 6)
+    f = np.round(f, 6)
+    if int(no) > 400:
+        continue 
+
     cur_min = f
     if cur_min < mini:
         mini = cur_min
@@ -707,7 +711,7 @@ for i, tup in enumerate(s_ideal):
     ax1.set_ylabel(r'$R$', fontsize = 16)
     ax1.set_xlabel('$n_g$', fontsize = 16)
     ax1.set_title(f'$f$ = {f}', fontsize = 16)
-    ax1.legend(frameon=False)
+    ax1.legend()
     plt.tight_layout()
     plt.savefig(f'./reduction_density/ideal/ideal_{no}_reduction_density.png')
     plt.close()
@@ -724,6 +728,9 @@ for i, tup in enumerate(s_amb):
     r = np.array(r_)
     r = r[r<1]
     t = np.round(amb_time[i], 6)
+    f = np.round(f, 6)
+    if int(no) > 400:
+        continue
     print(len(r_), len(x), len(mean), len(median), len(ten), len(s_size), len(no), len(n_))
     cur_min = f
     if cur_min < mini:
@@ -744,6 +751,7 @@ for i, tup in enumerate(s_amb):
     if num_bins < 10:
         num_bins = 10
     t = np.round(amb_time[i], 6)
+    f = np.round(f, 6)
     ax0.hist(r_, num_bins, density = True)
     
     ax0.set_xlabel('Reduction factor', fontsize = 20)
