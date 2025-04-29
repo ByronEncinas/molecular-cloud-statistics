@@ -22,8 +22,8 @@ if len(sys.argv)>5:
     num_file      = str(sys.argv[5]) 
     seed          = int(sys.argv[6])
 else:
-    N               = 2_000
-    rloc            = 10
+    N               = 5_000
+    rloc            = 0.1
     max_cycles      = 100
     case            = 'ideal'
     num_file        = '430'
@@ -118,8 +118,6 @@ for dim in range(3):  # Loop over x, y, z
 
 print("Allocation Number: ", N)
 
-
-
 def get_along_lines(x_init=None, N=N):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
@@ -178,6 +176,7 @@ def get_along_lines(x_init=None, N=N):
 
         threshold_rev += mask_rev.astype(int)
         threshold2_rev += mask2_rev.astype(int)
+        print(np.log10(dens))
 
         x[un_masked_rev] = aux
         print(np.max(np.log10(dens)))
@@ -439,23 +438,7 @@ np.savez(os.path.join(children_folder, f"DataBundle{seed}.npz"),
          starting_point=x_init
          )
 
-"""
-data = np.load(os.path.join(children_folder, f"DataBundle{seed}.npz"))
 
-cd = data['column_density']
-radius_vector = data['positions']
-trajectory = data['trajectory']
-numb_densities = data['number_densities']
-magnetic_fields = data['magnetic_fields']
-th = data['thresholds']
-
-np.save(os.path.join(children_folder, f"ColumnDensity{seed}.npy"), cd)
-np.save(os.path.join(children_folder, f"Positions{seed}.npy"), radius_vector)
-np.save(os.path.join(children_folder, f"Trajectory{seed}.npy"), trajectory)
-np.save(os.path.join(children_folder, f"NumberDensities{seed}.npy"), numb_densities)
-np.save(os.path.join(children_folder, f"MagneticFields{seed}.npy"), magnetic_fields)
-np.save(os.path.join(children_folder, f"Thresholds{seed}.npy"), np.array(th))
-"""
 N = threshold.shape[0] # number of lines
 for cycle in range(max_cycles): # 10
 

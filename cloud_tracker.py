@@ -92,6 +92,7 @@ for list in file_list:
         if fileno == 0:
             CloudCord = Pos[np.argmax(Density), :]
             PeakDensity = Density[np.argmax(Density)]*gr_cm3_to_nuclei_cm3
+            print(np.log10(PeakDensity))
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "w") as file:
                 file.write("snap,time_value,CloudCord_X,CloudCord_Y,CloudCord_Z,CloudVel_X,CloudVel_Y,CloudVel_Z,Peak_Density\n")
                 file.write(f"{snap},{time_value},{CloudCord[0]},{CloudCord[1]},{CloudCord[2]},0.0,0.0,0.0,{PeakDensity}\n")
@@ -107,6 +108,7 @@ for list in file_list:
             if np.any(cloud_sphere):
                 CloudCord = Pos[cloud_sphere][np.argmax(Density[cloud_sphere]), :]
                 PeakDensity = Density[cloud_sphere][np.argmax(Density[cloud_sphere])]*gr_cm3_to_nuclei_cm3
+                print(np.log10(PeakDensity))
             else:
                 print(f"Warning: No particles found within updated region_radius of {region_radius} around UpdatedCord.")
             with open(f"cloud_tracker_slices/{typpe}/{typpe}_cloud_trajectory.txt", "a") as file:

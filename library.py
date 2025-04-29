@@ -5,7 +5,6 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import spatial
 from scipy.spatial import distance
-import healpy as hp
 
 """ Toggle Parameters """
 
@@ -140,10 +139,6 @@ def fibonacci_sphere(samples=100):
     x = radius * np.cos(theta)
     z = radius * np.sin(theta)
     return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
-
-
-""" b_ionization_model Methods """
-""" c_reduction_factor Methods """
 
 def pocket_finder(bfield, cycle=0, plot=False):
     """  

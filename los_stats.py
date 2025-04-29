@@ -1,4 +1,3 @@
-
 import os, sys, glob, time, csv
 import numpy as np, h5py
 from scipy import spatial
@@ -57,7 +56,6 @@ IntType = np.int32
 python3 los_stats.py 2000 ideal 430 50 S seed > ELOS430TST.txt 2> ELOS430TST_error.txt &
 python3 los_stats.py 2000 ideal 430 50 N seed > NLOS430TST.txt 2> NLOS430TST_error.txt &
 
-
 S : Stability
 N : Column densities
 
@@ -68,7 +66,10 @@ if len(sys.argv)>6:
     num_file          = str(sys.argv[3]) 
     max_cycles        = int(sys.argv[4]) 
     NeffOrStability   = str(sys.argv[5]) 
-    seed              = int(sys.argv[6])
+    try:
+        seed              = int(sys.argv[6])
+    except:
+        seed            = 12345
 else:
     N               = 2_000
     case            = 'ideal'
@@ -188,7 +189,7 @@ def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345):
     random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
     return valid_vectors[random_indices]
 
-def energies_get_along_lines(x_init=None):
+def energies_get_along_lines(x_init=None, densthresh=100):
     m = x_init.shape[0]
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
@@ -224,12 +225,12 @@ def energies_get_along_lines(x_init=None):
     temperature[0,:] =(pressure * 4 * np.pi * (rad * parsec_to_cm3)**2) * (dx_vec * parsec_to_cm3)/ (dens * boltzmann_constant_cgs) 
     k=0
 
-    mask = dens > 100 # True if continue
+    mask = dens > densthresh # True if continue
     un_masked = np.logical_not(mask)
     
     while np.any(mask):
         # Update mask for values that are 10^2 N/cm^3 above the threshold
-        mask = dens > 100  # True if continue
+        mask = dens > densthresh  # True if continue
         un_masked = np.logical_not(mask)
 
         # Perform Heun step and update values
@@ -511,7 +512,7 @@ if NeffOrStability == 'S':
     directions = fibonacci_sphere(max_cycles)
     m = directions.shape[0]
     x_init = np.zeros((m,3))
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, col_energies = energies_get_along_lines(x_init)
+    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, col_energies = energies_get_along_lines(x_init, densthresh=1.0e+4)
     m = magnetic_fields.shape[1]
     eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature = col_energies
 

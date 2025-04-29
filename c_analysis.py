@@ -7,7 +7,6 @@ import warnings, csv
 start_time = time.time()
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 
-
 amb_bundle   = sorted(glob.glob('./thesis_los/N/amb/*/DataBundle*.npz'))
 ideal_bundle = sorted(glob.glob('./thesis_los/N/ideal/*/DataBundle*.npz'))
 
@@ -46,7 +45,6 @@ ambipolar_diffusion_times = {
     4.290456, 4.29046, 4.290464, 4.290467, 4.290471, 4.290475,
     4.290479, 4.290483, 4.290487, 4.29049, 4.290492
 }
-
 
 for bundle_dir in bundle_dirs:  # ideal and ambipolar
 
