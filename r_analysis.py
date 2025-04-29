@@ -313,7 +313,7 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     snap_values[case].append(str(row[0]))
                     time_values[case].append(float(row[1]))
                     peak_den[case].append(float(row[-1]))
-                    break
+                    continue
         # Load lazily
         data = np.load(snap_data, mmap_mode='r')
 
@@ -328,59 +328,15 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         magnetic_fields = data['magnetic_fields']
         threshold = data['thresholds']
 
-        # Print sizes
-        #print("Memory usage:")
-        #print(f"column_density: {size_in_mb(column_density):.2f} MB")
-        #print(f"positions:       {size_in_mb(radius_vector):.2f} MB")
-        #print(f"trajectory:      {size_in_mb(trajectory):.2f} MB")
-        #print(f"number_densities:{size_in_mb(numb_densities):.2f} MB")
-        #print(f"magnetic_fields: {size_in_mb(magnetic_fields):.2f} MB")
-        #print(f"thresholds:      {size_in_mb(threshold):.2f} MB")
-        """
-                total = sum([
-                    column_density.nbytes,
-                    radius_vector.nbytes,
-                    trajectory.nbytes,
-                    numb_densities.nbytes,
-                    magnetic_fields.nbytes,
-                    threshold.nbytes
-                ])
-        if False:
-            x = radius_vector[numb_densities.shape[0]//2,:,0]/pc_to_cm
-            y = radius_vector[numb_densities.shape[0]//2,:,1]/pc_to_cm
-            z = radius_vector[numb_densities.shape[0]//2,:,2]/pc_to_cm
-
-            rloc = 0.1
-            x = x[z<0.02 and z>-0.02]
-            y = y[z<0.02 and z>-0.02]
-            
-            log_n = np.log10(numb_densities[numb_densities.shape[0]//2,:])
-
-
-            plt.figure(figsize=(6, 5))
-            sc = plt.scatter(x, y, c=log_n, cmap='viridis', s=10, edgecolor='none')
-            plt.colorbar(sc, label=r'$\log_{10}(n)$')
-            plt.xlabel('x [pc]')
-            plt.ylabel('y [pc]')
-            plt.title('XY Projection Colored by log$_{10}$(n)')
-            plt.axis('equal')  # to keep scale of x and y consistent
-            plt.tight_layout()
-            plt.show()
-        """
-
-        #print(f"Elements: ", radius_vector.shape)
-        #print(f"\nTotal: {total / 1e6:.2f} MB = {total / 1e9:.2f} GB")
-
         r_bundle, r_10, r_100, n_r = evaluate_reduction(magnetic_fields, numb_densities, threshold)
         #ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
         #n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
         N = column_density.shape[0]
         snap_columns_sliced = []
 
-        if int(snap) < 400:
-            for i in range(column_density.shape[1]):
-                snap_columns_sliced += [np.max(column_density[:, i])]
-            CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
+        for i in range(column_density.shape[1]):
+            snap_columns_sliced += [np.max(column_density[:, i])]
+        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
 
         readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
         #CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
@@ -429,14 +385,6 @@ ax.locator_params(axis='x', nbins=15)
 plt.tight_layout()
 plt.savefig("./path_cd_ideal.png")
 plt.close()
-
-median = np.array([np.median(arr) for arr in data])
-mean = np.array([np.mean(arr) for arr in data])
-lower_68 = np.array([np.percentile(arr, 16) for arr in data])
-upper_68 = np.array([np.percentile(arr, 84) for arr in data])
-lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
-upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
-
 
 # --- AMB CASE ---
 labels = list(CD['amb'].keys())  # snapshot labels
@@ -821,7 +769,6 @@ import matplotlib.pyplot as plt
 labels = list(CD['ideal'].keys())  
 data = list(CD['ideal'].values())  
 
-
 round_time = [np.round(t, 6) for t in ideal_time]
 
 fig, ax = plt.subplots()
@@ -875,8 +822,7 @@ labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
 round_time = [np.round(t, 6) for t in amb_time]
-for t in round_time:
-    print("Amb: ", t)
+
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
