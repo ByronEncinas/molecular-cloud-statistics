@@ -308,12 +308,15 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
             next(csv_reader)  # Skip header
             for row in csv_reader:
                 if snap == str(row[0]) and snap not in repeated:
-
+                    if float(row[1]) > 4.3:
+                        break
                     repeated.add(snap)
                     snap_values[case].append(str(row[0]))
                     time_values[case].append(float(row[1]))
                     peak_den[case].append(float(row[-1]))
+
                     continue
+
         # Load lazily
         data = np.load(snap_data, mmap_mode='r')
 
@@ -759,6 +762,20 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
 
+mean_ideal   = []
+median_ideal = []
+mean_amb     = []
+median_amb   = []
+
+ideal_snap  = []
+amb_snap    = []
+
+s_ideal = []
+s_amb   = []
+
+fractions_i = []
+fractions_a = []
+
 ideal_time = time_values['ideal']
 amb_time = time_values['amb']
 
@@ -768,6 +785,7 @@ import matplotlib.pyplot as plt
 # --- IDEAL CASE ---
 labels = list(CD['ideal'].keys())  
 data = list(CD['ideal'].values())  
+
 
 round_time = [np.round(t, 6) for t in ideal_time]
 
@@ -784,45 +802,13 @@ plt.tight_layout()
 plt.savefig("./los_cd_ideal.png")
 plt.close()
 
-
-median = np.array([np.median(arr) for arr in data])
-mean = np.array([np.mean(arr) for arr in data])
-lower_68 = np.array([np.percentile(arr, 16) for arr in data])
-upper_68 = np.array([np.percentile(arr, 84) for arr in data])
-lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
-upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
-
-# X-axis: snapshot indices
-fig, ax = plt.subplots()
-
-ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
-
-ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
-
-ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
-ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
-
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title(f'Column Density along line of sight (ideal)')
-ax.set_yscale('log')
-ax.set_xticks(round_time)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=10)
-ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=11)
-
-plt.tight_layout()
-plt.savefig(f"./los_cd_ideal_inter.png")
-plt.close()
-
-
 # --- AMB CASE ---
 labels = list(CD['amb'].keys())  # snapshot labels
 data = list(CD['amb'].values())  # column density arrays
 
 round_time = [np.round(t, 6) for t in amb_time]
-
+for t in round_time:
+    print("Amb: ", t)
 fig, ax = plt.subplots()
 ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
 ax.set_ylabel('Effective Column Density')
@@ -836,32 +822,3 @@ plt.tight_layout()
 plt.savefig("./los_cd_amb.png")
 plt.close()
 
-median = np.array([np.median(arr) for arr in data])
-mean = np.array([np.mean(arr) for arr in data])
-lower_68 = np.array([np.percentile(arr, 16) for arr in data])
-upper_68 = np.array([np.percentile(arr, 84) for arr in data])
-lower_95 = np.array([np.percentile(arr, 2.5) for arr in data])
-upper_95 = np.array([np.percentile(arr, 97.5) for arr in data])
-
-# X-axis: snapshot indices
-x = np.arange(len(labels))
-
-fig, ax = plt.subplots()
-
-ax.fill_between(round_time, lower_95, upper_95, color='pink', label='Interpecentile range (2.5th-97.5th)')
-ax.fill_between(round_time, lower_68, upper_68, color='red', alpha=0.6, label='Interpecentile range (16th-84th)')
-ax.plot(round_time, median, color='black',linestyle='--', linewidth=1, label='Median')
-ax.plot(round_time, mean, color='black',linestyle='-', linewidth=1, label='Mean')
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title(f'Column Density along line of sight (non-ideal)')
-ax.set_yscale('log')
-ax.set_xticks(round_time)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
-ax.grid(True)
-ax.legend(loc='upper left', frameon=True, fontsize=11)
-
-plt.tight_layout()
-plt.savefig(f"./los_cd_amb_inter.png")
-plt.close()
