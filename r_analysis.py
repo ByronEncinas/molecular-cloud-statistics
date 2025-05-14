@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys, time, glob, re
 import warnings, csv
-
+from matplotlib.colors import LogNorm
+from matplotlib.patches import Patch
 
 #...............Core Density Comparison..................
 
