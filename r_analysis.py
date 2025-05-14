@@ -510,7 +510,10 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
 data_los = list(CD_LOS['amb'].values())  
-data_path = list(CD_PATH['amb'].values())  
+data_path = list(CD_PATH['amb'].values())
+
+print(len(CD_LOS['amb'].values()))
+print(len(CD_PATH['amb'].values()))
 
 positions_los = np.arange(len(data_los))
 positions_path = positions_los 
@@ -541,7 +544,6 @@ ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
 plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
 plt.savefig("./amb_los_path.png")
 plt.close()
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -574,6 +576,8 @@ plt.tight_layout()
 plt.savefig('./heatmap_t_r_n.png')
 plt.close()
 
+exit()
+
 mean_ideal_path   = []
 median_ideal_path = []
 mean_amb_path     = []
@@ -587,6 +591,8 @@ s_amb_path   = []
 
 fractions_i = []
 fractions_a = []
+
+
 
 for k, v in sorted(R10['ideal'].items()):
     mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
