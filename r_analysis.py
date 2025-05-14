@@ -4,6 +4,59 @@ import numpy as np
 import sys, time, glob, re
 import warnings, csv
 
+
+#...............Core Density Comparison..................
+
+
+cases = ['ideal', 'amb']
+
+s_ideal = []
+s_amb = []
+t_ideal = []
+t_amb = []
+nc_ideal = []
+nc_amb = []
+
+for case in cases:
+    file_path = f'./{case}_cloud_trajectory.txt'
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            if case == "ideal":
+                s_ideal.append(str(row[0]))
+                t_ideal.append(float(row[1]))
+                nc_ideal.append(float(row[-1]))
+
+            if case == "amb":
+                s_amb.append(str(row[0]))
+                t_amb.append(float(row[1]))
+                nc_amb.append(float(row[-1]))
+
+mu_mH = 2.35 * 1.67e-24
+rho_ideal = np.array(nc_ideal) * mu_mH
+rho_amb = np.array(nc_amb) * mu_mH
+fig, ax1 = plt.subplots()
+ax1.set_xlabel(r'$t$ (Myrs)')
+ax1.set_ylabel(r'$n_g$ (cm$^{-3}$)', fontsize=12)
+ax1.set_yscale('log')
+ax1.plot(t_ideal, nc_ideal, label='Core Density (ideal MHD)', color='dodgerblue')
+ax1.plot(t_amb, nc_amb, label='Core Density (non-ideal MHD)', color='darkorange')
+ax1.tick_params(axis='y')
+ax1.legend(loc='center')
+plt.grid()
+ax2 = ax1.twinx()
+ax2.set_ylabel(r'$\rho$ (g cm$^{-3}$)', fontsize=12)
+ax2.set_yscale('log')
+ax2.set_ylim(ax1.get_ylim()[0] * mu_mH, ax1.get_ylim()[1] * mu_mH)
+plt.title('Core Density Evolution')
+fig.tight_layout()
+plt.savefig('./core_den.png')
+plt.close()
+
+
+#...............Reduction Factor Statistics..................
+
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 
 start_time = time.time()
@@ -11,14 +64,7 @@ start_time = time.time()
 amb_bundle   = sorted(glob.glob('./thesis_stats/amb/*/DataBundle*.npz'))
 ideal_bundle = sorted(glob.glob('./thesis_stats/ideal/*/DataBundle*.npz'))
 
-#amb_bundle   = sorted(glob.glob('../../thesis_figures/thesis_stats/amb/*/DataBundle*.npz'))
-#ideal_bundle = sorted(glob.glob('../../thesis_figures/thesis_stats/ideal/*/DataBundle*.npz'))
-
-#print(ideal_bundle)
-
 bundle_dirs = [ideal_bundle,amb_bundle]
-
-readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
 
 def extract_number(filename):
     match = re.search(r'(\d+)(?=\_.json)', filename)
@@ -235,7 +281,7 @@ def statistics_reduction(R, N):
         sample_r = []
 
         for i in range(0, len(d_data)):
-            if np.abs(np.log10(d_data[i]/n)) < 0.125:
+            if np.abs(np.log10(d_data[i]/n)) < 1/8:
                 sample_r.append(r_data[i])
         sample_r.sort()
         if len(sample_r) == 0:
@@ -278,17 +324,16 @@ def statistics_reduction(R, N):
 
     return R, x_n, mean_vec, median_vec, ten_vec, sample_size, f, N
 
-R100 = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-R10  = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-NR   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-CD   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-Delta = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+R100_PATH = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+R10_PATH  = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+NR_PATH   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+CD_PATH   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+Delta     = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 delta = 0.0
 
-peak_den    = OrderedDict({'ideal': [], 'amb': []})
-snap_values = OrderedDict({'ideal': [], 'amb': []})
-time_values = OrderedDict({'ideal': [], 'amb': []})
-
+peak_den_path    = OrderedDict({'ideal': [], 'amb': []})
+snap_values_path = OrderedDict({'ideal': [], 'amb': []})
+time_values_path = OrderedDict({'ideal': [], 'amb': []})
 
 for bundle_dir in bundle_dirs: # ideal and ambipolar
     if bundle_dir == []:
@@ -298,11 +343,8 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
     for snap_data in bundle_dir: # from 000 to 490 
         snap = str(snap_data.split('/')[-2])
 
-        
-        # Path to the input file
         file_path = f'./{case}_cloud_trajectory.txt'
 
-        # Regex pattern to match the line where the first column equals 'snap'
         with open(file_path, mode='r') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # Skip header
@@ -311,19 +353,13 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     if float(row[1]) > 4.3:
                         break
                     repeated.add(snap)
-                    snap_values[case].append(str(row[0]))
-                    time_values[case].append(float(row[1]))
-                    peak_den[case].append(float(row[-1]))
+                    snap_values_path[case].append(str(row[0]))
+                    time_values_path[case].append(float(row[1]))
+                    peak_den_path[case].append(float(row[-1]))
 
                     continue
 
-        # Load lazily
         data = np.load(snap_data, mmap_mode='r')
-
-        # Function to get size in MB
-        def size_in_mb(array):
-            return array.nbytes / 1e6  # Convert bytes to MB
-
         column_density = data['column_density']
         radius_vector = data['positions']
         trajectory = data['trajectory']
@@ -332,111 +368,243 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         threshold = data['thresholds']
 
         r_bundle, r_10, r_100, n_r = evaluate_reduction(magnetic_fields, numb_densities, threshold)
-        #ds = np.linalg.norm(np.diff(radius_vector, axis=0), axis=2)  # (4000, 500)
-        #n_g_mid = (numb_densities[:-1] + numb_densities[1:]) / 2      # (4000, 500)
-        N = column_density.shape[0]
         snap_columns_sliced = []
 
         for i in range(column_density.shape[1]):
             snap_columns_sliced += [np.max(column_density[:, i])]
-        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
+        CD_PATH[case][str(row[1])] = CD_PATH[case].get(str(row[1]), snap_columns_sliced * 0) + snap_columns_sliced
 
-        readable = "{:02}:{:06.3f}".format(int((time.time()-start_time) // 60), (time.time()-start_time)  % 60)
-        #CD[case][snap]   =  CD[case].get(snap,  list(column_density[-1,:].tolist()*0)) + column_density[-1,:].tolist()
-        R10[case][snap]  =  R10[case].get(snap,  list(r_10*0)) + list(r_10)
-        R100[case][snap] = R100[case].get(snap, list(r_100*0)) + list(r_100)
-        NR[case][snap] = NR[case].get(snap, list(n_r*0))+ list(n_r)
+        R10_PATH[case][str(row[1])]  =  R10_PATH[case].get(str(row[1]),  list(r_10*0)) + list(r_10)
+        R100_PATH[case][str(row[1])] = R100_PATH[case].get(str(row[1]), list(r_100*0)) + list(r_100)
+        NR_PATH[case][str(row[1])] = NR_PATH[case].get(str(row[1]), list(n_r*0))+ list(n_r)
 
-mean_ideal   = []
-median_ideal = []
-mean_amb     = []
-median_amb   = []
+"""
+Data obtaines up to this points is:
 
-ideal_snap  = []
-amb_snap    = []
+CD_PATH
+R100_PATH
+R10_PATH
+NR_PATH
+snap_values_path
+time_values_path
+peak_den_path
 
-s_ideal = []
-s_amb   = []
+for both ideal and non-ideal MHD
+"""
 
-fractions_i = []
-fractions_a = []
+amb_bundle   = sorted(glob.glob('./thesis_los/N/amb/*/DataBundle*.npz'))
+ideal_bundle = sorted(glob.glob('./thesis_los/N/ideal/*/DataBundle*.npz'))
 
-ideal_time = time_values['ideal']
-amb_time = time_values['amb']
-#print(ideal_time)
+bundle_dirs = [ideal_bundle, amb_bundle]
+
+peak_den_los    = OrderedDict({'ideal': [], 'amb': []})
+snap_values_los = OrderedDict({'ideal': [], 'amb': []})
+time_values_los = OrderedDict({'ideal': [], 'amb': []})
+CD_LOS = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+
+for bundle_dir in bundle_dirs:  # ideal and ambipolar
+
+    repeated = set()
+    if bundle_dir == []:
+        continue
+    case = str(bundle_dir[0].split('/')[-3])
+    
+    for snap_data in bundle_dir:  # from 000 to 490 
+        snap = str(snap_data.split('/')[-2])
+        if int(snap) > 400:
+            continue
+        file_LOS = f'./{case}_cloud_trajectory.txt'
+        with open(file_LOS, mode='r') as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader)  # Skip header
+            for row in csv_reader:
+                if snap == str(row[0]) and snap not in repeated:
+                    if case == 'ideal':
+                        repeated.add(snap)
+                        snap_values_los[case].append(str(row[0]))
+                        time_values_los[case].append(float(row[1]))
+                        peak_den_los[case].append(float(row[-1]))
+                        continue
+
+                    if case == 'amb':
+                        repeated.add(snap)
+                        snap_values_los[case].append(str(row[0]))
+                        time_values_los[case].append(float(row[1]))
+                        peak_den_los[case].append(float(row[-1]))
+                        continue
+
+        data = np.load(snap_data, mmap_mode='r')
+        threshold = data['thresholds']
+        threshold_rev = data['thresholds_rev']        
+        column_density = data['column_densities']*pc_to_cm
+        radius_vector = data['positions']
+        numb_densities = data['number_densities']
+
+        snap_columns_sliced = []
+        for i in range(column_density.shape[1]):
+            snap_columns_sliced += [np.max(column_density[:, i])]
+        
+        CD_LOS[case][str(row[1])] = CD_LOS[case].get(str(row[1]), snap_columns_sliced * 0) + snap_columns_sliced
+
+"""
+Data obtaines up to this points is:
+
+CD_LOS
+snap_values_los
+time_values_los
+peak_den_los
+
+for both ideal and non-ideal MHD
+"""
+
+common_ideal_keys = CD_LOS['ideal'].keys() & CD_PATH['ideal'].keys() # times ideal in common 
+common_amb_keys   = CD_LOS['amb'].keys() & CD_PATH['amb'].keys()     # times amb   in common 
+
+ideal_time_cd = [np.round(float(k),6) for k in common_ideal_keys]
+amb_time_cd   = [np.round(float(k),6) for k in common_amb_keys] 
+
+CD_LOS['ideal'] = OrderedDict((k, CD_LOS['ideal'][k]) for k in common_ideal_keys)
+CD_PATH['ideal'] = OrderedDict((k, CD_PATH['ideal'][k]) for k in common_ideal_keys)
+
+CD_LOS['amb'] = OrderedDict((k, CD_LOS['amb'][k]) for k in common_amb_keys)
+CD_PATH['amb'] = OrderedDict((k, CD_PATH['amb'][k]) for k in common_amb_keys)
 
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
-# --- IDEAL CASE ---
-labels = list(CD['ideal'].keys())  
-data = list(CD['ideal'].values())  
+data_los = list(CD_LOS['ideal'].values())  
+data_path = list(CD_PATH['ideal'].values())  
 
-round_time = [np.round(t, 6) for t in ideal_time]
-for t in round_time:
-    print("ideal: ", t)
+positions_los = np.arange(len(data_los))
+positions_path = positions_los 
 
 fig, ax = plt.subplots()
-ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
+ax.boxplot(data_los, positions=positions_los, widths=0.6,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$')
+
+ax.boxplot(data_path, positions=positions_path, widths=0.6,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
+
+xticks = positions_los 
+ax.set_xticks(xticks)
+ax.set_xticklabels(ideal_time_cd, rotation=60)
+
 ax.set_ylabel('Effective Column Density')
 ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along CR path (ideal)')
+ax.set_title('Column Densities (ideal)')
 ax.set_yscale('log')
 ax.grid(True)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
-plt.tight_layout()
-plt.savefig("./path_cd_ideal.png")
+legend_handles = [
+    Patch(facecolor='skyblue', label=r'$N_{los}$'),
+    Patch(facecolor='orange', label=r'$N_{path}$')
+]
+ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
+plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
+plt.savefig("./ideal_los_path.png")
 plt.close()
 
-# --- AMB CASE ---
-labels = list(CD['amb'].keys())  # snapshot labels
-data = list(CD['amb'].values())  # column density arrays
+from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
 
-round_time = [np.round(t, 6) for t in amb_time]
+data_los = list(CD_LOS['amb'].values())  
+data_path = list(CD_PATH['amb'].values())  
 
-for t in round_time:
-    print("Amb: ", t)
+positions_los = np.arange(len(data_los))
+positions_path = positions_los 
 
 fig, ax = plt.subplots()
-ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
+ax.boxplot(data_los, positions=positions_los, widths=0.6,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$')
+
+ax.boxplot(data_path, positions=positions_path, widths=0.6,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
+
+xticks = positions_los 
+ax.set_xticks(xticks)
+ax.set_xticklabels(amb_time_cd, rotation=60)
+
 ax.set_ylabel('Effective Column Density')
 ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along CR path (non-ideal)')
+ax.set_title('Column Densities (non-ideal)')
 ax.set_yscale('log')
 ax.grid(True)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
-plt.tight_layout()
-plt.savefig("./path_cd_amb.png")
+legend_handles = [
+    Patch(facecolor='skyblue', label=r'$N_{los}$'),
+    Patch(facecolor='orange', label=r'$N_{path}$')
+]
+ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
+plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
+plt.savefig("./amb_los_path.png")
 plt.close()
 
 
-for k, v in CD['ideal'].items():
-    #print("CD size: ",len(CD['ideal'][k]), np.max(CD['ideal'][k]))
-    CD['ideal'][k]   =   np.mean(CD['ideal'][k])
+import numpy as np
+import matplotlib.pyplot as plt
 
-for k, v in CD['amb'].items():
-    #print("CD size: ",len(CD['amb'][k]), np.max(CD['amb'][k]))
-    CD['amb'][k]   =   np.mean(CD['amb'][k])
+# Example dimensions
+num_times = 100     # Number of time steps
+num_params = 50     # Number of parameter values (e.g., energy, position, etc.)
+
+# Create synthetic density data (in cm^-3, log-distributed)
+# We'll use logspace and then add time/parameter variation
+base_density = np.logspace(2, 6, num_params).reshape(-1, 1)  # Shape: (params, 1)
+time_variation = np.sin(np.linspace(0, 4 * np.pi, num_times))  # Shape: (time,)
+data = base_density * (1 + 0.5 * time_variation)  # Shape: (params, time)
+
+# Create axes labels
+time = np.linspace(0, 10, num_times)              # e.g., 0 to 10 seconds
+param = np.linspace(0, 500, num_params)           # e.g., 0 to 500 (adimensional)
+
+# Create the heatmap
+plt.figure(figsize=(10, 5))
+img = plt.imshow(data, aspect='auto', origin='lower', 
+                 extent=[time[0], time[-1], param[0], param[-1]],
+                 cmap='viridis', norm=plt.matplotlib.colors.LogNorm())
+
+plt.colorbar(label='Density (cm$^{-3}$)')
+plt.xlabel('Time (s)')
+plt.ylabel('Parameter (adimensional)')
+plt.title('Heatmap of Density Over Time and Parameter')
+plt.tight_layout()
+plt.savefig('./heatmap_t_r_n.png')
+plt.close()
+
+mean_ideal_path   = []
+median_ideal_path = []
+mean_amb_path     = []
+median_amb_path   = []
+
+ideal_snap_path  = []
+amb_snap    = []
+
+s_ideal_path = []
+s_amb_path   = []
+
+fractions_i = []
+fractions_a = []
 
 for k, v in sorted(R10['ideal'].items()):
     mean_ideal.append(np.mean((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
     median_ideal.append(np.median((np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])))
+
     ideal_snap.append(int(k))
     r_, x, mean, median, ten, s_size, f, n_ = statistics_reduction(np.array(R10['ideal'][k]), np.array(NR['ideal'][k])) 
     s_ideal.append((r_, x, mean, median, ten, s_size, k, f, n_))
     fractions_i.append(float(f))
-    Delta['ideal'][k] = (np.array(R10['ideal'][k]) - np.array(R100['ideal'][k])) / np.array(R100['ideal'][k])
 
 for k, v in sorted(R10['amb'].items()):
     mean_amb.append(np.mean((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
     median_amb.append(np.median((np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])))
+
     amb_snap.append(int(k))
     r_, x, mean, median, ten, s_size, f, n_ = statistics_reduction(np.array(R10['amb'][k]), np.array(NR['amb'][k])) 
     s_amb.append((r_, x, mean, median, ten, s_size, k, f, n_))
     fractions_a.append(float(f))
-    Delta['amb'][k] = (np.array(R10['amb'][k]) - np.array(R100['amb'][k])) / np.array(R100['amb'][k])
+
 
 
 fig0, ax0 = plt.subplots()
@@ -666,142 +834,4 @@ for i, tup in enumerate(s_amb):
     plt.close()
 
 print("Amb: ", mini, maxi)
-
-from collections import OrderedDict
-import matplotlib.pyplot as plt
-import numpy as np
-import sys, time, glob, re
-import warnings, csv
-
-start_time = time.time()
-pc_to_cm = 3.086 * 10e+18  # cm per parsec
-
-amb_bundle   = sorted(glob.glob('./thesis_los/N/amb/*/DataBundle*.npz'))
-ideal_bundle = sorted(glob.glob('./thesis_los/N/ideal/*/DataBundle*.npz'))
-
-bundle_dirs = [ideal_bundle, amb_bundle]
-
-readable = "{:02}:{:06.3f}".format(int((time.time() - start_time) // 60), (time.time() - start_time) % 60)
-
-def extract_number(filename):
-    match = re.search(r'(\d+)(?=\_.json)', filename)
-    return int(match.group(0)) if match else 0
-
-peak_den    = OrderedDict({'ideal': [], 'amb': []})
-snap_values = OrderedDict({'ideal': [], 'amb': []})
-time_values = OrderedDict({'ideal': [], 'amb': []})
-CD = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-
-# It seems this line was repeated
-# peak_den = OrderedDict(...) etc. already done above
-
-# Missing: Initialize CD — this must be declared first!
-# CD = OrderedDict({'ideal': {}, 'amb': {}})
-
-for bundle_dir in bundle_dirs:  # ideal and ambipolar
-
-    repeated = set()
-    #print(bundle_dir)
-    if bundle_dir == []:
-        continue
-    case = str(bundle_dir[0].split('/')[-3])
-    
-    for snap_data in bundle_dir:  # from 000 to 490 
-        snap = str(snap_data.split('/')[-2])
-        if int(snap) > 400:
-            continue
-        file_LOS = f'./{case}_cloud_trajectory.txt'
-        with open(file_LOS, mode='r') as file:
-            csv_reader = csv.reader(file)
-            next(csv_reader)  # Skip header
-            for row in csv_reader:
-                if snap == str(row[0]) and snap not in repeated:
-                    if np.round(float(row[1]), 6) in ideal_time and case == 'ideal':
-                        repeated.add(snap)
-                        snap_values[case].append(str(row[0]))
-                        time_values[case].append(float(row[1]))
-                        peak_den[case].append(float(row[-1]))
-                        continue
-
-                    if np.round(float(row[1]), 6) in amb_time and case == 'amb':
-                        repeated.add(snap)
-                        snap_values[case].append(str(row[0]))
-                        time_values[case].append(float(row[1]))
-                        peak_den[case].append(float(row[-1]))
-                        continue
-
-
-        data = np.load(snap_data, mmap_mode='r')
-        threshold = data['thresholds']
-        threshold_rev = data['thresholds_rev']        
-        column_density = data['column_densities']*pc_to_cm
-        radius_vector = data['positions']
-        numb_densities = data['number_densities']
-
-        N = column_density.shape[0]
-        snap_columns_sliced = []
-        for i in range(column_density.shape[1]):
-            snap_columns_sliced += [np.max(column_density[:, i])]
-        
-        CD[case][snap] = CD[case].get(snap, snap_columns_sliced * 0) + snap_columns_sliced
-
-mean_ideal   = []
-median_ideal = []
-mean_amb     = []
-median_amb   = []
-
-ideal_snap  = []
-amb_snap    = []
-
-s_ideal = []
-s_amb   = []
-
-fractions_i = []
-fractions_a = []
-
-ideal_time = time_values['ideal']
-amb_time = time_values['amb']
-
-from matplotlib.ticker import MaxNLocator
-import matplotlib.pyplot as plt
-
-# --- IDEAL CASE ---
-labels = list(CD['ideal'].keys())  
-data = list(CD['ideal'].values())  
-
-
-round_time = [np.round(t, 6) for t in ideal_time]
-
-fig, ax = plt.subplots()
-ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along line of sight (ideal)')
-ax.set_yscale('log')
-ax.grid(True)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
-plt.tight_layout()
-plt.savefig("./los_cd_ideal.png")
-plt.close()
-
-# --- AMB CASE ---
-labels = list(CD['amb'].keys())  # snapshot labels
-data = list(CD['amb'].values())  # column density arrays
-
-round_time = [np.round(t, 6) for t in amb_time]
-for t in round_time:
-    print("Amb: ", t)
-fig, ax = plt.subplots()
-ax.boxplot(data, flierprops=dict(marker='|', markersize=2, color='red'))
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Density along line of sight (non-ideal)')
-ax.set_yscale('log')
-ax.grid(True)
-ax.set_xticklabels(round_time, rotation=60)
-ax.locator_params(axis='x', nbins=15)
-plt.tight_layout()
-plt.savefig("./los_cd_amb.png")
-plt.close()
 
