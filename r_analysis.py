@@ -470,6 +470,15 @@ CD_PATH['ideal'] = OrderedDict((k, CD_PATH['ideal'][k]) for k in common_ideal_ke
 CD_LOS['amb'] = OrderedDict((k, CD_LOS['amb'][k]) for k in common_amb_keys)
 CD_PATH['amb'] = OrderedDict((k, CD_PATH['amb'][k]) for k in common_amb_keys)
 
+print(ideal_time_cd[0], ideal_time_cd[-1], len(ideal_time_cd))
+print(amb_time_cd[0], amb_time_cd[-1], len(amb_time_cd))
+print(CD_LOS.keys())
+print(CD_PATH.keys())
+print(CD_LOS['ideal'].keys() == CD_PATH['ideal'].keys())
+print(CD_LOS['amb'].keys()   == CD_PATH['amb'].keys())
+print(*CD_LOS['amb'].values())
+print(*CD_PATH['amb'].values())
+
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
