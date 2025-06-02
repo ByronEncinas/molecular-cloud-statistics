@@ -22,9 +22,9 @@ if len(sys.argv)>5:
     num_file      = str(sys.argv[5]) 
     seed          = int(sys.argv[6])
 else:
-    N               = 5_000
-    rloc            = 0.1
-    max_cycles      = 100
+    N               = 2_000
+    rloc            = 1.0
+    max_cycles      = 50
     case            = 'ideal'
     num_file        = '430'
     seed            = 12345 
@@ -176,7 +176,6 @@ def get_along_lines(x_init=None, N=N):
 
         threshold_rev += mask_rev.astype(int)
         threshold2_rev += mask2_rev.astype(int)
-        print(np.log10(dens))
 
         x[un_masked_rev] = aux
         print(np.max(np.log10(dens)))
@@ -203,7 +202,7 @@ def get_along_lines(x_init=None, N=N):
             auxbfields = bfields_rev
             auxdensities = densities_rev
 
-            N_old = N
+            N_old = N+1
             N *= 2
 
             line_rev      = np.zeros((N, m, 3))
@@ -288,7 +287,7 @@ def get_along_lines(x_init=None, N=N):
             auxbfields = bfields
             auxdensities = densities
 
-            N_old = N
+            N_old = N+1
             N *= 2
 
             line      = np.zeros((N, m, 3))

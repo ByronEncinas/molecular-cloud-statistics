@@ -1,10 +1,13 @@
-from collections import OrderedDict
 import matplotlib.pyplot as plt
-import numpy as np
-import sys, time, glob, re
-import warnings, csv
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Patch
+from matplotlib.ticker import MaxNLocator
+from collections import OrderedDict
+import numpy as np
+import sys, time, glob, re, os
+import warnings, csv
+import random
+
 
 #...............Core Density Comparison..................
 
@@ -52,9 +55,8 @@ ax2.set_yscale('log')
 ax2.set_ylim(ax1.get_ylim()[0] * mu_mH, ax1.get_ylim()[1] * mu_mH)
 plt.title('Core Density Evolution')
 fig.tight_layout()
-plt.savefig('./core_den.png')
+plt.savefig('./images/core_den.png')
 plt.close()
-
 
 #...............Reduction Factor Statistics..................
 
@@ -277,6 +279,8 @@ def evaluate_reduction(field, numb, thresh):
     return RBundle, R10, R100, Numb100
 
 def statistics_reduction(R, N):
+    R = np.array(R)
+    N = np.array(N)
     # R is numpy array
     def _stats(n, d_data, r_data, p_data=0):
         sample_r = []
@@ -357,7 +361,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     snap_values_path[case].append(str(row[0]))
                     time_values_path[case].append(float(row[1]))
                     peak_den_path[case].append(float(row[-1]))
-
                     continue
 
         data = np.load(snap_data, mmap_mode='r')
@@ -373,11 +376,11 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
 
         for i in range(column_density.shape[1]):
             snap_columns_sliced += [np.max(column_density[:, i])]
-        CD_PATH[case][str(row[1])] = CD_PATH[case].get(str(row[1]), snap_columns_sliced * 0) + snap_columns_sliced
-
-        R10_PATH[case][str(row[1])]  =  R10_PATH[case].get(str(row[1]),  list(r_10*0)) + list(r_10)
-        R100_PATH[case][str(row[1])] = R100_PATH[case].get(str(row[1]), list(r_100*0)) + list(r_100)
-        NR_PATH[case][str(row[1])] = NR_PATH[case].get(str(row[1]), list(n_r*0))+ list(n_r)
+        t = str(time_values_path[case][-1])
+        CD_PATH[case][t] = CD_PATH[case].get(t, snap_columns_sliced * 0) + snap_columns_sliced
+        R10_PATH[case][t]  =  R10_PATH[case].get(t,  list(r_10*0)) + list(r_10)
+        R100_PATH[case][t] = R100_PATH[case].get(t, list(r_100*0)) + list(r_100)
+        NR_PATH[case][t] = NR_PATH[case].get(t, list(n_r*0))+ list(n_r)
 
 """
 Data obtaines up to this points is:
@@ -432,6 +435,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
                         snap_values_los[case].append(str(row[0]))
                         time_values_los[case].append(float(row[1]))
                         peak_den_los[case].append(float(row[-1]))
+
                         continue
 
         data = np.load(snap_data, mmap_mode='r')
@@ -447,6 +451,38 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         CD_LOS[case][str(row[1])] = CD_LOS[case].get(str(row[1]), snap_columns_sliced * 0) + snap_columns_sliced
 
+if True:
+
+    time_size = 30
+    times = [f"{0.1 * i:.1f}" for i in range(time_size)]
+
+    data_size = 2000    
+
+    def make_uniform_dict():
+        return OrderedDict({
+            'ideal': OrderedDict({t: [1-np.random.beta(a=2, b=5)  for _ in range(data_size)] for t in times}),
+            'amb':   OrderedDict({t: [1-np.random.beta(a=2, b=5)  for _ in range(data_size)] for t in times})
+        })
+
+    def make_logspace_dict(low_exp, high_exp):
+        return OrderedDict({
+            'ideal': OrderedDict({
+                t: list(np.logspace(low_exp, high_exp, num=data_size))
+                for t in times
+            }),
+            'amb': OrderedDict({
+                t: list(np.logspace(low_exp, high_exp, num=data_size))
+                for t in times
+            })
+        })
+
+    R100_PATH = make_uniform_dict()
+    R10_PATH  = make_uniform_dict()
+
+    NR_PATH = make_logspace_dict(2, 7)    # 10^2 to 10^7
+    CD_PATH = make_logspace_dict(19, 23)  # 10^19 to 10^27
+    CD_LOS = make_logspace_dict(23, 27)  # 10^19 to 10^27
+
 """
 Data obtaines up to this points is:
 
@@ -458,81 +494,33 @@ peak_den_los
 for both ideal and non-ideal MHD
 """
 
+# in the test I have nothing for CD_LOS so it'll be empty
 common_ideal_keys = CD_LOS['ideal'].keys() & CD_PATH['ideal'].keys() # times ideal in common 
 common_amb_keys   = CD_LOS['amb'].keys() & CD_PATH['amb'].keys()     # times amb   in common 
 
 ideal_time_cd = [np.round(float(k),6) for k in common_ideal_keys]
 amb_time_cd   = [np.round(float(k),6) for k in common_amb_keys] 
 
-CD_LOS['ideal'] = OrderedDict((k, CD_LOS['ideal'][k]) for k in common_ideal_keys)
-CD_PATH['ideal'] = OrderedDict((k, CD_PATH['ideal'][k]) for k in common_ideal_keys)
+#CD_LOS['ideal'] = OrderedDict((k, CD_LOS['ideal'][k]) for k in common_ideal_keys)
+#CD_PATH['ideal'] = OrderedDict((k, CD_PATH['ideal'][k]) for k in common_ideal_keys)
 
-CD_LOS['amb'] = OrderedDict((k, CD_LOS['amb'][k]) for k in common_amb_keys)
-CD_PATH['amb'] = OrderedDict((k, CD_PATH['amb'][k]) for k in common_amb_keys)
+#CD_LOS['amb'] = OrderedDict((k, CD_LOS['amb'][k]) for k in common_amb_keys)
+#CD_PATH['amb'] = OrderedDict((k, CD_PATH['amb'][k]) for k in common_amb_keys)
 
-print(ideal_time_cd[0], ideal_time_cd[-1], len(ideal_time_cd))
-print(amb_time_cd[0], amb_time_cd[-1], len(amb_time_cd))
-print(CD_LOS.keys())
-print(CD_PATH.keys())
-print(CD_LOS['ideal'].keys() == CD_PATH['ideal'].keys())
-print(CD_LOS['amb'].keys()   == CD_PATH['amb'].keys())
-print(*CD_LOS['amb'].values())
-print(*CD_PATH['amb'].values())
 
-from matplotlib.ticker import MaxNLocator
-import matplotlib.pyplot as plt
-
-data_los = list(CD_LOS['ideal'].values())  
-data_path = list(CD_PATH['ideal'].values())  
-
-positions_los = np.arange(len(data_los))
-positions_path = positions_los 
-
-fig, ax = plt.subplots()
-ax.boxplot(data_los, positions=positions_los, widths=0.6,
-           flierprops=dict(marker='|', markersize=2, color='red'),
-           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$')
-
-ax.boxplot(data_path, positions=positions_path, widths=0.6,
-           flierprops=dict(marker='|', markersize=2, color='red'),
-           patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
-
-xticks = positions_los 
-ax.set_xticks(xticks)
-ax.set_xticklabels(ideal_time_cd, rotation=60)
-
-ax.set_ylabel('Effective Column Density')
-ax.set_xlabel('Time (Myrs)')
-ax.set_title('Column Densities (ideal)')
-ax.set_yscale('log')
-ax.grid(True)
-legend_handles = [
-    Patch(facecolor='skyblue', label=r'$N_{los}$'),
-    Patch(facecolor='orange', label=r'$N_{path}$')
-]
-ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
-plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
-plt.savefig("./ideal_los_path.png")
-plt.close()
-
-from matplotlib.ticker import MaxNLocator
-import matplotlib.pyplot as plt
 
 data_los = list(CD_LOS['amb'].values())  
 data_path = list(CD_PATH['amb'].values())
 
-print(len(CD_LOS['amb'].values()))
-print(len(CD_PATH['amb'].values()))
-
 positions_los = np.arange(len(data_los))
-positions_path = positions_los 
+positions_path = positions_los - 0.25
 
 fig, ax = plt.subplots()
-ax.boxplot(data_los, positions=positions_los, widths=0.6,
+ax.boxplot(data_los, positions=positions_los, widths=0.2,
            flierprops=dict(marker='|', markersize=2, color='red'),
-           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$')
+           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$ shifted')
 
-ax.boxplot(data_path, positions=positions_path, widths=0.6,
+ax.boxplot(data_path, positions=positions_path, widths=0.2,
            flierprops=dict(marker='|', markersize=2, color='red'),
            patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
 
@@ -551,41 +539,359 @@ legend_handles = [
 ]
 ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
 plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
-plt.savefig("./amb_los_path.png")
+plt.savefig("./images/amb_los_path.png")
 plt.close()
 
-import numpy as np
+
+
+data_path = list(CD_PATH['ideal'].values())  
+data_los = list(CD_LOS['ideal'].values())  
+
+positions_path = np.arange(len(data_path)) 
+positions_los = positions_path - 0.25
+
+fig, ax = plt.subplots()
+ax.boxplot(data_los, positions=positions_los, widths=0.2,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$ shifted')
+
+ax.boxplot(data_path, positions=positions_path, widths=0.2,
+           flierprops=dict(marker='|', markersize=2, color='red'),
+           patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
+
+xticks = positions_los 
+ax.set_xticks(xticks)
+ax.set_xticklabels(ideal_time_cd, rotation=60)
+
+ax.set_ylabel('Effective Column Density')
+ax.set_xlabel('Time (Myrs)')
+ax.set_title('Column Densities (ideal)')
+ax.set_yscale('log')
+ax.grid(True)
+legend_handles = [
+    Patch(facecolor='skyblue', label=r'$N_{los}$'),
+    Patch(facecolor='orange', label=r'$N_{path}$')
+]
+ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
+plt.tight_layout(rect=[0, 0, 1, 1]) 
+plt.savefig("./images/ideal_los_path.png")
+plt.close()
+
+
+params = list(R100_PATH['amb'].values())
+densities = list(NR_PATH['amb'].values())
+
+T_flat = []
+R_flat = []
+D_flat = []
+
+for t_idx in range(len(times)):
+    R_list = params[t_idx]
+    D_list = densities[t_idx]
+    
+    T_flat.extend([times[t_idx]] * len(R_list))
+    R_flat.extend(R_list)
+    D_flat.extend(D_list)
+
+T_flat = np.array(T_flat)
+R_flat = np.array(R_flat)
+D_flat = np.array(D_flat)
+
+plt.figure(figsize=(10, 5))
+sc = plt.scatter(T_flat, R_flat, c=D_flat, cmap='viridis', norm=LogNorm(), s=20, marker='s')
+
+
+plt.colorbar(sc, label='Density (cm$^{-3}$)')
+plt.xlabel('Time (s)')
+plt.ylabel('R (adimensional)')
+plt.title('Scatter Plot of R vs Time Colored by Density')
+plt.tight_layout()
+plt.savefig('./images/scatter_t_r_d_amb.png')
+plt.close()
+
+time = [float(t) for t in R100_PATH['ideal'].keys()]
+params = list(R100_PATH['ideal'].values())
+densities = list(NR_PATH['ideal'].values())
+
+
+T_flat = []
+R_flat = []
+D_flat = []
+
+for t_idx in range(len(time)):
+    R_list = params[t_idx]
+    D_list = densities[t_idx]
+    
+    T_flat.extend([time[t_idx]] * len(R_list))
+    R_flat.extend(R_list)
+    D_flat.extend(D_list)
+
+T_flat = np.array(T_flat)
+R_flat = np.array(R_flat)
+D_flat = np.array(D_flat)
+
+plt.figure(figsize=(10, 5))
+
+sc = plt.scatter(T_flat, R_flat, c=D_flat, cmap='viridis', norm=LogNorm(), s=20, marker='s')
+
+plt.colorbar(sc, label='Density (cm$^{-3}$)')
+plt.xlabel('Time (s)')
+plt.ylabel('R (adimensional)')
+plt.title('Scatter Plot of R vs Time Colored by Density')
+plt.tight_layout()
+plt.savefig('./images/scatter_t_r_d_ideal.png')
+plt.close()
+
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.colors import LogNorm
+import numpy as np
 
-# Example dimensions
-num_times = 100     # Number of time steps
-num_params = 50     # Number of parameter values (e.g., energy, position, etc.)
+fig, ax = plt.subplots()
 
-# Create synthetic density data (in cm^-3, log-distributed)
-# We'll use logspace and then add time/parameter variation
-base_density = np.logspace(2, 6, num_params).reshape(-1, 1)  # Shape: (params, 1)
-time_variation = np.sin(np.linspace(0, 4 * np.pi, num_times))  # Shape: (time,)
-data = base_density * (1 + 0.5 * time_variation)  # Shape: (params, time)
+# Normalize the colors
+norm = LogNorm(vmin=np.min(D_flat), vmax=np.max(D_flat))
+cmap = plt.cm.viridis
 
-# Create axes labels
-time = np.linspace(0, 10, num_times)              # e.g., 0 to 10 seconds
-param = np.linspace(0, 500, num_params)           # e.g., 0 to 500 (adimensional)
+
+for x, y, d in zip(T_flat, R_flat, D_flat):
+    color = cmap(norm(d))
+    rect = patches.Rectangle((x, y), 1/10, 1/4000, facecolor=color, edgecolor='none')
+    ax.add_patch(rect)
+
+# Set limits to contain all rectangles
+ax.set_xlim(min(T_flat) - 0.1, max(T_flat) + 0.2)
+ax.set_ylim(min(R_flat) - 0.05, max(R_flat) + 0.05)
+
+# Create a colorbar
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])
+fig.colorbar(sm, ax=ax, label='D')
+
+plt.xlabel('T')
+plt.ylabel('R')
+plt.savefig('./images/__.png')
+plt.close()
+
+
+time = [float(t) for t in R10_PATH['ideal'].keys()]
+params = list(R10_PATH['ideal'].values())
+
+T_flat = []
+R_flat = []
+
+for t_idx, R_list in enumerate(params):
+    T_flat.extend([time[t_idx]] * len(R_list))
+    R_flat.extend(R_list)
+
+T_flat = np.array(T_flat)
+R_flat = np.array(R_flat)
+
+plt.figure(figsize=(10, 5))
+plt.hist2d(
+    T_flat, R_flat,
+    bins=[len(time), 10],
+    cmap='viridis'
+)
+
+plt.colorbar(label='Count of R values')
+plt.xlabel('Time (s)')
+plt.ylabel('R (adimensional)')
+plt.title('Heatmap of R Distribution Over Time')
+plt.tight_layout()
+plt.savefig('./images/hmap_t_r_ideal.png')
+plt.close()
+
+
+time = [float(t) for t in R10_PATH['amb'].keys()]
+params = list(R10_PATH['amb'].values())
+
+T_flat = []
+R_flat = []
+
+for t_idx, R_list in enumerate(params):
+    T_flat.extend([time[t_idx]] * len(R_list))
+    R_flat.extend(R_list)
+
+T_flat = np.array(T_flat)
+R_flat = np.array(R_flat)
+
+plt.figure(figsize=(10, 5))
+plt.hist2d(
+    T_flat, R_flat,
+    bins=[len(time), 10],
+    cmap='viridis'
+)
+
+plt.colorbar(label='Count of R values')
+plt.xlabel('Time (s)')
+plt.ylabel('R (adimensional)')
+plt.title('Heatmap of R Distribution Over Time')
+plt.tight_layout()
+plt.savefig('./images/hmap_t_r_amb.png')
+plt.close()
+
+
+
+mean_params = []
+medi_params = []
+dens_distro = []
+for t, t_key in enumerate(time):
+
+    r, x_n, mean_vec, median_vec, ten_vec, sample_size, f, _ = statistics_reduction(params[t], densities[t])
+    mean_params.append(mean_vec)
+    medi_params.append(median_vec)
+    dens_distro.append(x_n)
+
+print(np.array(dens_distro).shape)  # Should be (num_times, num_R)
+print(np.array(params[0]).shape)    # Should be (num_R,)
+print(np.array(params[1]).shape)    # Should be (num_R,)
+print(np.array(time).shape)         # Should be (num_times,)
+
+num_times = len(time)                  # Number of time steps
+num_params = len(params)               # Number of R values  
 
 # Create the heatmap
 plt.figure(figsize=(10, 5))
-img = plt.imshow(data, aspect='auto', origin='lower', 
-                 extent=[time[0], time[-1], param[0], param[-1]],
+img = plt.hist2d(time, params, aspect='auto', origin='lower', 
+                 extent=[time[0], time[-1], params[0], params[-1]],
                  cmap='viridis', norm=plt.matplotlib.colors.LogNorm())
 
 plt.colorbar(label='Density (cm$^{-3}$)')
 plt.xlabel('Time (s)')
-plt.ylabel('Parameter (adimensional)')
-plt.title('Heatmap of Density Over Time and Parameter')
+plt.ylabel('R (adimensional)')
+plt.title('Heatmap of Density Over Time and R')
+plt.tight_layout()
+plt.savefig('./images/hmap_t_r_f.png')
+plt.close()
+
+# Simulate 30 distributions with varying sample sizes and means
+np.random.seed(42)
+n_distributions = 30
+sample_sizes = np.random.randint(100, 1000, size=n_distributions)
+means = np.linspace(-3, 3, n_distributions)
+stds = np.linspace(0.5, 1.5, n_distributions)
+
+distributions = [np.random.normal(loc=mu, scale=std, size=n)
+                 for mu, std, n in zip(means, stds, sample_sizes)]
+
+# Set common bin range for PDF heatmap
+x_min, x_max = -6, 6
+n_bins = 100
+x_bins = np.linspace(x_min, x_max, n_bins)
+
+# Calculate normalized histograms (PDFs)
+pdfs = []
+for dist in distributions:
+    hist, _ = np.histogram(dist, bins=x_bins, density=True)
+    pdfs.append(hist)
+pdfs = np.array(pdfs)  # Shape: (30, 99)
+
+# Prepare data for 2D histogram and scatter plot
+times = []
+values = []
+for i, dist in enumerate(distributions):
+    times.extend([i] * len(dist))
+    values.extend(dist)
+times = np.array(times)
+values = np.array(values)
+
+# Create plots
+fig, axs = plt.subplots(3, 1, figsize=(12, 18))
+
+# 1. PDF Heatmap
+im = axs[0].imshow(pdfs, aspect='auto', origin='lower',
+                   extent=[x_min, x_max, 0, n_distributions],
+                   cmap='viridis')
+axs[0].set_title('Heatmap of PDFs Over Time')
+axs[0].set_xlabel('X')
+axs[0].set_ylabel('Time Index')
+fig.colorbar(im, ax=axs[0], label='PDF Value')
+
+# 2. 2D Histogram
+h = axs[1].hist2d(times, values, bins=[n_distributions, n_bins],
+                  range=[[0, n_distributions], [x_min, x_max]],
+                  cmap='plasma', density=True)
+axs[1].set_title('2D Histogram of Sample Density Over Time')
+axs[1].set_xlabel('Time Index')
+axs[1].set_ylabel('X')
+fig.colorbar(h[3], ax=axs[1], label='Density')
+
+# 3. Scatter Plot
+axs[2].scatter(times, values, alpha=0.2, s=5)
+axs[2].set_title('Scatter Plot of Raw Samples Over Time')
+axs[2].set_xlabel('Time Index')
+axs[2].set_ylabel('X')
+
+plt.tight_layout()
+plt.savefig('./images/smth.png', dpi=300)
+plt.close()
+
+n_bins = 100  # Number of bins along frequency axis
+
+# Extract and sort time keys
+time_keys = sorted(R100_PATH[case].keys(), key=lambda x: float(x))
+time_values = [float(t) for t in time_keys]
+
+# Prepare frequency bins
+freq_bins = np.linspace(0, 1, n_bins + 1)
+freq_centers = 0.5 * (freq_bins[:-1] + freq_bins[1:])
+
+# Initialize parameter_values 2D array
+parameter_values = np.zeros((n_bins, len(time_keys)))
+
+# Fill heatmap matrix
+for i, t_str in enumerate(time_keys):
+    R_vals = np.array(R100_PATH[case][t_str])
+    densities = np.array(NR_PATH[case][t_str])
+
+    # Bin the R values and average densities in each bin
+    bin_indices = np.digitize(R_vals, freq_bins) - 1  # digitize gives indices from 1
+    for j in range(n_bins):
+        in_bin = densities[bin_indices == j]
+        parameter_values[j, i] = in_bin.mean() if len(in_bin) > 0 else 0.0
+
+# Plot heatmap
+plt.figure(figsize=(12, 5))
+plt.imshow(parameter_values, aspect='auto', origin='lower',
+           extent=[time_values[0], time_values[-1], freq_bins[0], freq_bins[-2]],
+           cmap='viridis')
+
+plt.title("Heatmap of Parameter Over Time and Frequency")
+plt.xlabel("Time (s)")
+plt.ylabel("Frequency (R distribution)")
+cbar = plt.colorbar()
+cbar.set_label("Density")
+
+plt.tight_layout()
+plt.savefig('./hmap.png')
+plt.close()
+
+
+
+# Simulated data
+time = np.linspace(0, 10, 500)         # 500 time points
+frequency = np.linspace(0, 500, 250)   # 250 frequency points
+densities = np.random.rand(len(frequency), len(time))  # Random heatmap data
+
+# Create the plot
+plt.figure(figsize=(12, 5))
+plt.imshow(parameter_values, aspect='auto', origin='lower',
+           extent=[time[0], time[-1], frequency[0], frequency[-1]],
+           cmap='viridis')
+
+# Add labels and title
+plt.title("Heatmap of Parameter Over Time and Frequency")
+plt.xlabel("Time (s)")
+plt.ylabel("Frequency (Hz)")
+
+# Add colorbar
+cbar = plt.colorbar()
+cbar.set_label("Parameter Value")
+
 plt.tight_layout()
 plt.savefig('./heatmap_t_r_n.png')
 plt.close()
-
-exit()
 
 mean_ideal_path   = []
 median_ideal_path = []
