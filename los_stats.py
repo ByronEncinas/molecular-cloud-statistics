@@ -316,16 +316,98 @@ def energies_get_along_lines(x_init=None, densthresh=100):
 
     return radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, [eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature]
 
+"""
+x_init =  'm' number of 3D vectors
+directions =  '20' unit vectors evenly distributed in a unit sphere
+
+x_init = [
+        [a,b,c],
+        [a,b,c],
+        [a,b,c],
+        ]
+
+directions = [
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f]
+        ]
+
+x_new = x_init + dx*directions
+
+size of x_ init has to increade from its original size times the size of directions
+x_init = [
+        [a1,b1,c1],
+        [a1,b1,c1],
+        [a1,b1,c1],
+        [a1,b1,c1],
+        ...
+        [a1,b1,c1], <= 9th repetition
+        [a2,b2,c2],
+        ...
+        [a2,b2,c2], <= 9th repetition
+        [a3,b3,c3], 
+        ...
+        [a3,b3,c3], <= 9th repetition
+        ]
+
+size of directions has to increade from its original size times the size of x_init        
+directions = [
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f]  <= add up to the first starting position in x_init (its repeated)
+        ...
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f]
+        ...
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f],
+        [d,e,f]
+        ]
+
+x_new = x_init + dx*directions
+
+"""
+
 def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
     """
     directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
-
     dx = 0.5
-
     m = x_init.shape[0]
+
+    """
+    Here you need to 
+    directions = its repeated version 'm' times
+    directions = np.tile(directions, m)
+    x_init     = 
+    """
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
