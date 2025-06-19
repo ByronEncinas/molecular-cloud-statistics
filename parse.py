@@ -327,15 +327,19 @@ R10_PATH  = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 NR_PATH   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 CD_PATH   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 BS_PATH   = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-X_PATH     = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+X_PATH    = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+CD_LOS    = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+X_LOS     = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
+
 peak_den_los    = OrderedDict({'ideal': [], 'amb': []})
 snap_values_los = OrderedDict({'ideal': [], 'amb': []})
 time_values_los = OrderedDict({'ideal': [], 'amb': []})
-CD_LOS          = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
 
 peak_den_path    = OrderedDict({'ideal': [], 'amb': []})
 snap_values_path = OrderedDict({'ideal': [], 'amb': []})
 time_values_path = OrderedDict({'ideal': [], 'amb': []})
+
+common_times    = OrderedDict({'ideal': [], 'amb': []})
 
 for bundle_dir in bundle_dirs: # ideal and ambipolar
     if bundle_dir == []:
@@ -397,12 +401,6 @@ amb_bundle2   = sorted(glob.glob('./thesis_los/N/amb/*/DataBundle*.npz'))
 ideal_bundle2 = sorted(glob.glob('./thesis_los/N/ideal/*/DataBundle*.npz'))
 bundle_dirs = [ideal_bundle2, amb_bundle2]
 
-peak_den_los    = OrderedDict({'ideal': [], 'amb': []})
-snap_values_los = OrderedDict({'ideal': [], 'amb': []})
-time_values_los = OrderedDict({'ideal': [], 'amb': []})
-common_times    = OrderedDict({'ideal': [], 'amb': []})
-CD_LOS          = OrderedDict({'ideal': OrderedDict(), 'amb': OrderedDict()})
-
 for bundle_dir in bundle_dirs:  # ideal and ambipolar
 
     repeated = set()
@@ -430,9 +428,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
 
         data = np.load(snap_data, mmap_mode='r') 
         column_density = data['column_densities']*pc_to_cm
-        radius_vector = data['positions']
         numb_densities = data['number_densities']
-        starting_position = radius_vector[radius_vector.shape[0]//2,:]
 
         snap_columns_sliced = []
         for i in range(column_density.shape[1]):
@@ -440,6 +436,26 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
         
         t = str(time_values_los[case][-1])
         CD_LOS[case][t] = CD_LOS[case].get(str(row[1]), snap_columns_sliced * 0) + snap_columns_sliced
+
+"""
+Data obtaines up to this points is:
+
+CD_PATH
+R100_PATH
+R10_PATH
+NR_PATH
+snap_values_path
+time_values_path
+peak_den_path
+
+CD_LOS
+snap_values_los
+time_values_los
+peak_den_los
+
+
+for both ideal and non-ideal MHD
+"""
 
 ReducedBundle = OrderedDict({'ideal': [], 'amb': []})
 ReducedColumn = OrderedDict({'ideal': [], 'amb': []})
@@ -452,7 +468,7 @@ for sim, times in R100_PATH.items():
         r10_distro   = np.array(R10_PATH[sim][time])
         b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        tulip        = (time, n_peak, r100_distro, x_distro,r10_distro, n_distro, b_distro) 
+        tulip        = (time, n_peak, r100_distro, x_distro, r10_distro, n_distro, b_distro) 
         #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
         
@@ -463,16 +479,17 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
     for index, time in enumerate(common_times):
         cp_distro     = np.array(CD_PATH[sim][time])
         cl_distro     = np.array(CD_LOS[sim][time])
-        tulip         = (time, cp_distro, cl_distro)
+        x_distro     = np.array(X_PATH[sim][time])
+        tulip         = (time, cp_distro, cl_distro, x_distro)
         #print(f"{index:<5} {time:<20} {sim:<10}")
         ReducedColumn[sim].append(tulip)
 
 
 if True: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
+    positions_los = common_times_ideal#np.arange(len(data_los))
+    positions_path = positions_los*(0.95)#positions_los - 0.25
 
-    positions_los = np.arange(len(data_los)) # this needs work
-    positions_path = positions_los - 0.25
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
@@ -504,8 +521,8 @@ if True:
 if True: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
     
-    positions_los = np.arange(len(data_los))
-    positions_path = positions_los - 0.25
+    positions_los = common_times_amb#np.arange(len(data_los))
+    positions_path = positions_los*(0.95)#positions_los - 0.25
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
@@ -516,9 +533,9 @@ if True:
             flierprops=dict(marker='|', markersize=2, color='red'),
             patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
 
-    xticks = positions_los 
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(common_times, rotation=60)
+    #xticks = positions_los 
+    #ax.set_xticks(xticks)
+    #ax.set_xticklabels(common_times, rotation=60)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
