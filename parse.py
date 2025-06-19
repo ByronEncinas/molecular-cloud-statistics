@@ -486,10 +486,10 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
 
 
 if True: 
-    common_times, data_path, data_los, _ = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro, __ in ReducedColumn['ideal']])
-    positions_los = common_times_ideal#np.arange(len(data_los))
-    positions_path = positions_los*(0.95)#positions_los - 0.25
+    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
+    positions_los = np.arange(len(data_los)) # this needs work
+    positions_path = positions_los - 0.25
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
@@ -508,6 +508,7 @@ if True:
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (ideal)')
     ax.set_yscale('log')
+    ax.grid(True)
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
@@ -518,10 +519,10 @@ if True:
     plt.close()
 
 if True: 
-    common_times, data_path, data_los, _ = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro, __ in ReducedColumn['amb']])
+    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
     
-    positions_los = common_times_amb#np.arange(len(data_los))
-    positions_path = positions_los*(0.95)#positions_los - 0.25
+    positions_los = np.arange(len(data_los))
+    positions_path = positions_los - 0.25
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
@@ -532,14 +533,15 @@ if True:
             flierprops=dict(marker='|', markersize=2, color='red'),
             patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
 
-    #xticks = positions_los 
-    #ax.set_xticks(xticks)
-    #ax.set_xticklabels(common_times, rotation=60)
+    xticks = positions_los 
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(common_times, rotation=60)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (non-ideal)')
     ax.set_yscale('log')
+    ax.grid(True)
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
