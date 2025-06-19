@@ -452,7 +452,7 @@ for sim, times in R100_PATH.items():
         r10_distro   = np.array(R10_PATH[sim][time])
         b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        tulip        = (time, n_peak, x_distro, r100_distro, r10_distro, n_distro, b_distro) 
+        tulip        = (time, n_peak, r100_distro, x_distro,r10_distro, n_distro, b_distro) 
         #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
         
@@ -461,18 +461,17 @@ common_times_amb   = sorted(set(CD_PATH['amb'].keys()) & set(CD_LOS['amb'].keys(
 
 for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times_amb]):
     for index, time in enumerate(common_times):
-        cp_distro     = np.log10(CD_PATH[sim][time])
-        cl_distro     = np.log10(CD_LOS[sim][time])
+        cp_distro     = np.array(CD_PATH[sim][time])
+        cl_distro     = np.array(CD_LOS[sim][time])
         tulip         = (time, cp_distro, cl_distro)
         #print(f"{index:<5} {time:<20} {sim:<10}")
         ReducedColumn[sim].append(tulip)
 
 
-common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
-
 if True: 
+    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
-    positions_los = np.arange(len(data_los))
+    positions_los = np.arange(len(data_los)) # this needs work
     positions_path = positions_los - 0.25
 
     fig, ax = plt.subplots()
@@ -502,10 +501,9 @@ if True:
     plt.savefig("./ideal_l_p.png")
     plt.close()
 
-common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
-
 if True: 
-
+    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
+    
     positions_los = np.arange(len(data_los))
     positions_path = positions_los - 0.25
 
@@ -535,3 +533,48 @@ if True:
     plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
     plt.savefig("./amb_l_p.png")
     plt.close()
+
+exit()
+times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['ideal']])
+
+if True:
+
+    x = times # time
+    y = r100# reduction factor
+    xlim = x.min(), x.max()
+    ylim = y.min(), y.max()
+
+    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
+
+    hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno')
+    ax0.set(xlim=xlim, ylim=ylim)
+    ax0.set_title("Hexagon binning")
+    cb = fig.colorbar(hb, ax=ax0, label='counts')
+
+    hb = ax1.hexbin(x, y, gridsize=50, bins='log', cmap='inferno')
+    ax1.set(xlim=xlim, ylim=ylim)
+    ax1.set_title("With a log color scale (ideal)")
+    cb = fig.colorbar(hb, ax=ax1, label='counts')
+    plt.savefig('./ideal_r_t')
+
+times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['amb']])
+
+if True:
+
+    x = times # time
+    y = r100# reduction factor
+    xlim = x.min(), x.max()
+    ylim = y.min(), y.max()
+
+    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
+
+    hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno')
+    ax0.set(xlim=xlim, ylim=ylim)
+    ax0.set_title("Hexagon binning")
+    cb = fig.colorbar(hb, ax=ax0, label='counts')
+
+    hb = ax1.hexbin(x, y, gridsize=50, bins='log', cmap='inferno')
+    ax1.set(xlim=xlim, ylim=ylim)
+    ax1.set_title("With a log color scale (non-ideal)")
+    cb = fig.colorbar(hb, ax=ax1, label='counts')
+    plt.savefig('./ideal_r_t')
