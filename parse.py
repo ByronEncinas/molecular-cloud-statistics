@@ -428,9 +428,7 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
                         common_times[case].append(time_values_los[case][-1])
                     continue
 
-        data = np.load(snap_data, mmap_mode='r')
-        #threshold = data['thresholds']
-        #threshold_rev = data['thresholds_rev']        
+        data = np.load(snap_data, mmap_mode='r') 
         column_density = data['column_densities']*pc_to_cm
         radius_vector = data['positions']
         numb_densities = data['number_densities']
@@ -454,10 +452,10 @@ for sim, times in R100_PATH.items():
         r10_distro   = np.array(R10_PATH[sim][time])
         b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        tulip        = (time, n_peak, x_distro, r100_distro, r10_distro, n_distro, b_distro) # this must be rectangular array for each element
-        print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
+        tulip        = (time, n_peak, x_distro, r100_distro, r10_distro, n_distro, b_distro) 
+        #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
-
+        
 common_times_ideal = sorted(set(CD_PATH['ideal'].keys()) & set(CD_LOS['ideal'].keys()), key=float)
 common_times_amb   = sorted(set(CD_PATH['amb'].keys()) & set(CD_LOS['amb'].keys()), key=float)
 
@@ -466,6 +464,74 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         cp_distro     = np.log10(CD_PATH[sim][time])
         cl_distro     = np.log10(CD_LOS[sim][time])
         tulip         = (time, cp_distro, cl_distro)
-        print(f"{index:<5} {time:<20} {sim:<10}")
-
+        #print(f"{index:<5} {time:<20} {sim:<10}")
         ReducedColumn[sim].append(tulip)
+
+
+common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
+
+if True: 
+
+    positions_los = np.arange(len(data_los))
+    positions_path = positions_los - 0.25
+
+    fig, ax = plt.subplots()
+    ax.boxplot(data_los, positions=positions_los, widths=0.2,
+            flierprops=dict(marker='|', markersize=2, color='red'),
+            patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$ shifted')
+
+    ax.boxplot(data_path, positions=positions_path, widths=0.2,
+            flierprops=dict(marker='|', markersize=2, color='red'),
+            patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
+
+    xticks = positions_los 
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(common_times, rotation=60)
+
+    ax.set_ylabel('Effective Column Density')
+    ax.set_xlabel('Time (Myrs)')
+    ax.set_title('Column Densities (ideal)')
+    ax.set_yscale('log')
+    ax.grid(True)
+    legend_handles = [
+        Patch(facecolor='skyblue', label=r'$N_{los}$'),
+        Patch(facecolor='orange', label=r'$N_{path}$')
+    ]
+    ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
+    plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
+    plt.savefig("./ideal_l_p.png")
+    plt.close()
+
+common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
+
+if True: 
+
+    positions_los = np.arange(len(data_los))
+    positions_path = positions_los - 0.25
+
+    fig, ax = plt.subplots()
+    ax.boxplot(data_los, positions=positions_los, widths=0.2,
+            flierprops=dict(marker='|', markersize=2, color='red'),
+            patch_artist=True, boxprops=dict(facecolor='skyblue'), label=r'$N_{los}$ shifted')
+
+    ax.boxplot(data_path, positions=positions_path, widths=0.2,
+            flierprops=dict(marker='|', markersize=2, color='red'),
+            patch_artist=True, boxprops=dict(facecolor='orange'), label=r'$N_{path}$')
+
+    xticks = positions_los 
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(common_times, rotation=60)
+
+    ax.set_ylabel('Effective Column Density')
+    ax.set_xlabel('Time (Myrs)')
+    ax.set_title('Column Densities (non-ideal)')
+    ax.set_yscale('log')
+    ax.grid(True)
+    legend_handles = [
+        Patch(facecolor='skyblue', label=r'$N_{los}$'),
+        Patch(facecolor='orange', label=r'$N_{path}$')
+    ]
+    ax.legend(handles=legend_handles, loc='center left', bbox_to_anchor=(1.0, 0.5))
+    plt.tight_layout(rect=[0, 0, 1, 1])  # leave space on the right
+    plt.savefig("./amb_l_p.png")
+    plt.close()
