@@ -486,7 +486,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
 
 
 if True: 
-    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
+    common_times, data_path, data_los, _ = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro, __ in ReducedColumn['ideal']])
     positions_los = common_times_ideal#np.arange(len(data_los))
     positions_path = positions_los*(0.95)#positions_los - 0.25
 
@@ -508,7 +508,6 @@ if True:
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (ideal)')
     ax.set_yscale('log')
-    ax.grid(True)
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
@@ -519,7 +518,7 @@ if True:
     plt.close()
 
 if True: 
-    common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
+    common_times, data_path, data_los, _ = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro, __ in ReducedColumn['amb']])
     
     positions_los = common_times_amb#np.arange(len(data_los))
     positions_path = positions_los*(0.95)#positions_los - 0.25
@@ -541,7 +540,6 @@ if True:
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (non-ideal)')
     ax.set_yscale('log')
-    ax.grid(True)
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
