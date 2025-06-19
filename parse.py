@@ -457,19 +457,12 @@ for sim, times in R100_PATH.items():
         b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
         tulip        = (time, n_peak, x_distro, r100_distro, r10_distro, n_distro, b_distro) # this must be rectangular array for each element
-        #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
+        print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
 
-#import copy
-#CD_LOS = copy.deepcopy(CD_PATH)
-#CD_LOS['ideal']['10'] = CD_LOS['ideal'].get('10', [] * 0) + [1.0e+30]*1500
-#CD_LOS['amb']['10'] = CD_LOS['amb'].get('10', [] * 0) + [1.0e+30]*1500
-#CD_PATH['amb']['10'] = CD_PATH['ideal'].get('10', [] * 0) + [1.0e+30]*1500
 common_times_ideal = sorted(set(CD_PATH['ideal'].keys()) & set(CD_LOS['ideal'].keys()), key=float)
 common_times_amb   = sorted(set(CD_PATH['amb'].keys()) & set(CD_LOS['amb'].keys()), key=float)
 
-#print(common_times_ideal)
-#print(common_times_amb)
 for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times_amb]):
     for index, time in enumerate(common_times):
         cp_distro     = np.log10(CD_PATH[sim][time])
