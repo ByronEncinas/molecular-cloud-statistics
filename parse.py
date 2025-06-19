@@ -480,7 +480,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         cp_distro     = np.array(CD_PATH[sim][time])
         cl_distro     = np.array(CD_LOS[sim][time])
         x_distro     = np.array(X_PATH[sim][time])
-        tulip         = (time, cp_distro, cl_distro, x_distro)
+        tulip         = (time, cp_distro, cl_distro)
         #print(f"{index:<5} {time:<20} {sim:<10}")
         ReducedColumn[sim].append(tulip)
 
