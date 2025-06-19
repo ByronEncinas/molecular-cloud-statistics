@@ -356,7 +356,6 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
                     snap_values_path[case].append(str(row[0]))
                     time_values_path[case].append(float(row[1]))
                     peak_den_path[case].append(float(row[-1]))
-                    print(time_values_path[case][-1])
                     continue
 
         data = np.load(snap_data, mmap_mode='r')
@@ -427,7 +426,6 @@ for bundle_dir in bundle_dirs:  # ideal and ambipolar
                     peak_den_los[case].append(float(row[-1]))
                     if time_values_los[case][-1] in time_values_path[case]:
                         common_times[case].append(time_values_los[case][-1])
-                        print(time_values_los[case][-1])
                     continue
 
         data = np.load(snap_data, mmap_mode='r')
