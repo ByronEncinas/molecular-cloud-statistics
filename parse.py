@@ -502,7 +502,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(common_times, rotation=60)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=60)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
@@ -535,7 +535,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(common_times, rotation=60)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=60)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
