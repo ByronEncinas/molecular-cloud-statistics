@@ -508,7 +508,6 @@ if True:
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (ideal)')
     ax.set_yscale('log')
-    ax.grid(True)
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
@@ -541,7 +540,7 @@ if True:
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (non-ideal)')
     ax.set_yscale('log')
-    ax.grid(True)
+
     legend_handles = [
         Patch(facecolor='skyblue', label=r'$N_{los}$'),
         Patch(facecolor='orange', label=r'$N_{path}$')
