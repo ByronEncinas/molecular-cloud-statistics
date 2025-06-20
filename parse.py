@@ -493,7 +493,7 @@ if True:
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
-    positions_path = positions_los - 0.25
+    positions_path = positions_los - 0.5
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
@@ -525,7 +525,7 @@ if True:
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
     
     positions_los = np.arange(len(data_los))
-    positions_path = positions_los - 0.25
+    positions_path = positions_los - 0.5
 
     fig, ax = plt.subplots()
     ax.boxplot(data_los, positions=positions_los, widths=0.2,
