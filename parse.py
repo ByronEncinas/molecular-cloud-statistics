@@ -473,7 +473,11 @@ for sim, times in R100_PATH.items():
         ReducedBundle[sim].append(tulip)
         
 common_times_ideal = sorted(set(CD_PATH['ideal'].keys()) & set(CD_LOS['ideal'].keys()), key=float)
-common_times_amb   = sorted(set(CD_PATH['amb'].keys()) & set(CD_LOS['amb'].keys()), key=float)
+global_max = np.max([float(t) for t in common_times_ideal])
+
+common_times_amb = sorted(set(CD_PATH['amb'].keys()) & set(CD_LOS['amb'].keys()), key=float)
+common_times_amb = [t for t in common_times_amb if float(t) < global_max]
+
 
 for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times_amb]):
     for index, time in enumerate(common_times):
