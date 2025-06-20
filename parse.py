@@ -489,7 +489,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         ReducedColumn[sim].append(tulip)
 
 
-if True: 
+if False: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
@@ -506,7 +506,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(np.round(common_times, 4), rotation=60)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=60, fontsize=8)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
@@ -521,7 +521,7 @@ if True:
     plt.savefig("./ideal_l_p.png")
     plt.close()
 
-if True: 
+if False: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
     
     positions_los = np.arange(len(data_los))
@@ -538,7 +538,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(np.round(common_times, 4), rotation=60)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=60, fontsize=8)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
@@ -554,7 +554,6 @@ if True:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-exit()
 times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['ideal']])
 
 if True:
