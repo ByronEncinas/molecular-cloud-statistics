@@ -556,6 +556,12 @@ if True:
 
 times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['ideal']])
 
+
+import itertools
+somelists = [times, r100]
+for element in itertools.product(*somelists):
+    print(element)
+
 if True:
 
     x = times # time
@@ -596,4 +602,4 @@ if True:
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
-    plt.savefig('./ideal_r_t')
+    plt.savefig('./amb_r_t')
