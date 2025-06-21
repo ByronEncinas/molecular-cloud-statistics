@@ -523,6 +523,10 @@ if True:
 
 if True: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
+    mask = common_times < 4.2904
+    common_times = common_times[mask]
+    data_path = data_path[mask]
+    data_los  = data_los[mask]
     
     positions_los = np.arange(len(data_los))
     positions_path = positions_los - 0.5
