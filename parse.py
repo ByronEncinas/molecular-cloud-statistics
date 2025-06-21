@@ -523,11 +523,7 @@ if True:
 
 if True: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
-    mask = common_times < 4.2904
-    common_times = common_times[mask]
-    data_path = data_path[mask]
-    data_los  = data_los[mask]
-    
+
     positions_los = np.arange(len(data_los))
     positions_path = positions_los - 0.5
 
@@ -543,7 +539,7 @@ if True:
     xticks = positions_los 
     ax.set_xticks(xticks)
     ax.set_xticklabels(np.round(common_times, 4), rotation=60, fontsize=8)
-
+    ax.set_xlim(right=4.2904)  # or ax.set_xlim(left=min_time, right=4.2904)
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
     ax.set_title('Column Densities (non-ideal)')
