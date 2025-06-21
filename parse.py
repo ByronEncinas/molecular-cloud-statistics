@@ -560,8 +560,8 @@ if True:
 
     x = times # time
     y = r100# reduction factor
-    xlim = x.min(), x.max()
-    ylim = y.min(), y.max()
+    xlim = min(x), max(x)
+    ylim = 0.0, 1.0
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
@@ -582,8 +582,8 @@ if True:
 
     x = times # time
     y = r100# reduction factor
-    xlim = x.min(), x.max()
-    ylim = y.min(), y.max()
+    xlim = min(x), max(x)
+    ylim = 0.0, 1.0
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
