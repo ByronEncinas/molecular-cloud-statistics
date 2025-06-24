@@ -562,7 +562,7 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x), max(x)
-    ylim = 0.0, 1.0
+    ylim = min(y), max(y)
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
@@ -571,7 +571,7 @@ if True:
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
-    hb = ax1.hexbin(x, y, gridsize=50, bins='log', cmap='inferno')
+    hb = ax1.hexbin(x, y, gridsize=50, cmap='inferno')
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
