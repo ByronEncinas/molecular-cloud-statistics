@@ -579,10 +579,11 @@ if True:
 
 times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['amb']])
 
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+x = [pair[0] for pair in xy_pairs]
+y = [pair[1] for pair in xy_pairs]
 if True:
 
-    x = times # time
-    y = r100# reduction factor
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
 
