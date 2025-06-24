@@ -554,7 +554,7 @@ if True:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['ideal']])
+times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedBundle['ideal']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
@@ -567,17 +567,17 @@ if True:
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y,  cmap='inferno')#gridsize=50,
-    #ax0.set(xlim=xlim, ylim=ylim)
+    ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
     hb = ax1.hexbin(x, y, gridsize=50, cmap='inferno')
-    #ax1.set(xlim=xlim, ylim=ylim)
+    ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
 
-times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['amb']])
+times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedBundle['amb']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
@@ -589,7 +589,7 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno')
+    hb = ax0.hexbin(x, y, cmap='inferno') # gridsize=50
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
@@ -599,3 +599,17 @@ if True:
     ax1.set_title("With a log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./amb_r_t')
+
+# Generate data
+x = np.linspace(0, 10, 10000)              # Uniformly spaced x-values (e.g. time)
+y = np.random.uniform(0, 10, 10000)        # Random y-values
+
+# Create the hexbin plot
+plt.figure(figsize=(10, 8))
+plt.hexbin(x, y, gridsize=50, mincnt=1)    # gridsize controls hexagon resolution
+plt.colorbar(label='Count in bin')
+plt.xlabel('Time (t)')
+plt.ylabel('Value (val)')
+plt.title('Hexbin Plot with Increased Sample Size')
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.savefig('./hex_bin_ex.png')
