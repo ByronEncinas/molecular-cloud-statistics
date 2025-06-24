@@ -556,16 +556,11 @@ if True:
 
 times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedColumn['ideal']])
 
-
-import itertools
-somelists = [times, r100]
-for element in itertools.product(*somelists):
-    print(element)
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 
 if True:
 
-    x = times # time
-    y = r100# reduction factor
+    x, y = xy_pairs
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
 
