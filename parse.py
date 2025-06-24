@@ -567,12 +567,12 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y,  cmap='inferno')#gridsize=50,
+    hb = ax0.hexbin(x, y, gridsize=30, cmap='inferno')#gridsize=50,
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
-    hb = ax1.hexbin(x, y, gridsize=50, cmap='inferno')
+    hb = ax1.hexbin(x, y, gridsize=30, cmap='inferno')
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
@@ -591,12 +591,12 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, cmap='inferno') # gridsize=50
+    hb = ax0.hexbin(x, y, gridsize=10, cmap='inferno') # gridsize=50
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
-    hb = ax1.hexbin(x, y, gridsize=50, bins='log', cmap='inferno')
+    hb = ax1.hexbin(x, y, gridsize=10, bins='log', cmap='inferno')
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
