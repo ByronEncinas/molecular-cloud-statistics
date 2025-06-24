@@ -554,7 +554,7 @@ if True:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedBundle['ideal']])
+times, r100 = zip(*[(float(time), r) for time, r in ReducedBundle['ideal']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
@@ -577,7 +577,7 @@ if True:
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
 
-times, r100 = zip(*[(float(time), r) for time, r, _ in ReducedBundle['amb']])
+times, r100 = zip(*[(float(time), r) for time, r in ReducedBundle['amb']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
