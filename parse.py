@@ -506,7 +506,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(np.round(common_times, 4), rotation=60, fontsize=8)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=70, fontsize=8)
 
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
@@ -538,7 +538,7 @@ if True:
 
     xticks = positions_los 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(np.round(common_times, 4), rotation=60, fontsize=8)
+    ax.set_xticklabels(np.round(common_times, 4), rotation=70, fontsize=8)
     ax.set_xlim(right=29)  # or ax.set_xlim(left=min_time, right=4.2904)
     ax.set_ylabel('Effective Column Density')
     ax.set_xlabel('Time (Myrs)')
@@ -566,13 +566,13 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno')
-    ax0.set(xlim=xlim, ylim=ylim)
+    hb = ax0.hexbin(x, y,  cmap='inferno')#gridsize=50,
+    #ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
     hb = ax1.hexbin(x, y, gridsize=50, cmap='inferno')
-    ax1.set(xlim=xlim, ylim=ylim)
+    #ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
