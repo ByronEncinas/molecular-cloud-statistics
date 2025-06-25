@@ -558,10 +558,8 @@ if False:
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
-for i, r in enumerate(r100):
-    r100[i] = r[r<1]
-
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+#xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals if val != 1]
 x = [pair[0] for pair in xy_pairs]
 y = [pair[1] for pair in xy_pairs]
 
@@ -586,9 +584,11 @@ if True:
 times, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro, *rest in ReducedBundle['amb']])
 
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+#xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals if val != 1]
 x = [pair[0] for pair in xy_pairs]
 y = [pair[1] for pair in xy_pairs]
+
 if True:
 
     xlim = min(x), max(x)
