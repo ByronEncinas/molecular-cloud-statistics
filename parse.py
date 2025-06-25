@@ -554,7 +554,7 @@ if True:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-times, r100 = zip(*[(float(time), r100_distro)
+times, n_peak, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
@@ -578,7 +578,7 @@ if True:
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
 
-times, r100 = zip(*[(float(time), r100_distro)
+times, n_peak, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro, *rest in ReducedBundle['amb']])
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
@@ -586,7 +586,7 @@ x = [pair[0] for pair in xy_pairs]
 y = [pair[1] for pair in xy_pairs]
 if True:
 
-    xlim = min(x), max(x)
+    xlim = min(x)-0.1, max(x)+0.1
     ylim = 0.0, 1.0
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
