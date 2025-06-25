@@ -566,7 +566,7 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x), max(x)
-    ylim = 0.0-0.5, 1.0+0.5
+    ylim = 0.0, 1.0
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
@@ -592,7 +592,7 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x), max(x)
-    ylim = 0.0-0.5, 1.0+0.5
+    ylim = 0.0, 1.0
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
