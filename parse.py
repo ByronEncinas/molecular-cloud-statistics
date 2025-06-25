@@ -489,7 +489,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         ReducedColumn[sim].append(tulip)
 
 
-if True: 
+if False: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
@@ -521,7 +521,7 @@ if True:
     plt.savefig("./ideal_l_p.png")
     plt.close()
 
-if True: 
+if False: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
 
     positions_los = np.arange(len(data_los))
@@ -554,11 +554,12 @@ if True:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
+
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
-for r in r100:
-    r100 = r100[r100<1]
+for i, r in enumerate(r100):
+    r100[i] = r[r<1]
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
