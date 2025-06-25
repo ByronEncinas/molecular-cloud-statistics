@@ -557,8 +557,8 @@ if True:
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
-print(times, r100)
-r100 = r100[r100<1]
+for r in r100:
+    r100 = r100[r100<1]
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
@@ -567,7 +567,7 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x), max(x)
-    ylim = 0.0-0.1, 1.0+0.1
+    ylim = 0.0-0.5, 1.0+0.5
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
@@ -590,8 +590,8 @@ x = [pair[0] for pair in xy_pairs]
 y = [pair[1] for pair in xy_pairs]
 if True:
 
-    xlim = min(x)-0.1, max(x)+0.1
-    ylim = 0.0-0.1, 1.0+0.1
+    xlim = min(x), max(x)
+    ylim = 0.0-0.5, 1.0+0.5
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
