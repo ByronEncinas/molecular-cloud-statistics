@@ -566,7 +566,7 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x), max(x)
-    ylim = min(y), max(y)
+    ylim = 0.0-0.1, 1.0+0.1
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
@@ -590,8 +590,8 @@ y = [pair[1] for pair in xy_pairs]
 if True:
 
     xlim = min(x)-0.1, max(x)+0.1
-    ylim = 0.0, 1.0
-
+    ylim = 0.0-0.1, 1.0+0.1
+    
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno') # gridsize=50
