@@ -557,6 +557,7 @@ if True:
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
+print(times, r100)
 r100 = r100[r100<1]
 
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
@@ -591,7 +592,7 @@ if True:
 
     xlim = min(x)-0.1, max(x)+0.1
     ylim = 0.0-0.1, 1.0+0.1
-    
+
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=50, cmap='inferno') # gridsize=50
