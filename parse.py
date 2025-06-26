@@ -468,7 +468,7 @@ for sim, times in R100_PATH.items():
         r10_distro   = np.array(R10_PATH[sim][time])
         b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        tulip        = (time, n_peak, r100_distro, x_distro, r10_distro, n_distro, b_distro) 
+        tulip        = (time, n_distro, r100_distro, x_distro, r10_distro, n_distro, b_distro, n_peak) 
         #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
         
@@ -639,7 +639,8 @@ if True:
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='Density')
-    plt.savefig('./ideal_r_t')
+    plt.savefig('./ideal_r_t_n')
+
 exit()
 times, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro, *rest in ReducedBundle['amb']])
@@ -665,7 +666,7 @@ if True:
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
-    plt.savefig('./amb_r_t')
+    plt.savefig('./amb_r_t_n')
 
 
 # Generate data
