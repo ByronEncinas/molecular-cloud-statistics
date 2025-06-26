@@ -630,12 +630,12 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, c = z, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
+    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='Density')
 
-    hb = ax1.hexbin(x, y, c=z, gridsize=gs, bins='log', cmap='inferno')
+    hb = ax1.hexbin(x, y, gridsize=gs, bins='log', cmap='inferno')
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='Density')
