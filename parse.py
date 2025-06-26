@@ -582,6 +582,14 @@ if True:
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
 
+    means = [np.mean(vals) for vals in r100]
+    errors = [np.std(vals) for vals in r100]
+
+    plt.errorbar(times, means, yerr=errors, fmt='o', capsize=4)
+    plt.xlabel('Time')
+    plt.ylabel('Mean ± Std')
+    plt.savefig('./ideal_r_t_err')
+
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['amb']])
 
@@ -606,6 +614,16 @@ if True:
     ax1.set_title("log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./amb_r_t')
+
+    means = [np.mean(vals) for vals in r100]
+    errors = [np.std(vals) for vals in r100]
+
+    plt.errorbar(times, means, yerr=errors, fmt='o', capsize=4)
+    plt.xlabel('Time')
+    plt.ylabel('Mean ± Std')
+    plt.savefig('./amb_r_t_err')
+
+exit()
 
 
 gs = 18
