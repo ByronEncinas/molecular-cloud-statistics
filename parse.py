@@ -554,13 +554,13 @@ if False:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-gs = 22
+gs = 18
 func = np.mean
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
 #xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals if val != 1]
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 x = [pair[0] for pair in xy_pairs]
 y = [pair[1] for pair in xy_pairs]
 
@@ -582,6 +582,65 @@ if True:
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
 
+times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
+                    for time, _, r100_distro, *rest in ReducedBundle['amb']])
+
+xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+x = [pair[0] for pair in xy_pairs]
+y = [pair[1] for pair in xy_pairs]
+
+if True:
+
+    xlim = min(x), max(x)
+    ylim = 0.0, 1.0
+
+    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
+
+    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
+    ax0.set(xlim=xlim, ylim=ylim)
+    ax0.set_title("Hexagon binning")
+    cb = fig.colorbar(hb, ax=ax0, label='counts')
+
+    hb = ax1.hexbin(x, y, gridsize=gs, bins='log', cmap='inferno')
+    ax1.set(xlim=xlim, ylim=ylim)
+    ax1.set_title("log color scale (non-ideal)")
+    cb = fig.colorbar(hb, ax=ax1, label='counts')
+    plt.savefig('./amb_r_t')
+
+
+gs = 18
+func = np.mean
+times, r100, n_g = zip(
+    *[        (float(time), r100_distro[r100_distro < 1], n_distro[r100_distro < 1])
+        for time, n_distro, r100_distro, *rest in ReducedBundle["ideal"]    ])
+
+xyz_triads = [
+    (t, r, n)
+    for t, r_vec, n_vec in zip(times, r100, n_g)
+    for r, n in zip(r_vec, n_vec)]
+
+x = [t for t, _, _ in xyz_triads]
+y = [r for _, r, _ in xyz_triads]
+z = [n for _, _, n in xyz_triads]
+
+if True:
+
+    xlim = min(x), max(x)
+    ylim = 0.0, 1.0
+
+    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
+
+    hb = ax0.hexbin(x, y, c = z, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
+    ax0.set(xlim=xlim, ylim=ylim)
+    ax0.set_title("Hexagon binning")
+    cb = fig.colorbar(hb, ax=ax0, label='Density')
+
+    hb = ax1.hexbin(x, y, c=z, gridsize=gs, bins='log', cmap='inferno')
+    ax1.set(xlim=xlim, ylim=ylim)
+    ax1.set_title("With a log color scale (ideal)")
+    cb = fig.colorbar(hb, ax=ax1, label='Density')
+    plt.savefig('./ideal_r_t')
+exit()
 times, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro, *rest in ReducedBundle['amb']])
 
@@ -607,6 +666,7 @@ if True:
     ax1.set_title("log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./amb_r_t')
+
 
 # Generate data
 x = np.linspace(0, 10, 10000)              # Uniformly spaced x-values (e.g. time)
