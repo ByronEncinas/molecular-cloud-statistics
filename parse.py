@@ -554,7 +554,7 @@ if False:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-gs = 18
+gs = 20
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
