@@ -555,6 +555,7 @@ if False:
     plt.close()
 
 gs = 22
+func = np.mean
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
@@ -570,7 +571,7 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno')#gridsize=50,
+    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
@@ -596,7 +597,7 @@ if True:
 
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
-    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno') # gridsize=50
+    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
     ax0.set(xlim=xlim, ylim=ylim)
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
