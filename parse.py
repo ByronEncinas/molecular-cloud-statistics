@@ -554,7 +554,7 @@ if False:
     plt.savefig("./amb_l_p.png")
     plt.close()
 
-gs = 20
+gs = 25
 times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                     for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
@@ -575,7 +575,7 @@ if True:
     ax0.set_title("Hexagon binning")
     cb = fig.colorbar(hb, ax=ax0, label='counts')
 
-    hb = ax1.hexbin(x, y, gridsize=gs, cmap='inferno')
+    hb = ax1.hexbin(x, y, gridsize=gs, bins='log', cmap='inferno')
     ax1.set(xlim=xlim, ylim=ylim)
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
