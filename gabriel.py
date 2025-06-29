@@ -4,9 +4,6 @@ from scipy import spatial
 import matplotlib.pyplot as plt
 from library import *
 
-
-densthresh = 100
-
 start_time = time.time()
 
 def get_magnetic_field_at_points(x, Bfield, rel_pos):
@@ -75,11 +72,12 @@ else:
     N               = 2_000
     case            = 'ideal'
     num_file        = '430'
-    max_cycles      = 100
+    max_cycles      = 4
     NeffOrStability =  'N' # S stability or N column densities
     seed            = 12345
 
-rloc = 0.1
+rloc = 0.01
+densthresh = 100
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -162,24 +160,6 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-def generate_vectors_in_core(max_cycles, densthresh, rloc=1.0, seed=12345): # modify
-    import numpy as np
-    from scipy.spatial import cKDTree
-    np.random.seed(seed)
-    valid_vectors = []
-    tree = cKDTree(Pos)
-    while len(valid_vectors) < max_cycles:
-        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
-        distances = np.linalg.norm(points, axis=1)
-        inside_sphere = points[distances <= rloc]
-        _, nearest_indices = tree.query(inside_sphere)
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
-        valid_points = inside_sphere[valid_mask]
-        valid_vectors.extend(valid_points)
-    valid_vectors = np.array(valid_vectors)
-    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
-    return valid_vectors[random_indices]
-
 def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
     def xyz_gen(size):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
@@ -189,7 +169,7 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
         theta = np.arccos(2*U2-1)
         phi = 2*np.pi*U3
         x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-        if True:    
+        if False:    
             plt.hist(r, bins=no//100, color = 'skyblue', density =True)
             plt.title('PDF $r = R\sqrt[3]{U(0,1)}$')
             plt.ylabel(r'PDF')
@@ -224,11 +204,9 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
     rho_vector = inside_sphere[valid_mask]
-
-
     return rho_vector
 
-if True:
+if False:
     rho = uniform_in_3d(1_000_000, rloc=0.1, densthresh=1.0e+7)
 
     print(np.mean(rho[:,0]), np.mean(rho[:,1]), np.mean(rho[:,2]))
@@ -270,12 +248,14 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
     directions = np.tile(directions, m)
     x_init     = figure out how to repeat according to the example
     """
-
     m = x_init.shape[0]
     l = directions.shape[0]
+    print(m, l)
     directions = np.tile(directions, (m, 1))
     x_init = np.repeat(x_init, l, axis=0)
-
+    m = x_init.shape[0]
+    l = directions.shape[0]
+    print(m, l)
     """
     Now, a new feature that might speed the while loop, can be to double the size of all arrays
     and start calculating backwards and forwards simultaneously. This creates a more difficult condition
@@ -306,66 +286,52 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
     densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     k_rev=0
-    non_zero_rev = vol_rev > 0
     
     mask  = dens > 100# 1 if not finished
     un_masked = np.logical_not(mask) # 1 if finished
     mask_rev = dens_rev > 100
     un_masked_rev = np.logical_not(mask_rev)
 
-    while np.any(mask) and np.any(mask_rev):
+    while np.any(mask) or np.any(mask_rev): # 0 or 0 == 0 
+        mask = dens > 100                # True if continue
+        un_masked = np.logical_not(mask) # True if concluded
+        mask_rev = dens_rev > 100                # True if continue
+        un_masked_rev = np.logical_not(mask_rev) # True if concluded
 
-        mask = dens > 100  # True if continue
-        un_masked = np.logical_not(mask)
-        mask_rev = dens_rev > 100  # True if continue
-        un_masked_rev = np.logical_not(mask_rev)
-        #aux = x[un_masked]
+        print(dens)
 
         _, bfield, dens, vol, ke, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         
         pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
         dens *= gr_cm3_to_nuclei_cm3
         
-        vol[un_masked] = 0
-        print( np.log10(dens[:1]))
+        vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
 
         dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
 
         threshold += mask.astype(int)  # Increment threshold count only for values still above 100
 
-        x += dx_vec * directions
-        
-        #x[un_masked] = aux # all lines that have reached threshold are not to be updated
+        x += dx_vec[:, np.newaxis] * directions
 
         line[k+1,:,:]    = x
         densities[k+1,:] = dens
-        bfields[k+1,:] = bfield
 
         _, bfield_rev, dens_rev, vol_rev, ke_rev, pressure_rev = Heun_step(x_rev, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         
         pressure_rev *= mass_unit / (length_unit * (time_unit ** 2)) 
         dens_rev *= gr_cm3_to_nuclei_cm3
         
-        vol[un_masked_rev] = 0
-        print(x_rev[0], np.log10(dens_rev[0]))
+        vol_rev[un_masked_rev] = 0 # unifinished lines will have cero volume for their corresponding cell
 
-        non_zero_rev = vol_rev > 0
-        if len(vol_rev[non_zero_rev]) == 0:
-            break
-
-        dx_vec = np.min(((4 / 3) * vol_rev[non_zero_rev] / np.pi) ** (1 / 3))  # Increment step size
+        dx_vec = ((4 / 3) * vol_rev / np.pi) ** (1 / 3)  # Increment step size
 
         threshold_rev += mask_rev.astype(int)  # Increment threshold count only for values still above 100
 
-        x_rev -= dx_vec * directions
+        x_rev -= dx_vec[:, np.newaxis] * directions
 
         line_rev[k+1,:,:]    = x_rev
         densities_rev[k+1,:] = dens_rev
-        bfields_rev[k+1,:] = bfield_rev
 
-        if np.all(un_masked_rev) and np.all(un_masked):
-            print("All values are False: means all density < 10^2")
-            break
 
         k_rev += 1
         k += 1
@@ -377,207 +343,7 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
     numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
     magnetic_field = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
 
-    trajectory = np.zeros_like(numb_densities)
-    column = np.zeros_like(numb_densities)
-
-    for _n in range(radius_vector.shape[1]): 
-        prev = radius_vector[0, _n, :]
-        trajectory[0, _n] = 0  
-        column[0, _n] = 0      
-        
-        for k in range(1, radius_vector.shape[0]):
-            cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur - prev)
-            trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
-            column[k, _n] = column[k-1, _n] + numb_densities[k, _n] * diff_rj_ri            
-            prev = cur
-
-    return radius_vector, trajectory, numb_densities, [threshold, threshold_rev], column
-
-
-
-def get_line_of_sight(x_init=None, directions=fibonacci_sphere()):
-    """
-    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
-    This way, all data is part of a comparison between 10 and 100 
-    """
-    directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
-    dx = 0.5
-
-    """
-    Here you need to 
-    directions = its repeated version 'm' times
-    directions = np.tile(directions, m)
-    x_init     = figure out how to repeat according to the example
-    """
-
-    m = x_init.shape[0]
-    l = directions.shape[0]
-    directions = np.tile(directions, (m, 1))
-    x_init = np.repeat(x_init, l, axis=0)
-
-    """
-    Now, a new feature that might speed the while loop, can be to double the size of all arrays
-    and start calculating backwards and forwards simultaneously. This creates a more difficult condition
-    for the 'mask', nevertheless, for a large array 'x_init' it may not be as different and it will definitely scale efficiently in parallel
-    """
-
-    line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields   = np.zeros((N+1,m))
-    bfields_rev = np.zeros((N+1,m))
-    densities = np.zeros((N+1,m))
-    densities_rev = np.zeros((N+1,m))
-    threshold_rev = np.zeros((m,)).astype(int) # one value for each
-    threshold = np.zeros((m,)).astype(int) # one value for each
-
-    line[0,:,:]     = x_init
-    line_rev[0,:,:] = x_init 
-    x = x_init.copy()
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
-    vol = Volume[cells]
-    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
-    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
-    k=0
-
-    mask  = dens > 100# 1 if not finished
-    un_masked = np.logical_not(mask) # 1 if finished
-
-    while np.any(mask):
-
-        mask = dens > 100  # True if continue
-        un_masked = np.logical_not(mask)
-
-        #aux = x[un_masked]
-
-        # Perform Heun step and update values
-        _, bfield, dens, vol, ke, pressure = Heun_step(
-            x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
-        )
-        
-        pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
-        dens *= gr_cm3_to_nuclei_cm3
-        
-        #vol[un_masked] = 0
-        print( np.log10(dens[:1]))
-        
-        non_zero = vol > 0
-        if len(vol[non_zero]) == 0:
-            break
-
-        dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
-
-        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
-
-        x += dx_vec * directions
-        
-        #x[un_masked] = aux # all lines that have reached threshold are not to be updated
-
-        line[k+1,:,:]    = x
-        densities[k+1,:] = dens
-        bfields[k+1,:] = bfield
-
-        if np.all(un_masked):
-            print("All values are False: means all density < 10^2")
-            break
-
-        k += 1
-    
-    threshold = threshold.astype(int)
-    
-    x = x_init.copy()
-
-    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
-
-    vol = Volume[cells]
-
-    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    dens = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    
-    k=0
-    
-    non_zero_rev = vol > 0
-
-    mask_rev = dens > 100
-    un_masked_rev = np.logical_not(mask_rev)
-
-    while np.any((mask_rev)):
-
-        mask_rev = dens > 100  # True if continue
-        un_masked_rev = np.logical_not(mask_rev)
-
-        # Perform Heun step and update values
-        _, bfield, dens, vol, ke, pressure = Heun_step(
-            x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume
-        )
-        
-        pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
-        dens *= gr_cm3_to_nuclei_cm3
-        
-        #vol[un_masked_rev] = 0
-        print(x[0], np.log10(dens[0]))
-
-        non_zero_rev = vol > 0
-        if len(vol[non_zero_rev]) == 0:
-            break
-
-        dx_vec = np.min(((4 / 3) * vol[non_zero] / np.pi) ** (1 / 3))  # Increment step size
-
-        threshold_rev += mask.astype(int)  # Increment threshold count only for values still above 100
-
-        x -= dx_vec * directions
-
-        line_rev[k+1,:,:]    = x
-        densities_rev[k+1,:] = dens
-        bfields_rev[k+1,:] = bfield
-
-        if np.all(un_masked_rev):
-            print("All values are False: means all density < 10^2")
-            break
-
-        k += 1
-
-    # updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
-    
-    #threshold = threshold[updated_mask].astype(int)
-    threshold = threshold.astype(int)
-    #threshold_rev = threshold_rev[updated_mask].astype(int)
-    threshold_rev = threshold_rev.astype(int)
-
-    # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
-    # line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
-    # densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
-
-    # Apply to the reverse arrays in the same way
-    # line_rev = line_rev[:, updated_mask, :]
-    # densities_rev = densities_rev[:, updated_mask]
-
-    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
-    #magnetic_field = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
-
-    trajectory = np.zeros_like(numb_densities)
-    column = np.zeros_like(numb_densities)
-
-    for _n in range(radius_vector.shape[1]):  # Iterate over the first dimension
-        print("Line: ", _n, " Size: ", radius_vector[:, _n, 0].shape)
-        prev = radius_vector[0, _n, :]
-        trajectory[0, _n] = 0  # Initialize first row
-        column[0, _n] = 0      # Initialize first row
-        
-        for k in range(1, radius_vector.shape[0]):  # Start from k = 1 to avoid indexing errors            
-            cur = radius_vector[k, _n, :]
-            diff_rj_ri = magnitude(cur - prev)  # Vector subtraction before calculating magnitude
-
-            trajectory[k, _n] = trajectory[k-1, _n] + diff_rj_ri            
-            column[k, _n] = column[k-1, _n] + numb_densities[k, _n] * diff_rj_ri            
-            
-            prev = cur  # Store current point as previous point
-
-    trajectory      *= 1.0#pc_to_cm #* 3.086e+18                                # from Parsec to cm
-
-    return radius_vector, trajectory, numb_densities, [threshold, threshold_rev], column
-
+    return radius_vector, numb_densities, [threshold, threshold_rev]
 
 print("Steps in Simulation: ", N)
 print("Boxsize            : ", Boxsize)
@@ -585,154 +351,41 @@ print("Smallest Volume    : ", Volume[np.argmin(Volume)])
 print("Biggest  Volume    : ", Volume[np.argmax(Volume)])
 print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
-
 print("Elapsed Time: ", (time.time() - start_time)/60.)
+
+with open(os.path.join(new_folder, f'PARAMETERS#{seed}'), 'w') as file:
+    file.write(f"{filename}\n")
+    file.write(f"{peak_den}\n")
+    file.write(f"Run ID/seed: {seed}\n")
+    file.write(f"Cores Used: {os.cpu_count()}\n")
+    file.write(f"Snap Time (Myr): {time_value}\n")
+    file.write(f"rloc (Pc) : {rloc}\n")
+    file.write(f"Density Threshold : {densthresh}\n")
+    file.write(f"max_cycles         : {max_cycles}\n")
+    file.write(f"Volume Range (Pc^3)   : ({Volume[np.argmin(Volume)]}, {Volume[np.argmax(Volume)]}) \n")
+    file.write(f"Smallest Density (N/cm^3)  : ({Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3},{Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}) \n")
+    file.write(f"Elapsed Time (Minutes)     : {(time.time() - start_time)/60.}\n")
 
 os.makedirs(new_folder, exist_ok=True)
 
+# directions
+directions = fibonacci_sphere()
 
-if NeffOrStability == 'S':
-    # for line os sight with start in center
-    directions = fibonacci_sphere(max_cycles)
-    m = directions.shape[0]
-    x_init = uniform_in_3d(max_cycles, densthresh, rloc)
-    null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
-    x_init = np.vstack([x_init, null_vector])
-    radius_vector, trajectory, magnetic_fields, numb_densities, volumes, radius_to_origin, threshold, col_energies = energies_get_along_lines(x_init, densthresh=1.0e+4)
-    m = magnetic_fields.shape[1]
-    eff_column_densities, energy_magnetic, energy_thermal, energy_grav, temperature = col_energies
+# starting positions 
+x_init = uniform_in_3d(max_cycles, rloc, densthresh)
+print("Shape of x_init w/o null vector", x_init.shape)
+null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
+x_init = np.vstack([x_init, null_vector]) 
+print("Shape of x_init w/ null vector", x_init.shape)
 
-    np.savez(f"{new_folder}/DataBundle.npz",
-            positions=trajectory,
-            eff_column_densities=eff_column_densities,
-            numb_densities=numb_densities,
-            energy_magnetic=energy_magnetic,
-            energy_thermal=energy_thermal,
-            energy_grav=energy_grav,
-            temperature=temperature)
+radius_vector, numb_densities, th = line_of_sight(x_init, directions)
+threshold, threshold_rev = th
 
-    for i in range(m):
-
-        cut = threshold[i] - 1
-        eff_column = np.max(eff_column_densities[:, i])
-
-        non_zeroes = (energy_grav[1:cut, i] != 0.0)
-        
-        s = trajectory[1:cut, i]
-        n = numb_densities[1:cut, i]
-
-        ratio_m = energy_magnetic[1:cut, i]/ abs(energy_grav[1:cut, i])
-        ratio_t = energy_thermal[1:cut, i]  / abs(energy_grav[1:cut, i])
-        ratio_sum = ratio_m + ratio_t
-
-        mask = ratio_sum < 10
-    
-        static = np.where(mask == False)[0]  
-        if len(static) > 0:
-            static_value = static[0] 
-        else:
-            static_value = len(ratio_m) - 1
-
-        mosaic = [
-            ['A', 'B'],
-            ['C', 'C']
-        ]
-        fig, axs = plt.subplot_mosaic(mosaic, figsize=(12, 10), dpi=300)
-
-        # Plot Number Density
-        axs['A'].plot(s/AU_to_cm, n, linestyle="--", color="blue")
-        axs['A'].set_yscale('log')
-        axs['A'].set_xscale('log')
-        axs['A'].set_xlabel("s (AU) along LOS")
-        axs['A'].set_ylabel("Number Density $n_g(s)$")
-        axs['A'].set_title("Number Density Along LOS")
-        axs['A'].grid(True)
-
-        # Plot Energy Ratios
-        axs['B'].plot(s/AU_to_cm, ratio_m, linestyle="--", color="red", label="Magnetic / Gravity")
-        axs['B'].plot(s/AU_to_cm, ratio_t, linestyle="--", color="green", label="Thermal / Gravity")
-        axs['B'].set_xscale('log')
-        axs['B'].set_yscale('log')
-        axs['B'].set_xlabel("s (AU) along LOS")
-        axs['B'].set_ylabel("Energy Ratios")
-        axs['B'].set_title("Energy Ratios Along Line of Sight")
-        axs['B'].legend()
-        axs['B'].grid(True)
-
-        # Table Data
-        table_data = [
-            ['---', 'Value', 'Note'],
-            ['Column Density (LOS)', f'{eff_column:.5e}', '-'],
-            ['Steps in Simulation (LOS)', str(len(trajectory)), '-'],
-            ['Smallest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
-            ['Biggest Volume (LOS)', f'{np.max(volumes[:cut, i]):.3e}', '-'],
-            ['Smallest Density (LOS)', f'{np.min(numb_densities[:cut, i]):.3e}', '-'],
-            ['Biggest Density (LOS)', f'{np.max(numb_densities[:cut, i]):.3e}', '-']
-        ]
-        table = axs['C'].table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.3, 0.3, 0.3])
-        axs['C'].axis('off')
-
-        np.savetxt(f"{new_folder}/table_{i}.txt", table_data, fmt="%s", delimiter="   ")
-        plt.tight_layout()
-        plt.savefig(f"{new_folder}/energy_ratios{i}.png", dpi=300)
-        plt.close(fig)
-
-        if False:
-                
-            from matplotlib import cm
-            from matplotlib.colors import Normalize
-
-            norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
-            cmap = cm.viridis
-
-            ax = plt.figure().add_subplot(projection='3d')
-            radius_vector /= 3.086e+18
-
-            for k in range(m):
-                x=radius_vector[:, k, 0]
-                y=radius_vector[:, k, 1]
-                z=radius_vector[:, k, 2]
-                
-                for l in range(len(x)):
-                    color = cmap(norm(magnetic_fields[l, k]))
-                    ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color,linewidth=0.3)
-
-                #ax.scatter(x_init[0], x_init[1], x_init[2], marker="v",color="m",s=10)
-                ax.scatter(x[0], y[0], z[0], marker="x",color="g",s=6)
-                ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
-                    
-            radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
-            zoom = np.max(radius_to_origin)
-            ax.set_xlim(-zoom,zoom)
-            ax.set_ylim(-zoom,zoom)
-            ax.set_zlim(-zoom,zoom)
-            ax.set_xlabel('x [Pc]')
-            ax.set_ylabel('y [Pc]')
-            ax.set_zlabel('z [Pc]')
-            ax.set_title('Magnetic field morphology')
-
-            # Add a colorbar
-            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
-            cbar.set_label('Magnetic Field Strength')
-            plt.savefig(os.path.join(new_folder,f"FieldTopology{i}.png"), bbox_inches='tight')
-            plt.show()
-
-elif NeffOrStability == 'N':
-    x_init = uniform_in_3d(max_cycles, densthresh, rloc)
-    null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
-    x_init = np.vstack([x_init, null_vector])
-    directions, abs_local_fields, local_densities, _ = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
-    print('Directions provided by B field at point')
-    radius_vector, trajectory, numb_densities, th, column = get_line_of_sight(x_init, directions)
-    threshold, threshold_rev = th
-    np.savez(os.path.join(new_folder, f"DataBundle{seed}.npz"),
-            thresholds=threshold,
-            thresholds_rev=threshold_rev,
-            column_densities=column,
-            positions=radius_vector,
-            number_densities=numb_densities)
+np.savez(os.path.join(new_folder, f"DataBundle{seed}.npz"),
+        thresholds=threshold,
+        thresholds_rev=threshold_rev,
+        positions=radius_vector,
+        number_densities=numb_densities)
 
 print((time.time()-start_time)//60, " Minutes")
 
