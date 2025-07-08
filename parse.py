@@ -685,12 +685,11 @@ r, x, b, n, f = zip(*StatsRones['amb'])
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 
 for r_ in r:
-    r_num.append( len(r_))
-    r_means.append( r_.mean)
-    r_var.append( r_.variance)
-    r_skew.append( np.skewness)
-    r_kur.append( np.kurtosis)
-
+    r_num.append(len(r_))
+    r_means.append(np.mean(r_))
+    r_var.append(np.var(r_))
+    r_skew.append(np.skew(r_))
+    r_kur.append(np.kurtosis(r_))
 #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
 #                    for _r, _x, _b, _n, _f in StatsRones['amb']])
 
