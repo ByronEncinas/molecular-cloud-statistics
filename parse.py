@@ -651,11 +651,12 @@ if False: # HexBin Ideal/AMB
 from scipy.stats import skew, kurtosis
 
 r, x, b, n, f = zip(*StatsRones['ideal'])
-r = np.array(r)
-r = r[r<1]
+
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 
 for r_ in r:
+    r_ = np.array(r_)
+    r_ = r_[r_<1]
     r_num.append(len(r_))
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
@@ -685,11 +686,11 @@ plt.close()
 
 r, x, b, n, f = zip(*StatsRones['amb'])
 
-r = np.array(r)
-r = r[r<1]
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 
 for r_ in r:
+    r_ = np.array(r_)
+    r_ = r_[r_<1]
     r_num.append(len(r_))
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
