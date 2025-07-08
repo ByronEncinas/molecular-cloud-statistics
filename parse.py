@@ -728,7 +728,7 @@ if True: # HexBin Ideal/AMB
 
 from scipy.stats import skew, kurtosis
 
-times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
+times, r = zip(*[(float(time), r100_distro)
                         for time, _, r100_distro in ReducedBundle['ideal']])
 
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
@@ -784,7 +784,7 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('./ideal_moments.png', dpi=300)
 plt.close()
 
-times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
+times, r = zip(*[(float(time), r100_distro)
                         for time, _, r100_distro in ReducedBundle['amb']])
 
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
