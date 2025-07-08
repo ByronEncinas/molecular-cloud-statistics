@@ -672,10 +672,13 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('./ideal_moments.png', dpi=300)
 plt.close()
 
+
 r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
                     for _r, _x, _b, _n, _f in StatsRones['amb']])
 
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r)
+r_flat = np.concatenate(r)
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
+
 
 fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
@@ -703,6 +706,8 @@ exit()
 r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
                     for _r, _x, _b, _n, _f in StatsRzero['ideal']])
 
+r_flat = np.concatenate(r)
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
 
 plt.figure(figsize=(10, 6))
 plt.plot(f, label=r'$\mu$ (Mean)', marker='o')
