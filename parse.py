@@ -460,17 +460,40 @@ for both ideal and non-ideal MHD
 ReducedBundle = OrderedDict({'ideal': [], 'amb': []})
 ReducedColumn = OrderedDict({'ideal': [], 'amb': []})
 
+StatsRones  = OrderedDict({'ideal': [], 'amb': []})
+StatsRzero  = OrderedDict({'ideal': [], 'amb': []})
+from scipy.stats import describe
+
 for sim, times in R100_PATH.items():
     for index, time in enumerate(times):
-        n_peak       = np.log10(peak_den_path[sim][index])
         x_distro     = np.array(X_PATH[sim][time])
         r100_distro  = np.array(R100_PATH[sim][time])
         r10_distro   = np.array(R10_PATH[sim][time])
-        b_distro     = np.array(BS_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        tulip        = (time, n_distro, r100_distro, x_distro, r10_distro, n_distro, b_distro, n_peak) 
+        b_distro     = np.array(BS_PATH[sim][time])
+        tulip        = (time, n_distro, r100_distro) 
         #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
+        
+        total_at_time = r100_distro.shape[0]
+        
+        # not ones
+        r = r100_distro[r100_distro<1]
+        x = x_distro[r100_distro<1]
+        b = b_distro[r100_distro<1]
+        n = n_distro[r100_distro<1]
+        not_ones_at_time = r.shape[0]
+        f_at_time        = not_ones_at_time/total_at_time 
+
+        StatsRzero[sim].append(r,x,b,n, f_at_time)
+
+        # ones
+        r = r100_distro[r100_distro==1]
+        x = x_distro[r100_distro==1]
+        b = b_distro[r100_distro==1]
+        n = n_distro[r100_distro==1]
+
+        StatsRones[sim].append(r,x,b,n, 1 - f_at_time )
         
 common_times_ideal = sorted(set(CD_PATH['ideal'].keys()) & set(CD_LOS['ideal'].keys()), key=float)
 global_max = np.max([float(t) for t in common_times_ideal])
@@ -489,7 +512,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         ReducedColumn[sim].append(tulip)
 
 
-if False: 
+if False: # Ideal/Amb Columns PATH & LOS
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
@@ -521,7 +544,6 @@ if False:
     plt.savefig("./ideal_l_p.png")
     plt.close()
 
-if False: 
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['amb']])
 
     positions_los = np.arange(len(data_los))
@@ -556,15 +578,15 @@ if False:
 
 gs = 18
 func = np.mean
-times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
-                    for time, _, r100_distro, *rest in ReducedBundle['ideal']])
 
-#xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
-x = [pair[0] for pair in xy_pairs]
-y = [pair[1] for pair in xy_pairs]
+if True: # HexBin Ideal/AMB
+    times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
+                        for time, _, r100_distro in ReducedBundle['ideal']])
 
-if True:
+    #xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+    xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+    x = [pair[0] for pair in xy_pairs]
+    y = [pair[1] for pair in xy_pairs]
 
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
@@ -590,14 +612,12 @@ if True:
     plt.ylabel('Mean ± Std')
     plt.savefig('./ideal_r_t_err')
 
-times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
-                    for time, _, r100_distro, *rest in ReducedBundle['amb']])
+    times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
+                        for time, _, r100_distro in ReducedBundle['amb']])
 
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
-x = [pair[0] for pair in xy_pairs]
-y = [pair[1] for pair in xy_pairs]
-
-if True:
+    xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
+    x = [pair[0] for pair in xy_pairs]
+    y = [pair[1] for pair in xy_pairs]
 
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
@@ -623,14 +643,88 @@ if True:
     plt.ylabel('Mean ± Std')
     plt.savefig('./amb_r_t_err')
 
+# _, [min,max], Mean, Variance, Skewness, Kurtosis
+
+r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
+
+
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r)
+
+fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+
+axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
+axs[0].plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
+axs[0].plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
+axs[0].plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
+axs[0].set_xlabel('Time Step')
+axs[0].set_ylabel('Statistical Moments (ideal)')
+axs[0].grid(True)
+axs[0].legend()
+
+axs[1].plot(f, label=r'$f=\frac{\{R=1\}}{\{R\}}$', marker='x')
+axs[1].set_xlabel('Time Step')
+axs[1].grid(True)
+axs[1].legend()
+
+fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig('./ideal_moments.png', dpi=300)
+plt.close()
+
+r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+                    for _r, _x, _b, _n, _f in StatsRones['amb']])
+
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r)
+
+fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+
+axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
+axs[0].plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
+axs[0].plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
+axs[0].plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
+axs[0].set_xlabel('Time Step')
+axs[0].set_ylabel('Statistical Moments (non-ideal)')
+axs[0].grid(True)
+axs[0].legend()
+
+axs[1].plot(f, label=r'$f=\frac{\{R=1\}}{\{R\}}$', marker='x')
+axs[1].set_xlabel('Time Step')
+axs[1].grid(True)
+axs[1].legend()
+
+fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig('./amb_moments.png', dpi=300)
+plt.close()
+
 exit()
+
+r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+                    for _r, _x, _b, _n, _f in StatsRzero['ideal']])
+
+
+plt.figure(figsize=(10, 6))
+plt.plot(f, label=r'$\mu$ (Mean)', marker='o')
+plt.plot(r_means, label=r'$\mu$ (Mean)', marker='o')
+plt.plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
+plt.plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
+plt.plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
+
+plt.xlabel('Time Step')
+plt.ylabel('Moment Value')
+plt.title('Time Evolution of Statistical Moments ($R<1$)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig('./ideal_moments.png', dpi=300)
 
 
 gs = 18
 func = np.mean
 times, r100, n_g = zip(
     *[        (float(time), r100_distro[r100_distro < 1], n_distro[r100_distro < 1])
-        for time, n_distro, r100_distro, *rest in ReducedBundle["ideal"]    ])
+        for time, n_distro, r100_distro in ReducedBundle["ideal"]    ])
 
 xyz_triads = [
     (t, r, n)
@@ -641,27 +735,9 @@ x = [t for t, _, _ in xyz_triads]
 y = [r for _, r, _ in xyz_triads]
 z = [n for _, _, n in xyz_triads]
 
-if True:
-
-    xlim = min(x), max(x)
-    ylim = 0.0, 1.0
-
-    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
-
-    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
-    ax0.set(xlim=xlim, ylim=ylim)
-    ax0.set_title("Hexagon binning")
-    cb = fig.colorbar(hb, ax=ax0, label='Density')
-
-    hb = ax1.hexbin(x, y, gridsize=gs, bins='log', cmap='inferno')
-    ax1.set(xlim=xlim, ylim=ylim)
-    ax1.set_title("With a log color scale (ideal)")
-    cb = fig.colorbar(hb, ax=ax1, label='Density')
-    plt.savefig('./ideal_r_t_n')
-
 exit()
 times, r100 = zip(*[(float(time), r100_distro)
-                    for time, _, r100_distro, *rest in ReducedBundle['amb']])
+                    for time, _, r100_distro in ReducedBundle['amb']])
 
 #xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
 xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals if val != 1]
