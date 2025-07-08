@@ -564,7 +564,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         ReducedColumn[sim].append(tulip)
 
 
-if True: # Ideal/Amb Columns PATH & LOS
+if False: # Ideal/Amb Columns PATH & LOS
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
@@ -631,7 +631,7 @@ if True: # Ideal/Amb Columns PATH & LOS
 gs = 18
 func = np.mean
 
-if True: # HexBin Ideal/AMB
+if False: # HexBin Ideal/AMB
     times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                         for time, _, r100_distro in ReducedBundle['ideal']])
 
@@ -667,6 +667,7 @@ if True: # HexBin Ideal/AMB
     ax1.set_title("With a log color scale (ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./ideal_r_t')
+    plt.close()
 
     means = [np.mean(vals) for vals in r100]
     errors = [np.std(vals) for vals in r100]
@@ -675,7 +676,8 @@ if True: # HexBin Ideal/AMB
     plt.xlabel('Time')
     plt.ylabel('Mean ± Std')
     plt.savefig('./ideal_r_t_err')
-
+    plt.close()
+    
     times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                         for time, _, r100_distro in ReducedBundle['amb']])
 
@@ -687,19 +689,7 @@ if True: # HexBin Ideal/AMB
     ylim = 0.0, 1.0
     time_steps = len(x)
     r_avg_size = np.sqrt(np.mean([len(ys) for ys in r100]))
-    """
-    histogram3d(
-        x, y,
-        x_bins=time_steps,
-        y_bins=r_avg_size, # this might crash, but 
-        x_range=(min(x), max(x)),
-        y_range=(0,1.0),
-        xlabel="time (Myrs)",
-        ylabel="$R$",
-        title="$R$ distribution in time",
-        output="Amb"
-    )
-    """
+
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
@@ -712,140 +702,179 @@ if True: # HexBin Ideal/AMB
     ax1.set_title("log color scale (non-ideal)")
     cb = fig.colorbar(hb, ax=ax1, label='counts')
     plt.savefig('./amb_r_t')
-
+    plt.close()
     means = [np.mean(vals) for vals in r100]
     errors = [np.std(vals) for vals in r100]
-
     plt.errorbar(times, means, yerr=errors, fmt='o', capsize=4)
     plt.xlabel('Time')
     plt.ylabel('Mean ± Std')
     plt.savefig('./amb_r_t_err')
-
+    plt.close()
 # _, [min,max], Mean, Variance, Skewness, Kurtosis
 
 #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
 #                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
-from scipy.stats import skew, kurtosis
+if True: # Statistical despcriptors and fraction
+    from scipy.stats import skew, kurtosis
 
-times, r = zip(*[(float(time), r100_distro)
-                        for time, _, r100_distro in ReducedBundle['ideal']])
+    times, r = zip(*[(float(time), r100_distro)
+                            for time, _, r100_distro in ReducedBundle['ideal']])
 
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
-f = []
-for r_ in r:
-    print(type(r_))
-    r_ = np.array(r_)
-    
-    total = r_.shape[0]
-    r_ = r_[r_<1]
-    nones = r_.shape[0]
-    f.append(1-nones/total)
-    r_num.append(total)
-    r_means.append(np.mean(r_))
-    r_var.append(np.var(r_))
-    r_skew.append(skew(r_))
-    r_kur.append(kurtosis(r_))
-
-
-mosaic = [
-    ['mean'],
-    ['std_dev'],
-    ['skewness'],
-    ['kurtosis'],
-    ['fraction']
-]
-
-fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
-
-axs['mean'].plot(times, r_means, marker='o')
-axs['mean'].set_ylabel(r'$\mu$ (Mean)')
-axs['mean'].grid(True)
-
-axs['std_dev'].plot(times, r_var, marker='s')
-axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
-axs['std_dev'].grid(True)
-
-axs['skewness'].plot(times,r_skew, marker='^')
-axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
-axs['skewness'].grid(True)
-
-axs['kurtosis'].plot(times,r_kur, marker='d')
-axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
-axs['kurtosis'].grid(True)
-
-axs['fraction'].plot(times,f, marker='x')
-axs['fraction'].set_xlabel('Time Step')
-axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
-axs['fraction'].grid(True)
-
-fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('./ideal_moments.png', dpi=300)
-plt.close()
-
-times, r = zip(*[(float(time), r100_distro)
-                        for time, _, r100_distro in ReducedBundle['amb']])
-
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
-f = []
-for r_ in r:
-    print(type(r_))
-    total = r_.shape[0]
-    r_ = np.array(r_)
-    r_ = r_[r_<1]
-    nones = r_.shape[0]
-    f.append(1-nones/total)
-    r_num.append(total)
-    r_means.append(np.mean(r_))
-    r_var.append(np.var(r_))
-    r_skew.append(skew(r_))
-    r_kur.append(kurtosis(r_))
-#r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
-#                    for _r, _x, _b, _n, _f in StatsRones['amb']])
-
-#r_flat = np.concatenate(r)
-#r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
-
-import matplotlib.pyplot as plt
-
-mosaic = [
-    ['mean'],
-    ['std_dev'],
-    ['skewness'],
-    ['kurtosis'],
-    ['fraction']
-]
-
-fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
-
-axs['mean'].plot(times,r_means, marker='o')
-axs['mean'].set_ylabel(r'$\mu$ (Mean)')
-axs['mean'].grid(True)
-
-axs['std_dev'].plot(times,r_var, marker='s')
-axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
-axs['std_dev'].grid(True)
-
-axs['skewness'].plot(times,r_skew, marker='^')
-axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
-axs['skewness'].grid(True)
-
-axs['kurtosis'].plot(times,r_kur, marker='d')
-axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
-axs['kurtosis'].grid(True)
-
-axs['fraction'].plot(times,f, marker='x')
-axs['fraction'].set_xlabel('Time Step')
-axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
-axs['fraction'].grid(True)
-
-fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('./amb_moments.png', dpi=300)
-plt.close()
+    r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
+    f = []
+    for r_ in r:
+        print(type(r_))
+        r_ = np.array(r_)
+        
+        total = r_.shape[0]
+        r_ = r_[r_<1]
+        nones = r_.shape[0]
+        f.append(1-nones/total)
+        r_num.append(total)
+        r_means.append(np.mean(r_))
+        r_var.append(np.var(r_))
+        r_skew.append(skew(r_))
+        r_kur.append(kurtosis(r_))
 
 
+    mosaic = [
+        ['mean',      'std_dev'],
+        ['skewness',  'kurtosis'],
+        ['fraction',  'fraction'],  # Span the full row
+    ]
+
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
+
+    default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    axs['mean'].plot(times, r_means, marker='o', color=default_colors[0])
+    axs['mean'].set_ylabel(r'$\mu$ (Mean)')
+    axs['mean'].grid(True)
+
+    axs['std_dev'].plot(times, r_var, marker='s', color=default_colors[1])
+    axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
+    axs['std_dev'].grid(True)
+
+    axs['skewness'].plot(times, r_skew, marker='^', color=default_colors[2])
+    axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
+    axs['skewness'].grid(True)
+
+    axs['kurtosis'].plot(times, r_kur, marker='d', color=default_colors[3])
+    axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
+    axs['kurtosis'].grid(True)
+
+    axs['fraction'].plot(times, f, marker='x', color=default_colors[4])
+    axs['fraction'].set_xlabel('Time Step')
+    axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
+    axs['fraction'].grid(True)
+
+    fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig('./ideal_moments.png', dpi=300)
+    plt.close()
+
+    times, r = zip(*[(float(time), r100_distro)
+                            for time, _, r100_distro in ReducedBundle['amb']])
+
+    r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
+    f = []
+    for r_ in r:
+        print(type(r_))
+        total = r_.shape[0]
+        r_ = np.array(r_)
+        r_ = r_[r_<1]
+        nones = r_.shape[0]
+        f.append(1-nones/total)
+        r_num.append(total)
+        r_means.append(np.mean(r_))
+        r_var.append(np.var(r_))
+        r_skew.append(skew(r_))
+        r_kur.append(kurtosis(r_))
+    #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+    #                    for _r, _x, _b, _n, _f in StatsRones['amb']])
+
+    #r_flat = np.concatenate(r)
+    #r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
+
+    import matplotlib.pyplot as plt
+
+    mosaic = [
+        ['mean',      'std_dev'],
+        ['skewness',  'kurtosis'],
+        ['fraction',  'fraction'],  # Span the full row
+    ]
+
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
+
+    default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    axs['mean'].plot(times, r_means, marker='o', color=default_colors[0])
+    axs['mean'].set_ylabel(r'$\mu$ (Mean)')
+    axs['mean'].grid(True)
+
+    axs['std_dev'].plot(times, r_var, marker='s', color=default_colors[1])
+    axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
+    axs['std_dev'].grid(True)
+
+    axs['skewness'].plot(times, r_skew, marker='^', color=default_colors[2])
+    axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
+    axs['skewness'].grid(True)
+
+    axs['kurtosis'].plot(times, r_kur, marker='d', color=default_colors[3])
+    axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
+    axs['kurtosis'].grid(True)
+
+    axs['fraction'].plot(times, f, marker='x', color=default_colors[4])
+    axs['fraction'].set_xlabel('Time Step')
+    axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
+    axs['fraction'].grid(True)
+
+    fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig('./amb_moments.png', dpi=300)
+    plt.close()
+
+if True: # 3D histogram of R vs Density
+    def hist3d(data, output):
+        colors = ['yellow', 'blue', 'green', 'red','yellow', 'blue', 'green', 'red']
+
+        # Set up 3D plot
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plot each histogram at a different Y position
+        bins_ = int(np.ceil(np.sqrt(np.mean([a.shape[0] for a in data]))))
+        for i, (d, color) in enumerate(zip(data, colors)):
+            counts, bins = np.histogram(d, bins=bins_)
+            xs = 0.5 * (bins[:-1] + bins[1:])
+            ys = np.full_like(xs, i * 5)  # Stack along Y
+            zs = np.zeros_like(xs)
+
+            dx = (bins[1] - bins[0]) * 1.0  # Thinner bars in X
+            dy = 0.1                    # Thinner depth in Y
+            dz = counts
+
+            ax.bar3d(xs, ys, zs, dx, dy, dz, color=color, alpha=0.6)
+
+        # Labels and aesthetics
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('Stacked 3D Histograms')
+        ax.view_init(elev=20, azim=-60)  # adjust angle to match reference image
+        plt.tight_layout()
+        plt.savefig(f'./hist3d_{output}.png')
+        plt.close()
+
+
+    times, r = zip(*[(float(time), r100_distro[r100_distro<1])
+                            for time, _, r100_distro in ReducedBundle['ideal']])
+    hist3d(r, 'ideal')
+
+    times, r = zip(*[(float(time), r100_distro[r100_distro<1])
+                            for time, _, r100_distro in ReducedBundle['amb']])
+    hist3d(r, 'amb')
 exit()
 
 r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
@@ -885,7 +914,6 @@ x = [t for t, _, _ in xyz_triads]
 y = [r for _, r, _ in xyz_triads]
 z = [n for _, _, n in xyz_triads]
 
-exit()
 times, r100 = zip(*[(float(time), r100_distro)
                     for time, _, r100_distro in ReducedBundle['amb']])
 
