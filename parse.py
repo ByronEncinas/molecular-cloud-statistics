@@ -315,6 +315,58 @@ def statistics_reduction(R, N):
 
     return R, x_n, mean_vec, median_vec, ten_vec, sample_size, f, N
 
+def histogram3d(
+    x, y,
+    x_bins=30,
+    y_bins=30,
+    x_range=None,
+    y_range=None,
+    xlabel="X",
+    ylabel="Y",
+    zlabel="Frequency",
+    title="Conditional Histogram of Y given X",
+    output="ideal/amb"
+):
+    from mpl_toolkits.mplot3d import Axes3D
+    from matplotlib import cm
+    # Validate input
+    assert len(x) == len(y), "x and y must be the same length"
+
+    # Bin edges
+    x_edges = np.linspace(*x_range, x_bins+1) if x_range else np.histogram_bin_edges(x, bins=x_bins)
+    y_edges = np.linspace(*y_range, y_bins+1) if y_range else np.histogram_bin_edges(y, bins=y_bins)
+
+    # Digitize x to group Y conditionally
+    x_indices = np.digitize(x, x_edges)
+
+    # Set up 3D plot
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i in range(1, len(x_edges) - 1):  # skip outer edges
+        y_subset = y[x_indices == i]
+        hist, y_bin_edges = np.histogram(y_subset, bins=y_edges)
+
+        xpos = np.full_like(hist, x_edges[i])
+        ypos = y_bin_edges[:-1]
+        zpos = np.zeros_like(hist)
+
+        dx = (x_edges[1] - x_edges[0]) * 0.8
+        dy = (y_bin_edges[1] - y_bin_edges[0]) * 0.8
+        dz = hist
+
+        color = cm.viridis(i / len(x_edges))
+        ax.bar3d(ypos, xpos, zpos, dy, dx, dz, color=color, alpha=0.8)
+
+    ax.set_xlabel(ylabel)
+    ax.set_ylabel(xlabel)
+    ax.set_zlabel(zlabel)
+    ax.set_title(title)
+
+    plt.tight_layout()
+    plt.savefig(f'./images/3d_hist_{output}.png')
+
+
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 
 amb_bundle1   = sorted(glob.glob('./thesis_stats/amb/*/DataBundle*.npz'))
@@ -591,6 +643,18 @@ if True: # HexBin Ideal/AMB
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
 
+    histogram3d(
+        x, y,
+        x_bins=30,
+        y_bins=30,
+        x_range=(min(x), max(x)),
+        y_range=(0,1.0),
+        xlabel="time (Myrs)",
+        ylabel="$R$",
+        title="$R$ distribution in time",
+        output="ideal"
+    )
+
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
@@ -621,7 +685,19 @@ if True: # HexBin Ideal/AMB
 
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
-
+    time_steps = len(x)
+    r_avg_size = np.sqrt(np.mean([len(ys) for ys in r100]))
+    histogram3d(
+        x, y,
+        x_bins=time_steps,
+        y_bins=r_avg_size, # this might crash, but 
+        x_range=(min(x), max(x)),
+        y_range=(0,1.0),
+        xlabel="time (Myrs)",
+        ylabel="$R$",
+        title="$R$ distribution in time",
+        output="Amb"
+    )
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
@@ -656,8 +732,9 @@ times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 f = []
 for r_ in r:
-    total = r_.shape[0]
+    print(type(r_))
     r_ = np.array(r_)
+    total = r_.shape[0]
     r_ = r_[r_<1]
     nones = r_.shape[0]
     f.append(1-nones/total)
