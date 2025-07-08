@@ -658,8 +658,8 @@ for r_ in r:
     r_num.append(len(r_))
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
-    r_skew.append(np.skew(r_))
-    r_kur.append(np.kurtosis(r_))
+    r_skew.append(skew(r_))
+    r_kur.append(kurtosis(r_))
 
 fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
@@ -690,8 +690,8 @@ for r_ in r:
     r_num.append(len(r_))
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
-    r_skew.append(np.skew(r_))
-    r_kur.append(np.kurtosis(r_))
+    r_skew.append(skew(r_))
+    r_kur.append(kurtosis(r_))
 #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
 #                    for _r, _x, _b, _n, _f in StatsRones['amb']])
 
