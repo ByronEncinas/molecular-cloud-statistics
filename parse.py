@@ -642,7 +642,7 @@ if True: # HexBin Ideal/AMB
 
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
-
+    """
     histogram3d(
         x, y,
         x_bins=30,
@@ -654,7 +654,7 @@ if True: # HexBin Ideal/AMB
         title="$R$ distribution in time",
         output="ideal"
     )
-
+    """
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func)#gridsize=50,
@@ -687,6 +687,7 @@ if True: # HexBin Ideal/AMB
     ylim = 0.0, 1.0
     time_steps = len(x)
     r_avg_size = np.sqrt(np.mean([len(ys) for ys in r100]))
+    """
     histogram3d(
         x, y,
         x_bins=time_steps,
@@ -698,6 +699,7 @@ if True: # HexBin Ideal/AMB
         title="$R$ distribution in time",
         output="Amb"
     )
+    """
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
@@ -732,7 +734,7 @@ times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 f = []
 for r_ in r:
-    print(type(r_))
+    print(type)
     r_ = np.array(r_)
     total = r_.shape[0]
     r_ = r_[r_<1]
