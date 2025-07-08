@@ -734,7 +734,7 @@ times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 f = []
 for r_ in r:
-    print(type)
+    print(type(r_))
     r_ = np.array(r_)
     total = r_.shape[0]
     r_ = r_[r_<1]
@@ -746,21 +746,37 @@ for r_ in r:
     r_skew.append(skew(r_))
     r_kur.append(kurtosis(r_))
 
-fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
-axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
-axs[0].plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
-axs[0].plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
-axs[0].plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
-axs[0].set_xlabel('Time Step')
-axs[0].set_ylabel('Statistical Moments (ideal)')
-axs[0].grid(True)
-axs[0].legend()
+mosaic = [
+    ['mean'],
+    ['std_dev'],
+    ['skewness'],
+    ['kurtosis'],
+    ['fraction']
+]
 
-axs[1].plot(f, label=r'$f=\frac{\{R=1\}}{\{R\}}$', marker='x')
-axs[1].set_xlabel('Time Step')
-axs[1].grid(True)
-axs[1].legend()
+fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
+
+axs['mean'].plot(r_means, marker='o')
+axs['mean'].set_ylabel(r'$\mu$ (Mean)')
+axs['mean'].grid(True)
+
+axs['std_dev'].plot(r_var, marker='s')
+axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
+axs['std_dev'].grid(True)
+
+axs['skewness'].plot(r_skew, marker='^')
+axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
+axs['skewness'].grid(True)
+
+axs['kurtosis'].plot(r_kur, marker='d')
+axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
+axs['kurtosis'].grid(True)
+
+axs['fraction'].plot(f, marker='x')
+axs['fraction'].set_xlabel('Time Step')
+axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
+axs['fraction'].grid(True)
 
 fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -773,6 +789,7 @@ times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 f = []
 for r_ in r:
+    print(type(r_))
     total = r_.shape[0]
     r_ = np.array(r_)
     r_ = r_[r_<1]
@@ -789,27 +806,44 @@ for r_ in r:
 #r_flat = np.concatenate(r)
 #r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
 
+import matplotlib.pyplot as plt
 
-fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+mosaic = [
+    ['mean'],
+    ['std_dev'],
+    ['skewness'],
+    ['kurtosis'],
+    ['fraction']
+]
 
-axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
-axs[0].plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
-axs[0].plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
-axs[0].plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
-axs[0].set_xlabel('Time Step')
-axs[0].set_ylabel('Statistical Moments (non-ideal)')
-axs[0].grid(True)
-axs[0].legend()
+fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
 
-axs[1].plot(f, label=r'$f=\frac{\{R=1\}}{\{R\}}$', marker='x')
-axs[1].set_xlabel('Time Step')
-axs[1].grid(True)
-axs[1].legend()
+axs['mean'].plot(r_means, marker='o')
+axs['mean'].set_ylabel(r'$\mu$ (Mean)')
+axs['mean'].grid(True)
+
+axs['std_dev'].plot(r_var, marker='s')
+axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
+axs['std_dev'].grid(True)
+
+axs['skewness'].plot(r_skew, marker='^')
+axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
+axs['skewness'].grid(True)
+
+axs['kurtosis'].plot(r_kur, marker='d')
+axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
+axs['kurtosis'].grid(True)
+
+axs['fraction'].plot(f, marker='x')
+axs['fraction'].set_xlabel('Time Step')
+axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
+axs['fraction'].grid(True)
 
 fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('./amb_moments.png', dpi=300)
 plt.close()
+
 
 exit()
 
