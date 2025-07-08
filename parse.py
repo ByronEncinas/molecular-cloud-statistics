@@ -736,6 +736,7 @@ f = []
 for r_ in r:
     print(type(r_))
     r_ = np.array(r_)
+    
     total = r_.shape[0]
     r_ = r_[r_<1]
     nones = r_.shape[0]
@@ -757,23 +758,23 @@ mosaic = [
 
 fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
 
-axs['mean'].plot(r_means, marker='o')
+axs['mean'].plot(times, r_means, marker='o')
 axs['mean'].set_ylabel(r'$\mu$ (Mean)')
 axs['mean'].grid(True)
 
-axs['std_dev'].plot(r_var, marker='s')
+axs['std_dev'].plot(times, r_var, marker='s')
 axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
 axs['std_dev'].grid(True)
 
-axs['skewness'].plot(r_skew, marker='^')
+axs['skewness'].plot(times,r_skew, marker='^')
 axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
 axs['skewness'].grid(True)
 
-axs['kurtosis'].plot(r_kur, marker='d')
+axs['kurtosis'].plot(times,r_kur, marker='d')
 axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
 axs['kurtosis'].grid(True)
 
-axs['fraction'].plot(f, marker='x')
+axs['fraction'].plot(times,f, marker='x')
 axs['fraction'].set_xlabel('Time Step')
 axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
 axs['fraction'].grid(True)
@@ -818,23 +819,23 @@ mosaic = [
 
 fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
 
-axs['mean'].plot(r_means, marker='o')
+axs['mean'].plot(times,r_means, marker='o')
 axs['mean'].set_ylabel(r'$\mu$ (Mean)')
 axs['mean'].grid(True)
 
-axs['std_dev'].plot(r_var, marker='s')
+axs['std_dev'].plot(times,r_var, marker='s')
 axs['std_dev'].set_ylabel(r'$\sigma$ (Std Dev)')
 axs['std_dev'].grid(True)
 
-axs['skewness'].plot(r_skew, marker='^')
+axs['skewness'].plot(times,r_skew, marker='^')
 axs['skewness'].set_ylabel(r'$\gamma$ (Skewness)')
 axs['skewness'].grid(True)
 
-axs['kurtosis'].plot(r_kur, marker='d')
+axs['kurtosis'].plot(times,r_kur, marker='d')
 axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
 axs['kurtosis'].grid(True)
 
-axs['fraction'].plot(f, marker='x')
+axs['fraction'].plot(times,f, marker='x')
 axs['fraction'].set_xlabel('Time Step')
 axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
 axs['fraction'].grid(True)
