@@ -648,6 +648,8 @@ if False: # HexBin Ideal/AMB
 #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
 #                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
+from scipy.stats import skew, kurtosis
+
 r, x, b, n, f = zip(*StatsRones['ideal'])
 
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
