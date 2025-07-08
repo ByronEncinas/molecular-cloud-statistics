@@ -470,20 +470,20 @@ for sim, times in R100_PATH.items():
         r100_distro  = np.array(R100_PATH[sim][time])
         r10_distro   = np.array(R10_PATH[sim][time])
         n_distro     = np.log10(NR_PATH[sim][time])
-        b_distro     = np.array(BS_PATH[sim][time])
+        b_distro     = np.array(BS_PATH[sim][time])        
+
         tulip        = (time, n_distro, r100_distro) 
         #print(time, n_peak, x_distro.shape, r100_distro.shape, r10_distro.shape, n_distro.shape, b_distro.shape)
         ReducedBundle[sim].append(tulip)
-        
-        total_at_time = r100_distro.shape[0]
-        
+
         # not ones
+        total_at_time = r100_distro.shape[0]
         r = r100_distro[r100_distro<1]
         x = x_distro[r100_distro<1]
         b = b_distro[r100_distro<1]
         n = n_distro[r100_distro<1]
         not_ones_at_time = r.shape[0]
-        f_at_time        = not_ones_at_time/total_at_time 
+        f_at_time        = not_ones_at_time/total_at_time         
 
         StatsRzero[sim].append((r,x,b,n, f_at_time))
 
@@ -512,7 +512,7 @@ for sim, common_times in zip(['ideal', 'amb'], [common_times_ideal, common_times
         ReducedColumn[sim].append(tulip)
 
 
-if False: # Ideal/Amb Columns PATH & LOS
+if True: # Ideal/Amb Columns PATH & LOS
     common_times, data_path, data_los = zip(*[(float(time), cp_distro, cl_distro) for time, cp_distro, cl_distro in ReducedColumn['ideal']])
 
     positions_los = np.arange(len(data_los)) # this needs work
@@ -579,7 +579,7 @@ if False: # Ideal/Amb Columns PATH & LOS
 gs = 18
 func = np.mean
 
-if False: # HexBin Ideal/AMB
+if True: # HexBin Ideal/AMB
     times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                         for time, _, r100_distro in ReducedBundle['ideal']])
 
@@ -650,14 +650,18 @@ if False: # HexBin Ideal/AMB
 
 from scipy.stats import skew, kurtosis
 
-r, x, b, n, f = zip(*StatsRones['ideal'])
+times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
+                        for time, _, r100_distro in ReducedBundle['ideal']])
 
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
-
+f = []
 for r_ in r:
+    total = r_.shape[0]
     r_ = np.array(r_)
     r_ = r_[r_<1]
-    r_num.append(len(r_))
+    nones = r_.shape[0]
+    f.append(1-nones/total)
+    r_num.append(total)
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
     r_skew.append(skew(r_))
@@ -684,14 +688,18 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('./ideal_moments.png', dpi=300)
 plt.close()
 
-r, x, b, n, f = zip(*StatsRones['amb'])
+times, r = zip(*[(float(time), r100_distro[r100_distro < 1])
+                        for time, _, r100_distro in ReducedBundle['amb']])
 
 r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
-
+f = []
 for r_ in r:
+    total = r_.shape[0]
     r_ = np.array(r_)
     r_ = r_[r_<1]
-    r_num.append(len(r_))
+    nones = r_.shape[0]
+    f.append(1-nones/total)
+    r_num.append(total)
     r_means.append(np.mean(r_))
     r_var.append(np.var(r_))
     r_skew.append(skew(r_))
