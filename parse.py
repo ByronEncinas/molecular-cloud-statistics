@@ -4,9 +4,10 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import MaxNLocator
 from collections import OrderedDict
 import numpy as np
-import sys, time, glob, re, os
-import warnings, csv
-import random
+import time, glob, re
+import csv
+
+from scipy.stats import describe
 
 """
 This code will take 200 GB of data and summarize it for further analysis
@@ -462,7 +463,6 @@ ReducedColumn = OrderedDict({'ideal': [], 'amb': []})
 
 StatsRones  = OrderedDict({'ideal': [], 'amb': []})
 StatsRzero  = OrderedDict({'ideal': [], 'amb': []})
-from scipy.stats import describe
 
 for sim, times in R100_PATH.items():
     for index, time in enumerate(times):
@@ -579,7 +579,7 @@ if False: # Ideal/Amb Columns PATH & LOS
 gs = 18
 func = np.mean
 
-if True: # HexBin Ideal/AMB
+if False: # HexBin Ideal/AMB
     times, r100 = zip(*[(float(time), r100_distro[r100_distro < 1])
                         for time, _, r100_distro in ReducedBundle['ideal']])
 
@@ -648,9 +648,8 @@ if True: # HexBin Ideal/AMB
 r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
                     for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
-
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r)
-
+r_flat = np.concatenate(r)
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
 fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
 axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
