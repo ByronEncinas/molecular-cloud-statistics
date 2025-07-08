@@ -645,11 +645,20 @@ if False: # HexBin Ideal/AMB
 
 # _, [min,max], Mean, Variance, Skewness, Kurtosis
 
-r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
-                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
+#r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+#                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
-r_flat = np.concatenate(r)
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
+r, x, b, n, f = zip(*StatsRones['ideal'])
+
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
+
+for r_ in r:
+    r_num.append( len(r_))
+    r_means.append( r_.mean)
+    r_var.append( r_.variance)
+    r_skew.append( np.skewness)
+    r_kur.append( np.kurtosis)
+
 fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
 axs[0].plot(r_means, label=r'$\mu$ (Mean)', marker='o')
@@ -671,12 +680,22 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('./ideal_moments.png', dpi=300)
 plt.close()
 
+r, x, b, n, f = zip(*StatsRones['amb'])
 
-r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
-                    for _r, _x, _b, _n, _f in StatsRones['amb']])
+r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
 
-r_flat = np.concatenate(r)
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
+for r_ in r:
+    r_num.append( len(r_))
+    r_means.append( r_.mean)
+    r_var.append( r_.variance)
+    r_skew.append( np.skewness)
+    r_kur.append( np.kurtosis)
+
+#r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
+#                    for _r, _x, _b, _n, _f in StatsRones['amb']])
+
+#r_flat = np.concatenate(r)
+#r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
 
 
 fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
