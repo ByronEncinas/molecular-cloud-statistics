@@ -485,7 +485,7 @@ for sim, times in R100_PATH.items():
         not_ones_at_time = r.shape[0]
         f_at_time        = not_ones_at_time/total_at_time 
 
-        StatsRzero[sim].append(r,x,b,n, f_at_time)
+        StatsRzero[sim].append((r,x,b,n, f_at_time))
 
         # ones
         r = r100_distro[r100_distro==1]
