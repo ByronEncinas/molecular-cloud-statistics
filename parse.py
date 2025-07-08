@@ -493,7 +493,7 @@ for sim, times in R100_PATH.items():
         b = b_distro[r100_distro==1]
         n = n_distro[r100_distro==1]
 
-        StatsRones[sim].append(r,x,b,n, 1 - f_at_time )
+        StatsRones[sim].append((r,x,b,n, 1 - f_at_time ))
         
 common_times_ideal = sorted(set(CD_PATH['ideal'].keys()) & set(CD_LOS['ideal'].keys()), key=float)
 global_max = np.max([float(t) for t in common_times_ideal])
