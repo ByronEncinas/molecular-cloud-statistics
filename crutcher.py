@@ -226,50 +226,82 @@ for bundle_dir in bundle_dirs: # ideal and ambipolar
         data = np.load(snap_data, mmap_mode='r')
         numb_densities = data['number_densities']
         magnetic_fields = data['magnetic_fields']
+        if magnetic_fields.shape[0] == 4001:
+            break
 
-fig, ax = plt.subplots()
-ax.set_ylabel(r'$B_{path}$ ($\mu G$)', fontsize=12)
-ax.set_xlabel(r'''$n_H$ ($\rm{cm}^{-3}$)
-              
-        Magnetic strength to density relation in simulations (blue dots) in 
-        comparison with Zeeman measurements of line of sight (solid red) as 
-        presented by Crutcher et al (2012)''')
+if True:
+    fig, ax = plt.subplots()
+    ax.set_ylabel(r'$B_{path}$ ($\mu G$)', fontsize=12)
+    ax.set_xlabel(r'''$n_H$ ($\rm{cm}^{-3}$)
+                
+            Magnetic strength to density relation in simulations (blue dots) in 
+            comparison with Zeeman measurements of line of sight (solid red) as 
+            presented by Crutcher et al (2012)''')
 
-ax.set_yscale('log')
-ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xscale('log')
 
-def B_los_fit(n_H, B0=10, n_crit=300, kappa=0.65):
-    """
-    Parametrize the Clutcher 2012 blue fit line.
-    300cm-3 for molecular clouds
-    """
-    B = np.where(n_H < n_crit, B0, B0 * (n_H / n_crit)**kappa)
-    return B
+    def B_los_fit(n_H, B0=10, n_crit=300, kappa=0.65):
+        """
+        Parametrize the Clutcher 2012 blue fit line.
+        300cm-3 for molecular clouds
+        """
+        B = np.where(n_H < n_crit, B0, B0 * (n_H / n_crit)**kappa)
+        return B
 
-n_H = np.logspace(1, 7, 500)
-B = B_los_fit(n_H)
+    n_H = np.logspace(1, 7, 500)
+    B = B_los_fit(n_H)
 
-yp = np.log10(magnetic_fields[numb_densities>0]).flatten()
-xp = np.log10(numb_densities[numb_densities>0]).flatten()
+    yp = np.log10(magnetic_fields[numb_densities>0]).flatten()
+    xp = np.log10(numb_densities[numb_densities>0]).flatten()
 
-from scipy import stats
+    from scipy import stats
 
-mp, bp, *_ = stats.linregress(xp, yp)
+    mp, bp, *_ = stats.linregress(xp, yp)
 
-y = 10**(mp*xp+ bp)
-x = 10**xp
-#ax.plot(n1, b1, color='red')
-#ax.plot(n2, b2, color='red')
-ax.plot(x,y, color='orange', label='Sim Exp Fit')
-ax.plot(n_H, B, color='red', label='Crutcher et al, 2012')
-ax.scatter(numb_densities, magnetic_fields, color='dodgerblue', s = 0.5)
-ax.tick_params(axis='y')
-plt.title(r"$B_{path} \propto n_{g}$")
-fig.tight_layout()
-plt.grid()
-plt.legend()
-plt.savefig('./images/crutcher_et_al.png')
-plt.close()
+    y = 10**(mp*xp+ bp)
+    x = 10**xp
+    #ax.plot(n1, b1, color='red')
+    #ax.plot(n2, b2, color='red')
+    ax.plot(x,y, color='orange', label='Sim Exp Fit')
+    ax.plot(n_H, B, color='red', label='Crutcher et al, 2012')
+    ax.scatter(numb_densities, magnetic_fields, color='dodgerblue', s = 0.5)
+    ax.tick_params(axis='y')
+    plt.title(r"$B_{path} \propto n_{g}$")
+    fig.tight_layout()
+    plt.grid()
+    plt.legend()
+    plt.savefig('./images/crutcher_et_al.png')
+    plt.close()
+
+if False:
+    distances = np.linalg.norm(radius_vector, axis = 2)
+    distances /= np.max(distances)
+
+    fig, ax = plt.subplots()
+    ax.set_ylabel(r'$B_{path}$ ($\mu G$)', fontsize=12)
+    ax.set_xlabel(r'''$n_H$ ($\rm{cm}^{-3}$)
+                
+            Magnetic strength to density relation in simulations (blue dots) in 
+            comparison with Zeeman measurements of line of sight (solid red) as 
+            presented by Crutcher et al (2012)''')
+
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    ax.plot(x, y, color='orange', label='Power Law Fit')
+    ax.plot(n_H, B, color='red', label='Crutcher et al, 2012')
+    m = distances.shape[0]//2
+    sc = ax.scatter(numb_densities[m,:], magnetic_fields[m,:], c=distances[m,:], s=0.5, cmap='viridis')
+    plt.colorbar(sc, label='Distance')
+
+    ax.tick_params(axis='y')
+    ax.set_title(r"$B_{path} \propto n_{g}$")
+    ax.legend()
+    ax.grid(True)
+
+    fig.tight_layout()
+    plt.savefig('./images/crutcher_et_al.png')
+    plt.close()
 
 """
 Mass to Flux Ratio 

@@ -130,7 +130,7 @@ def process_line(line):
     
 """ Energies """
 
-def fibonacci_sphere(samples=100):
+def fibonacci_sphere(samples=20):
     phi = np.pi * (3. - np.sqrt(5.))  # Golden angle
     y = np.linspace(1 - 1/samples, -1 + 1/samples, samples)  # Even spacing in y
     radius = np.sqrt(1 - y**2)  # Compute radius for each point
