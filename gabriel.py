@@ -350,15 +350,7 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e2):
         average_columns[i] = np.mean(column_densities[x:x+l0])
         print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
         i += 1
-    return radius_vector, numb_densities, column_densities
-
-print("Steps in Simulation: ", N)
-print("Boxsize            : ", Boxsize)
-print("Smallest Volume    : ", Volume[np.argmin(Volume)])
-print("Biggest  Volume    : ", Volume[np.argmax(Volume)])
-print(f"Smallest Density  : {Density[np.argmin(Density)]}")
-print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
-print("Elapsed Time: ", (time.time() - start_time)/60.)
+    return radius_vector, numb_densities, average_columns
 
 with open(os.path.join(new_folder, f'PARAMETERS'), 'w') as file:
     file.write(f"{sys.argv}\n")
@@ -394,8 +386,6 @@ np.savez(os.path.join(new_folder, f"DataBundle.npz"),
          average_columns=average_column
          )
 print((time.time()-start_time)//60, " Minutes")
-
-
 
 # My goal here is to plot Column Densities along with corresponding Ionizations rate
 
