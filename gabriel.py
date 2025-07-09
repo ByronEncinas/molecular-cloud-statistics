@@ -58,27 +58,20 @@ python3 los_stats.py 2000 ideal 430 50 N seed > NLOS430TST.txt 2> NLOS430TST_err
 N : Column densities
 
 """
-if len(sys.argv)>6:
+if len(sys.argv)>5:
     N                 = int(sys.argv[1])
-    case              = str(sys.argv[2]) #ideal/amb
-    num_file          = str(sys.argv[3]) 
-    max_cycles        = int(sys.argv[4]) 
-    NeffOrStability   = str(sys.argv[5]) 
-    try:
-        seed              = int(sys.argv[6])
-    except:
-        seed            = 12345
+    rloc              = float(sys.argv[2])
+    case              = str(sys.argv[3]) #ideal/amb
+    num_file          = str(sys.argv[4]) 
+    max_cycles        = int(sys.argv[5]) 
 else:
     N               = 2_000
+    rloc            = 10.0
     case            = 'ideal'
     num_file        = '430'
-    max_cycles      = 4
-    NeffOrStability =  'N' # S stability or N column densities
-    seed            = 12345
+    max_cycles      = 20
 
-rloc = 0.01
-densthresh = 100
-
+densthresh = 10e4
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
 elif case == 'amb':
@@ -114,7 +107,7 @@ time_value_array = np.array(time_value)
 
 snap = filename.split(".")[0][-3:]
 
-new_folder = os.path.join(f"thesis_los/{NeffOrStability}/{case}" , snap)
+new_folder = os.path.join(f"los/{case}" , snap)
 os.makedirs(new_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
@@ -169,8 +162,9 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
         theta = np.arccos(2*U2-1)
         phi = 2*np.pi*U3
         x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-        if False:    
-            plt.hist(r, bins=no//100, color = 'skyblue', density =True)
+        if False:                   
+            bins = 100
+            plt.hist(r, bins=bins, color = 'skyblue', density =True)
             plt.title('PDF $r = R\sqrt[3]{U(0,1)}$')
             plt.ylabel(r'PDF')
             plt.xlabel("$r$ (pc)")
@@ -179,7 +173,7 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
             plt.savefig('./images/pdf_r.png')
             plt.close()
 
-            plt.hist(theta, bins=no//100, color = 'skyblue', density =True)
+            plt.hist(theta, bins=bins, color = 'skyblue', density =True)
             plt.title('PDF $\\theta = \\arccos(2U-1)$')
             plt.ylabel(r'PDF')
             plt.xlabel('$\\theta$ (rad)')
@@ -194,27 +188,34 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
     tree = cKDTree(Pos)
     valid_vectors = []
     rho_vector = np.zeros((no, 3))
+    from copy import deepcopy
     while len(valid_vectors) < no:
-        
-        aux_vector = xyz_gen(no) # [[x,y,z], [x,y,z], ...] <= np array
+        aux_vector = xyz_gen(no- len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
-        inside_sphere = aux_vector[distances <= rloc] # by construction they will all survive
+        inside_sphere = aux_vector[distances <= rloc]
         _, nearest_indices = tree.query(inside_sphere)
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
-    rho_vector = inside_sphere[valid_mask]
+        print(no, len(valid_vectors))
+    rho_vector = np.array(deepcopy(valid_vectors))
+    
     return rho_vector
 
-if False:
-    rho = uniform_in_3d(1_000_000, rloc=0.1, densthresh=1.0e+7)
-
+if False: # Note to self, for small rloc < 1 this code doesnt take long
+    rho = uniform_in_3d(100_000, rloc=0.25, densthresh=1.0e+4)
+    print("rho_shape ", rho.shape)
     print(np.mean(rho[:,0]), np.mean(rho[:,1]), np.mean(rho[:,2]))
     print(np.std(rho[:,0]), np.std(rho[:,1]), np.std(rho[:,2]))
     print(np.median(rho[:,0]), np.median(rho[:,1]), np.median(rho[:,2]))
-
-    plt.hist(rho[:,0], bins=rho.shape[0]//100, density=True)
-    plt.title('PDF $x$')
+    
+    if rho.shape[0]//100 > 1:
+         bin = rho.shape[0]//100
+    else:
+        bin = 10
+         
+    plt.hist(rho[:,0], bins=bin, density=True)
+    plt.title('PDF $x(n_g > n_crit)$')
     plt.ylabel(r'PDF')
     plt.xlabel('$x$ (pc)')
     plt.grid()
@@ -234,7 +235,7 @@ if False:
     plt.savefig('./images/xz_distro.png')
     plt.close()
 
-def line_of_sight(x_init=None, directions=fibonacci_sphere()):
+def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e2):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -248,11 +249,11 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
     directions = np.tile(directions, m)
     x_init     = figure out how to repeat according to the example
     """
-    m = x_init.shape[0]
-    l = directions.shape[0]
-    print(m, l)
-    directions = np.tile(directions, (m, 1))
-    x_init = np.repeat(x_init, l, axis=0)
+    m0 = x_init.shape[0]
+    l0 = directions.shape[0]
+    print(m0, l0)
+    directions = np.tile(directions, (m0, 1))
+    x_init = np.repeat(x_init, l0, axis=0)
     m = x_init.shape[0]
     l = directions.shape[0]
     print(m, l)
@@ -264,41 +265,37 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
 
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields   = np.zeros((N+1,m))
-    bfields_rev = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
-    threshold_rev = np.zeros((m,)).astype(int) # one value for each
-    threshold = np.zeros((m,)).astype(int) # one value for each
-
+    threshold = np.zeros((m,))
+    threshold_rev = np.zeros((m,))
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init 
     x = x_init.copy()
-    dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    dummy, _0, densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
     vol = Volume[cells]
     densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
     dens = densities[0,:] * gr_cm3_to_nuclei_cm3
     k=0
-
     x_rev = x_init.copy()
-    dummy_rev, bfields_rev[0,:], densities_rev[0,:], cells_rev = dummy, bfields[0,:], densities[0,:], cells
+    dummy_rev, _00, densities_rev[0,:], cells_rev = dummy, _0, densities[0,:], cells
     vol_rev = Volume[cells_rev]
     densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     k_rev=0
-    
-    mask  = dens > 100# 1 if not finished
+    mask  = dens > n_crit# 1 if not finished
     un_masked = np.logical_not(mask) # 1 if finished
-    mask_rev = dens_rev > 100
+    mask_rev = dens_rev > n_crit
     un_masked_rev = np.logical_not(mask_rev)
-
+    
     while np.any(mask) or np.any(mask_rev): # 0 or 0 == 0 
-        mask = dens > 100                # True if continue
+
+        mask = dens > n_crit                # True if continue
         un_masked = np.logical_not(mask) # True if concluded
-        mask_rev = dens_rev > 100                # True if continue
+        mask_rev = dens_rev > n_crit               # True if continue
         un_masked_rev = np.logical_not(mask_rev) # True if concluded
 
-        print(dens)
+        print(dens[:2], dens_rev[:2])
 
         _, bfield, dens, vol, ke, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         
@@ -332,18 +329,28 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere()):
         line_rev[k+1,:,:]    = x_rev
         densities_rev[k+1,:] = dens_rev
 
-
         k_rev += 1
         k += 1
     
     threshold = threshold.astype(int)
     threshold_rev = threshold_rev.astype(int)
 
-    radius_vector = np.append(line_rev[::-1, :, :], line[1:,:,:], axis=0)
-    numb_densities = np.append(densities_rev[::-1, :], densities[1:,:], axis=0)
-    magnetic_field = np.append(bfields_rev[::-1, :], bfields[1:,:], axis=0)
+    max_th     = np.max(threshold) + 1
+    max_th_rev = np.max(threshold_rev) + 1 
 
-    return radius_vector, numb_densities, [threshold, threshold_rev]
+    radius_vector = np.append(line_rev[:max_th_rev,:,:][::-1, :, :], line[1:max_th,:,:], axis=0)*pc_to_cm
+    numb_densities = np.append(densities_rev[:max_th_rev,:][::-1, :], densities[1:max_th,:], axis=0)
+    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) # list of 'm' column densities
+    
+    print(column_densities.shape, l0, m0)
+
+    average_columns = np.zeros_like(x_init[:,0])
+    i = 0
+    for x in range(0, l0*m0, l0): # l0 corresponds with how many directions we have
+        average_columns[i] = np.mean(column_densities[x:x+l0])
+        print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
+        i += 1
+    return radius_vector, numb_densities, column_densities
 
 print("Steps in Simulation: ", N)
 print("Boxsize            : ", Boxsize)
@@ -353,10 +360,10 @@ print(f"Smallest Density  : {Density[np.argmin(Density)]}")
 print(f"Biggest  Density  : {Density[np.argmax(Density)]}")
 print("Elapsed Time: ", (time.time() - start_time)/60.)
 
-with open(os.path.join(new_folder, f'PARAMETERS#{seed}'), 'w') as file:
+with open(os.path.join(new_folder, f'PARAMETERS'), 'w') as file:
+    file.write(f"{sys.argv}\n")
     file.write(f"{filename}\n")
     file.write(f"{peak_den}\n")
-    file.write(f"Run ID/seed: {seed}\n")
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc}\n")
@@ -370,22 +377,74 @@ os.makedirs(new_folder, exist_ok=True)
 
 # directions
 directions = fibonacci_sphere()
+print("No. of directions", directions.shape)
 
 # starting positions 
+print(max_cycles)
 x_init = uniform_in_3d(max_cycles, rloc, densthresh)
-print("Shape of x_init w/o null vector", x_init.shape)
-null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
-x_init = np.vstack([x_init, null_vector]) 
-print("Shape of x_init w/ null vector", x_init.shape)
+#null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
+#x_init = np.vstack([x_init, null_vector]) 
+print("No. of starting pos", x_init.shape)
 
-radius_vector, numb_densities, th = line_of_sight(x_init, directions)
-threshold, threshold_rev = th
+radius_vector, numb_densities, average_column = line_of_sight(x_init, directions, densthresh)
 
-np.savez(os.path.join(new_folder, f"DataBundle{seed}.npz"),
-        thresholds=threshold,
-        thresholds_rev=threshold_rev,
-        positions=radius_vector,
-        number_densities=numb_densities)
-
+np.savez(os.path.join(new_folder, f"DataBundle.npz"),
+         positions=radius_vector, 
+         densities=numb_densities, 
+         average_columns=average_column
+         )
 print((time.time()-start_time)//60, " Minutes")
+
+
+
+# My goal here is to plot Column Densities along with corresponding Ionizations rate
+
+if False:
+    Neff = np.logspace(19, 27, 100)
+
+    """  
+    \mathcal{L} & \mathcal{H} Model: Protons
+
+    """
+    model_H = [1.001098610761e7, -4.231294690194e6,  7.921914432011e5,
+            -8.623677095423e4,  6.015889127529e3, -2.789238383353e2,
+            8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3,
+            -9.937499546711e-6
+    ]
+
+
+    model_L = [-3.331056497233e+6,  1.207744586503e+6,-1.913914106234e+5,
+                1.731822350618e+4, -9.790557206178e+2, 3.543830893824e+1, 
+            -8.034869454520e-1,  1.048808593086e-2,-6.188760100997e-5, 
+                3.122820990797e-8]
+
+    logzl = []
+    for i,Ni in enumerate(Neff):
+        lzl = sum( [cj*(np.log10(Ni))**j for j, cj in enumerate(model_L)] )
+        logzl.append(lzl)
+    #print("Extremes of fitting zeta(N) ", logzl[0], logzl[-1])
+
+    #logzetalfit = np.array(logzl)
+
+    logzh = []
+
+    for i,Ni in enumerate(Neff):
+        lzh = sum( [cj*(np.log10(Ni))**j for j, cj in enumerate(model_H)] )
+        logzh.append(lzh)
+
+    from scipy import interpolate
+
+    log_L = interpolate.interp1d(Neff, logzl)
+    log_H = interpolate.interp1d(Neff, logzh)
+    ionization_rates_l = log_L(column_densities)
+    ionization_rates_h = log_H(column_densities) 
+    plt.plot(Neff, log_H(Neff), label = 'Padovani H')
+    plt.plot(Neff, log_L(Neff), label = 'Padovani L')
+    plt.plot(column_densities, ionization_rates_l, label = '$N_{LOS}$ Model L')
+    plt.plot(column_densities, ionization_rates_h, label = '$N_{LOS}$ Model H')
+    plt.xscale('log')
+    plt.legend()
+    plt.savefig('./images/padovani2018')
+    plt.close()
+
 
