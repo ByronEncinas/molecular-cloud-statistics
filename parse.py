@@ -6,8 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import time, glob, re
 import csv
-
-from scipy.stats import describe
+import pingouin as pg
 
 """
 This code will take 200 GB of data and summarize it for further analysis
@@ -55,8 +54,9 @@ def extract_number(filename):
     match = re.search(r'(\d+)(?=\_.json)', filename)
     return int(match.group(0)) if match else 0
 
-def pocket_finder(bfield, r, B, img = '', plot=False):
+def pocket_finder(bfield, img = '', plot=False):
     """  
+    pocket_finder(bfield, p_r, B_r, img=i, plot=False)
     Finds peaks in a given magnetic field array.
 
     Args:
@@ -315,57 +315,45 @@ def statistics_reduction(R, N):
 
     return R, x_n, mean_vec, median_vec, ten_vec, sample_size, f, N
 
-def histogram3d(
-    x, y,
-    x_bins=30,
-    y_bins=30,
-    x_range=None,
-    y_range=None,
-    xlabel="X",
-    ylabel="Y",
-    zlabel="Frequency",
-    title="Conditional Histogram of Y given X",
-    output="ideal/amb"
-):
-    from mpl_toolkits.mplot3d import Axes3D
-    from matplotlib import cm
-    # Validate input
-    assert len(x) == len(y), "x and y must be the same length"
-
-    # Bin edges
-    x_edges = np.linspace(*x_range, x_bins+1) if x_range else np.histogram_bin_edges(x, bins=x_bins)
-    y_edges = np.linspace(*y_range, y_bins+1) if y_range else np.histogram_bin_edges(y, bins=y_bins)
-
-    # Digitize x to group Y conditionally
-    x_indices = np.digitize(x, x_edges)
+def hist3d(data, output):
+    """
+    data = [
+        np.array,
+        np.array,
+        np.array,
+        np.array,
+        ...
+        ]
+    """
+    colors = ['yellow', 'blue', 'green', 'red','yellow', 'blue', 'green', 'red']
 
     # Set up 3D plot
     fig = plt.figure(figsize=(10, 7))
     ax = fig.add_subplot(111, projection='3d')
 
-    for i in range(1, len(x_edges) - 1):  # skip outer edges
-        y_subset = y[x_indices == i]
-        hist, y_bin_edges = np.histogram(y_subset, bins=y_edges)
+    # Plot each histogram at a different Y position
+    bins_ = int(np.ceil(np.sqrt(np.mean([a.shape[0] for a in data]))))
+    for i, (d, color) in enumerate(zip(data, colors)):
+        counts, bins = np.histogram(d, bins=bins_)
+        xs = 0.5 * (bins[:-1] + bins[1:])
+        ys = np.full_like(xs, i * 5)  # Stack along Y
+        zs = np.zeros_like(xs)
 
-        xpos = np.full_like(hist, x_edges[i])
-        ypos = y_bin_edges[:-1]
-        zpos = np.zeros_like(hist)
+        dx = (bins[1] - bins[0]) * 1.0  # Thinner bars in X
+        dy = 0.1                    # Thinner depth in Y
+        dz = counts
 
-        dx = (x_edges[1] - x_edges[0]) * 0.8
-        dy = (y_bin_edges[1] - y_bin_edges[0]) * 0.8
-        dz = hist
+        ax.bar3d(xs, ys, zs, dx, dy, dz, color=color, alpha=0.6)
 
-        color = cm.viridis(i / len(x_edges))
-        ax.bar3d(ypos, xpos, zpos, dy, dx, dz, color=color, alpha=0.8)
-
-    ax.set_xlabel(ylabel)
-    ax.set_ylabel(xlabel)
-    ax.set_zlabel(zlabel)
-    ax.set_title(title)
-
+    # Labels and aesthetics
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('Stacked 3D Histograms')
+    ax.view_init(elev=20, azim=-60)  # adjust angle to match reference image
     plt.tight_layout()
-    plt.savefig(f'./images/3d_hist_{output}.png')
-
+    plt.savefig(f'./hist3d_{output}.png')
+    plt.close()
 
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 
@@ -716,7 +704,8 @@ if False: # HexBin Ideal/AMB
 #                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
 if True: # Statistical despcriptors and fraction
-    from scipy.stats import skew, kurtosis
+    #from scipy.stats import skew, kurtosis
+
 
     times, r = zip(*[(float(time), r100_distro)
                             for time, _, r100_distro in ReducedBundle['ideal']])
@@ -734,8 +723,8 @@ if True: # Statistical despcriptors and fraction
         r_num.append(total)
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
-        r_skew.append(skew(r_))
-        r_kur.append(kurtosis(r_))
+        r_skew.append(pg.skew(x)(r_))
+        r_kur.append(pg.kurtosis(r_))
 
 
     mosaic = [
@@ -781,23 +770,23 @@ if True: # Statistical despcriptors and fraction
     f = []
     for r_ in r:
         print(type(r_))
-        total = r_.shape[0]
         r_ = np.array(r_)
+        
+        total = r_.shape[0]
         r_ = r_[r_<1]
         nones = r_.shape[0]
         f.append(1-nones/total)
         r_num.append(total)
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
-        r_skew.append(skew(r_))
-        r_kur.append(kurtosis(r_))
+        r_skew.append(pg.skew(x)(r_))
+        r_kur.append(pg.kurtosis(r_))
+
     #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
     #                    for _r, _x, _b, _n, _f in StatsRones['amb']])
 
     #r_flat = np.concatenate(r)
     #r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
-
-    import matplotlib.pyplot as plt
 
     mosaic = [
         ['mean',      'std_dev'],
@@ -835,48 +824,29 @@ if True: # Statistical despcriptors and fraction
     plt.savefig('./amb_moments.png', dpi=300)
     plt.close()
 
-if True: # 3D histogram of R vs Density
-    def hist3d(data, output):
-        colors = ['yellow', 'blue', 'green', 'red','yellow', 'blue', 'green', 'red']
+if True: # 3D histogram of R in time (but time is represented by index)
 
-        # Set up 3D plot
-        fig = plt.figure(figsize=(10, 7))
-        ax = fig.add_subplot(111, projection='3d')
-
-        # Plot each histogram at a different Y position
-        bins_ = int(np.ceil(np.sqrt(np.mean([a.shape[0] for a in data]))))
-        for i, (d, color) in enumerate(zip(data, colors)):
-            counts, bins = np.histogram(d, bins=bins_)
-            xs = 0.5 * (bins[:-1] + bins[1:])
-            ys = np.full_like(xs, i * 5)  # Stack along Y
-            zs = np.zeros_like(xs)
-
-            dx = (bins[1] - bins[0]) * 1.0  # Thinner bars in X
-            dy = 0.1                    # Thinner depth in Y
-            dz = counts
-
-            ax.bar3d(xs, ys, zs, dx, dy, dz, color=color, alpha=0.6)
-
-        # Labels and aesthetics
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Stacked 3D Histograms')
-        ax.view_init(elev=20, azim=-60)  # adjust angle to match reference image
-        plt.tight_layout()
-        plt.savefig(f'./hist3d_{output}.png')
-        plt.close()
-
-
-    times, r = zip(*[(float(time), r100_distro[r100_distro<1])
+    times, n, r = zip(*[(float(time), _ , r100_distro)
                             for time, _, r100_distro in ReducedBundle['ideal']])
-    hist3d(r, 'ideal')
+    data = [np.array(r_[r_<1]) for r_ in r]
+    hist3d(data, 'ideal')
+        
+    r_red, n_ref, mean_vec, median_vec, ten_vec, sample_size, fraction, n_og = statistics_reduction(r, n)
 
-    times, r = zip(*[(float(time), r100_distro[r100_distro<1])
+
+
+    times, n, r = zip(*[(float(time), _, r100_distro)
                             for time, _, r100_distro in ReducedBundle['amb']])
-    hist3d(r, 'amb')
-exit()
+    data = [np.array(r_[r_<1]) for r_ in r]
 
+    hist3d(data, 'amb')
+    r_red, n_ref, mean_vec, median_vec, ten_vec, sample_size, fraction, n_og = statistics_reduction(r, n)
+
+
+    
+
+
+exit()
 r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
                     for _r, _x, _b, _n, _f in StatsRzero['ideal']])
 
@@ -942,8 +912,8 @@ if True:
 
 
 # Generate data
-x = np.linspace(0, 10, 10000)              # Uniformly spaced x-values (e.g. time)
-y = np.random.uniform(0, 10, 10000)        # Random y-values
+#x = np.linspace(0, 10, 10000)              # Uniformly spaced x-values (e.g. time)
+#y = np.random.uniform(0, 10, 10000)        # Random y-values
 
 # Create the hexbin plot
 plt.figure(figsize=(10, 8))
