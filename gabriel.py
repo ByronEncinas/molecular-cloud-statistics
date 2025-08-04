@@ -2,9 +2,11 @@ import os, sys, glob, time, csv
 import numpy as np, h5py
 from scipy import spatial
 import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
 from library import *
 
 start_time = time.time()
+
 
 def get_magnetic_field_at_points(x, Bfield, rel_pos):
 	n = len(rel_pos[:,0])
@@ -20,8 +22,17 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 		local_densities[i] = Density[i] + np.dot(Density_grad[i,:], rel_pos[i,:])
 	return local_densities
 
+# cache-ing spatial.cKDTree(Pos[:]).query(x, k=1)
+_cached_tree = None
+_cached_pos = None
+
 def find_points_and_relative_positions(x, Pos, VoronoiPos):
-    dist, cells = spatial.KDTree(Pos[:]).query(x, k=1)
+    global _cached_tree, _cached_pos
+    if _cached_tree is None or not np.array_equal(Pos, _cached_pos):
+        _cached_tree = cKDTree(Pos)
+        _cached_pos = Pos.copy()
+
+    dist, cells = _cached_tree.query(x, k=1, workers=-1)
     rel_pos = VoronoiPos[cells] - x
     return dist, cells, rel_pos
 
@@ -65,13 +76,13 @@ if len(sys.argv)>5:
     num_file          = str(sys.argv[4]) 
     max_cycles        = int(sys.argv[5]) 
 else:
-    N               = 2_000
-    rloc            = 10.0
+    N               = 3_000
+    rloc            = 0.1
     case            = 'ideal'
     num_file        = '430'
-    max_cycles      = 20
+    max_cycles      = 2000
 
-densthresh = 10e4
+ncrit = 10e2
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
 elif case == 'amb':
@@ -153,7 +164,8 @@ for dim in range(3):  # Loop over x, y, z
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
 
-def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
+def uniform_in_3d(no, rloc=1.0, ncrit=100): # modify
+    uniform_in_3d.c = 0
     def xyz_gen(size):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
         U2 = np.random.uniform(low=0.0, high=1.0, size=size)
@@ -162,7 +174,7 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
         theta = np.arccos(2*U2-1)
         phi = 2*np.pi*U3
         x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-        if False:                   
+        if uniform_in_3d.c == 0:                   
             bins = 100
             plt.hist(r, bins=bins, color = 'skyblue', density =True)
             plt.title('PDF $r = R\sqrt[3]{U(0,1)}$')
@@ -181,10 +193,9 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
             plt.tight_layout()
             plt.savefig('./images/pdf_theta.png')
             plt.close()
+        c=1
         return np.array([[a,b,c] for a,b,c in zip(x,y,z)])
 
-    import numpy as np
-    from scipy.spatial import cKDTree
     tree = cKDTree(Pos)
     valid_vectors = []
     rho_vector = np.zeros((no, 3))
@@ -194,7 +205,7 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
         distances = np.linalg.norm(aux_vector, axis=1)
         inside_sphere = aux_vector[distances <= rloc]
         _, nearest_indices = tree.query(inside_sphere)
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > ncrit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
         print(no, len(valid_vectors))
@@ -203,7 +214,7 @@ def uniform_in_3d(no, rloc=1.0, densthresh=100): # modify
     return rho_vector
 
 if False: # Note to self, for small rloc < 1 this code doesnt take long
-    rho = uniform_in_3d(100_000, rloc=0.25, densthresh=1.0e+4)
+    rho = uniform_in_3d(100_000, rloc=0.25, ncrit=ncrit)
     print("rho_shape ", rho.shape)
     print(np.mean(rho[:,0]), np.mean(rho[:,1]), np.mean(rho[:,2]))
     print(np.std(rho[:,0]), np.std(rho[:,1]), np.std(rho[:,2]))
@@ -235,7 +246,7 @@ if False: # Note to self, for small rloc < 1 this code doesnt take long
     plt.savefig('./images/xz_distro.png')
     plt.close()
 
-def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e2):
+def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e+2):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -290,12 +301,13 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e2):
     
     while np.any(mask) or np.any(mask_rev): # 0 or 0 == 0 
 
+
         mask = dens > n_crit                # True if continue
         un_masked = np.logical_not(mask) # True if concluded
         mask_rev = dens_rev > n_crit               # True if continue
         un_masked_rev = np.logical_not(mask_rev) # True if concluded
 
-        print(dens[:2], dens_rev[:2])
+        print(k, dens[:2], dens_rev[:2])
 
         _, bfield, dens, vol, ke, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
         
@@ -344,7 +356,7 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = 10e2):
     
     print(column_densities.shape, l0, m0)
 
-    average_columns = np.zeros_like(x_init[:,0])
+    average_columns = np.zeros(m0)
     i = 0
     for x in range(0, l0*m0, l0): # l0 corresponds with how many directions we have
         average_columns[i] = np.mean(column_densities[x:x+l0])
@@ -359,7 +371,7 @@ with open(os.path.join(new_folder, f'PARAMETERS'), 'w') as file:
     file.write(f"Cores Used: {os.cpu_count()}\n")
     file.write(f"Snap Time (Myr): {time_value}\n")
     file.write(f"rloc (Pc) : {rloc}\n")
-    file.write(f"Density Threshold : {densthresh}\n")
+    file.write(f"Density Threshold : {ncrit}\n")
     file.write(f"max_cycles         : {max_cycles}\n")
     file.write(f"Volume Range (Pc^3)   : ({Volume[np.argmin(Volume)]}, {Volume[np.argmax(Volume)]}) \n")
     file.write(f"Smallest Density (N/cm^3)  : ({Density[np.argmax(Volume)]*gr_cm3_to_nuclei_cm3},{Density[np.argmin(Volume)]*gr_cm3_to_nuclei_cm3}) \n")
@@ -368,24 +380,89 @@ with open(os.path.join(new_folder, f'PARAMETERS'), 'w') as file:
 os.makedirs(new_folder, exist_ok=True)
 
 # directions
-directions = fibonacci_sphere()
+directions = fibonacci_sphere(5)
 print("No. of directions", directions.shape)
 
 # starting positions 
 print(max_cycles)
-x_init = uniform_in_3d(max_cycles, rloc, densthresh)
+x_init = uniform_in_3d(max_cycles, rloc, ncrit)
 #null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
 #x_init = np.vstack([x_init, null_vector]) 
 print("No. of starting pos", x_init.shape)
 
-radius_vector, numb_densities, average_column = line_of_sight(x_init, directions, densthresh)
+radius_vector, numb_densities, average_column = line_of_sight(x_init, directions, ncrit)
 
-np.savez(os.path.join(new_folder, f"DataBundle.npz"),
-         positions=radius_vector, 
-         densities=numb_densities, 
-         average_columns=average_column
-         )
+os.makedirs(new_folder, exist_ok=True)
+h5_path = os.path.join(new_folder, f"DataBundleG.h5")
+
+# === Writing to HDF5 with metadata ===
+with h5py.File(h5_path, "w") as f:
+    # Datasets
+    #f.create_dataset("positions", data=radius_vector)
+    #f.create_dataset("densities", data=numb_densities)
+    #f.create_dataset("magnetic_fields", data=magnetic_fields)
+    f.create_dataset("starting_point", data=x_init)
+    f.create_dataset("directions", data=directions)
+    f.create_dataset("column_densities", data=average_column)
+
+    # === Metadata attributes ===
+    #f.attrs["seed"] = seed
+    f.attrs["cores_used"] = os.cpu_count()
+    f.attrs["pre_allocation_number"] = 2 * N
+    f.attrs["rloc"] = rloc
+    f.attrs["max_cycles"] = max_cycles
+    f.attrs["center"] = Center
+    f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
+    f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
+    
+    try:
+        pass
+        #os.remove(tmp_file)
+    except:
+        print(f"Temp file not found tmp.csv")
+        raise FileNotFoundError
+
 print((time.time()-start_time)//60, " Minutes")
+
+print("No. of averaged columns", average_column.shape)
+print()
+
+distance = np.linalg.norm(x_init, axis=1)*pc_to_cm
+
+import matplotlib.pyplot as plt
+
+if True:
+    fig, ax = plt.subplots()
+    
+    # Axis labels
+    ax.set_xlabel(r'''Distance $r$ (cm)
+                
+    Column density along line of sight as a function of distance 
+    away from core
+            $N_{LOS} = \int_0^s n_g(s')ds'$   
+            ''')
+    
+    ax.set_ylabel(r'$N_{\rm LOS}$ (cm$^{-2}$)', fontsize=12)
+    
+    # Log scales
+    ax.set_yscale('log')
+    #ax.set_xscale('log')
+    
+    # Scatter plot with label for legend
+    ax.scatter(distance, average_column, color='dodgerblue', s=2.0, label=r'$\langle N_{\rm LOS} \rangle$')
+    
+    # Ticks and grid
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    
+    # Title and legend
+    plt.title(r"$N_{\rm LOS} \propto r$", fontsize=13)
+    ax.legend()
+    
+    # Layout and save
+    fig.tight_layout()
+    plt.savefig('./avg_column_los.png')
+    plt.close()
 
 # My goal here is to plot Column Densities along with corresponding Ionizations rate
 

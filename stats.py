@@ -21,15 +21,15 @@ if len(sys.argv)>5:
     num_file      = str(sys.argv[5]) 
     seed          = int(sys.argv[6])
 else:
-    N               = 2_000
-    rloc            = 1.0
+    N               = 5_000
+    rloc            = 0.1
     max_cycles      = 200
     case            = 'ideal'
     num_file        = '430'
     seed            = 12345 
     sys.argv.append(seed)
 
-ncrit = 1.0e+1
+ncrit = 1.0e+2
 print(sys.argv, N)
 
 reduction_factor_at_numb_density = defaultdict()
@@ -541,7 +541,6 @@ def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
                 x_aux = x[mask2]
                 x_aux, bfield_aux, dens_aux, vol = Heun_step(x_aux, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
                 dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
-
                 x[mask2] = x_aux
                 x[un_masked2] = 0
                 dens[mask2] = dens_aux
@@ -561,8 +560,9 @@ def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
             combined = np.concatenate([line[k, :, :].flatten(), line_rev[k_rev, :, :].flatten(), densities[k, :].flatten(), densities_rev[k_rev, :].flatten()]) #x.flatten(), x_rev.flatten(), 
             csv_line = ','.join(map(str, combined))
             f.write(csv_line + '\n')
+            print(max(np.max(np.linalg.norm(x_aux, axis=1)),np.max(np.linalg.norm(x_rev_aux, axis=1))))
 
-            print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
+            #print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
 
         
             if (np.sum(mask2) == 0) and (np.sum(mask2_rev) == 0):
@@ -656,21 +656,18 @@ def uniform_in_3d(no, rloc=1.0, ncrit=1.0e+2): # modify
     rho_vector = np.array(deepcopy(valid_vectors))
     return rho_vector
 
-#x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=ncrit), np.array([0.0,0.0,0.0])])
+x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=10e+4), np.array([0.0,0.0,0.0])])
 
 # x_input provides with the corresponding values to r_100 and r_10
-x_input = uniform_in_3d(max_cycles, rloc, ncrit=1.0e+2)
+#x_input = uniform_in_3d(max_cycles, rloc, ncrit=1.0e+2)
 
 radius_vector, magnetic_fields, numb_densities, follow_index = get_along_lines(x_input, ncrit)
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
 if np.any(numb_densities > 1.0e2):
-
     r_10, r_100, n_rs, B_rs = evaluate_reduction(magnetic_fields, numb_densities, follow_index)
     print("DEBUG numb_densities type:", type(numb_densities))
-    #print("DEBUG numb_densities repr:", repr(numb_densities))
-
 else:
     print("Skipping evaluate_reduction: no densities above 100 cm⁻³")
 
@@ -725,6 +722,41 @@ print(f"{h5_path.split('/')[-1]} Created Successfully")
 del Mass, Volume, Density_grad, Density
 del Bfield, Bfield_grad, Pos, VoronoiPos
 del data
+
+distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
+
+if True:
+    fig, ax = plt.subplots()
+    
+    # Axis labels
+    ax.set_xlabel(r'''Distance $r$ (cm)
+                
+    Column density along line of sight as a function of distance 
+    away from core
+            $N_{PATH} = \int_0^s n_g(s')ds'$   
+            ''')
+    
+    ax.set_ylabel(r'$N_{\rm LOS}$ (cm$^{-2}$)', fontsize=12)
+    
+    # Log scales
+    ax.set_yscale('log')
+    #ax.set_xscale('log')
+    
+    # Scatter plot with label for legend
+    ax.scatter(distance, c_rs, color='dodgerblue', s=2.0, label=r'$\langle N_{\rm LOS} \rangle$')
+    
+    # Ticks and grid
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    
+    # Title and legend
+    plt.title(r"$N_{\rm LOS} \propto r$", fontsize=13)
+    ax.legend()
+    
+    # Layout and save
+    fig.tight_layout()
+    plt.savefig('./avg_column_path.png')
+    plt.close()
 
 if True:
     try:
