@@ -380,7 +380,7 @@ with open(os.path.join(new_folder, f'PARAMETERS'), 'w') as file:
 os.makedirs(new_folder, exist_ok=True)
 
 # directions
-directions = fibonacci_sphere(5)
+directions = fibonacci_sphere(20)
 print("No. of directions", directions.shape)
 
 # starting positions 
