@@ -5,6 +5,8 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import spatial
 from scipy.spatial import distance
+from scipy.spatial import cKDTree
+
 
 """ Toggle Parameters """
 
@@ -58,6 +60,20 @@ def get_density_at_points(x, Density, Density_grad, rel_pos):
 
 def find_points_and_relative_positions(x, Pos, VoronoiPos):
     dist, cells = spatial.KDTree(Pos[:]).query(x, k=1, workers=-1)
+    rel_pos = VoronoiPos[cells] - x
+    return dist, cells, rel_pos
+
+# cache-ing spatial.cKDTree(Pos[:]).query(x, k=1)
+_cached_tree = None
+_cached_pos = None
+
+def find_points_and_relative_positions(x, Pos, VoronoiPos):
+    global _cached_tree, _cached_pos
+    if _cached_tree is None or not np.array_equal(Pos, _cached_pos):
+        _cached_tree = cKDTree(Pos)
+        _cached_pos = Pos.copy()
+
+    dist, cells = _cached_tree.query(x, k=1, workers=-1)
     rel_pos = VoronoiPos[cells] - x
     return dist, cells, rel_pos
 
