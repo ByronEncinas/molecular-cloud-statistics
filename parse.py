@@ -54,7 +54,7 @@ def extract_number(filename):
     match = re.search(r'(\d+)(?=\_.json)', filename)
     return int(match.group(0)) if match else 0
 
-def pocket_finder(bfield, img = '', plot=False):
+def pocket_finder(bfield, p_r, B_r, img = '', plot=False):
     """  
     pocket_finder(bfield, p_r, B_r, img=i, plot=False)
     Finds peaks in a given magnetic field array.
@@ -106,7 +106,7 @@ def pocket_finder(bfield, img = '', plot=False):
     peaks = lpeaks +  list(reversed(rpeaks))[1:]
     indexes = lindex + list(reversed(rindex))[1:]
 
-    if plot:
+    if False:
         # pocket with density threshold 100cm-3
         mask = np.log10(numb)<2
         slicebelow = mask[:p_r]
@@ -841,9 +841,6 @@ if True: # 3D histogram of R in time (but time is represented by index)
 
     hist3d(data, 'amb')
     r_red, n_ref, mean_vec, median_vec, ten_vec, sample_size, fraction, n_og = statistics_reduction(r, n)
-
-
-    
 
 
 exit()
