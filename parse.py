@@ -723,7 +723,7 @@ if True: # Statistical despcriptors and fraction
         r_num.append(total)
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
-        r_skew.append(pg.skew(x)(r_))
+        r_skew.append(pg.skew(r_))
         r_kur.append(pg.kurtosis(r_))
 
 
@@ -779,7 +779,7 @@ if True: # Statistical despcriptors and fraction
         r_num.append(total)
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
-        r_skew.append(pg.skew(x)(r_))
+        r_skew.append(pg.skew(r_))
         r_kur.append(pg.kurtosis(r_))
 
     #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
