@@ -6,7 +6,6 @@ from collections import OrderedDict
 import numpy as np
 import time, glob, re
 import csv
-import pingouin as pg
 
 """
 This code will take 200 GB of data and summarize it for further analysis
@@ -704,6 +703,7 @@ if False: # HexBin Ideal/AMB
 #                    for _r, _x, _b, _n, _f in StatsRones['ideal']])
 
 from scipy.stats import skew
+from scipy.stats import kurtosis
 
 if True: # Statistical despcriptors and fraction
     #from scipy.stats import skew, kurtosis
@@ -713,11 +713,11 @@ if True: # Statistical despcriptors and fraction
                             for time, _, r100_distro in ReducedBundle['ideal']])
 
     r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
+    
     f = []
+
     for r_ in r:
-        print(type(r_))
-        r_ = np.array(r_)
-        
+        r_ = np.array(r_)        
         total = r_.shape[0]
         r_ = r_[r_<1]
         nones = r_.shape[0]
@@ -726,7 +726,7 @@ if True: # Statistical despcriptors and fraction
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
         r_skew.append(skew(r_))
-        r_kur.append(pg.kurtosis(r_))
+        r_kur.append(kurtosis(r_))
 
 
     mosaic = [
@@ -771,9 +771,7 @@ if True: # Statistical despcriptors and fraction
     r_num, r_bounds, r_means, r_var, r_skew, r_kur = [], [], [], [], [], []
     f = []
     for r_ in r:
-        print(type(r_))
-        r_ = np.array(r_)
-        
+        r_ = np.array(r_)        
         total = r_.shape[0]
         r_ = r_[r_<1]
         nones = r_.shape[0]
@@ -782,7 +780,7 @@ if True: # Statistical despcriptors and fraction
         r_means.append(np.mean(r_))
         r_var.append(np.var(r_))
         r_skew.append(skew(r_))
-        r_kur.append(pg.kurtosis(r_))
+        r_kur.append(kurtosis(r_))
 
     #r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
     #                    for _r, _x, _b, _n, _f in StatsRones['amb']])
