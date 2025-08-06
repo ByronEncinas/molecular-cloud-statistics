@@ -22,7 +22,7 @@ if len(sys.argv)>5:
     seed          = int(sys.argv[6])
 else:
     N               = 5_000
-    rloc            = 0.1
+    rloc            = 0.5
     max_cycles      = 200
     case            = 'ideal'
     num_file        = '430'
@@ -560,7 +560,8 @@ def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
             combined = np.concatenate([line[k, :, :].flatten(), line_rev[k_rev, :, :].flatten(), densities[k, :].flatten(), densities_rev[k_rev, :].flatten()]) #x.flatten(), x_rev.flatten(), 
             csv_line = ','.join(map(str, combined))
             f.write(csv_line + '\n')
-            print(max(np.max(np.linalg.norm(x_aux, axis=1)),np.max(np.linalg.norm(x_rev_aux, axis=1))))
+
+            print(max(np.max(np.linalg.norm(line[k, :, :], axis=1)),np.max(np.linalg.norm(line_rev[k_rev, :, :], axis=1))))
 
             #print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
 
@@ -740,7 +741,7 @@ if True:
     
     # Log scales
     ax.set_yscale('log')
-    #ax.set_xscale('log')
+    ax.set_xscale('log')
     
     # Scatter plot with label for legend
     ax.scatter(distance, c_rs, color='dodgerblue', s=2.0, label=r'$\langle N_{\rm LOS} \rangle$')

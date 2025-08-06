@@ -386,11 +386,11 @@ print("No. of directions", directions.shape)
 # starting positions 
 print(max_cycles)
 x_init = uniform_in_3d(max_cycles, rloc, ncrit)
-#null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
-#x_init = np.vstack([x_init, null_vector]) 
+null_vector = np.array([[0.0, 0.0, 0.0]])  # shape (1, 3)
+x_input = np.vstack([x_init, null_vector]) 
 print("No. of starting pos", x_init.shape)
 
-radius_vector, numb_densities, average_column = line_of_sight(x_init, directions, ncrit)
+radius_vector, numb_densities, average_column = line_of_sight(x_input, directions, ncrit)
 
 os.makedirs(new_folder, exist_ok=True)
 h5_path = os.path.join(new_folder, f"DataBundleG.h5")
@@ -427,7 +427,7 @@ print((time.time()-start_time)//60, " Minutes")
 print("No. of averaged columns", average_column.shape)
 print()
 
-distance = np.linalg.norm(x_init, axis=1)*pc_to_cm
+distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 
 import matplotlib.pyplot as plt
 
