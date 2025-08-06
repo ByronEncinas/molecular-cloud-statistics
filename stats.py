@@ -657,7 +657,7 @@ def uniform_in_3d(no, rloc=1.0, ncrit=1.0e+2): # modify
     rho_vector = np.array(deepcopy(valid_vectors))
     return rho_vector
 
-x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=10e+4), np.array([0.0,0.0,0.0])])
+x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=10e+2), np.array([0.0,0.0,0.0])])
 
 # x_input provides with the corresponding values to r_100 and r_10
 #x_input = uniform_in_3d(max_cycles, rloc, ncrit=1.0e+2)
