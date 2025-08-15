@@ -13,23 +13,24 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
+N               = 5_000
+
 if len(sys.argv)>5:
-    N             = int(sys.argv[1])
-    rloc          = float(sys.argv[2])
-    max_cycles    = int(sys.argv[3]) 
-    case          = str(sys.argv[4]) 
-    num_file      = str(sys.argv[5]) 
-    seed          = int(sys.argv[6])
+    rloc          = float(sys.argv[1])
+    max_cycles    = int(sys.argv[2]) 
+    case          = str(sys.argv[3]) 
+    num_file      = str(sys.argv[4]) 
+
 else:
-    N               = 5_000
-    rloc            = 0.5
-    max_cycles      = 200
+    rloc            = 0.2
+    max_cycles      = 700
     case            = 'ideal'
     num_file        = '430'
-    seed            = 12345 
-    sys.argv.append(seed)
+seed            = 12345 
+sys.argv.append(seed)
 
-ncrit = 1.0e+2
+dense_cloud = 1.0e+4
+threshold = 1.0e+1
 print(sys.argv, N)
 
 reduction_factor_at_numb_density = defaultdict()
@@ -106,7 +107,6 @@ print("rloc                : ", rloc)
 print("max_cycles          : ", max_cycles)
 print("Boxsize             : ", Boxsize) # 256
 print("Center              : ", Center) # 256
-print("Posit Max Density   : ", Pos[np.argmax(Density),:]) # 256
 print("Smallest Volume     : ", Volume[np.argmin(Volume)]) # 256
 print("Biggest  Volume     : ", Volume[np.argmax(Volume)]) # 256
 print(f"Smallest Density (N/cm-3)  : {gr_cm3_to_nuclei_cm3*Density[np.argmax(Volume)]}")
@@ -210,7 +210,7 @@ def pocket_finder(bfield, numb, p_r, plot=False):
                 axs.plot(idx, np.max(data), "x", color="black", label="index_global_max")
 
             axs.axhline(np.min(data), linestyle="--", color="gray", label="baseline")
-
+            axs.set_yscale('log')
             axs.set_xlabel("Index")
             axs.set_ylabel(label)
             axs.set_title(f"{label} Shape")
@@ -229,24 +229,20 @@ def pocket_finder(bfield, numb, p_r, plot=False):
 
 def evaluate_reduction(field, numb, follow_index):
 
-    # field and numb are retrieved 
-    if not np.any(numb > 100):
-        print("No densities > 100 cm⁻³ found. Skipping evaluation.")
-        return None, None, None, None
-
     R10      = []
     R100     = []
     Numb100  = []
     B100     = []
 
     _, m = field.shape
+
+    print("_, m = field.shape => ", _, m)
        
     for i in range(m):
 
         #_100 = np.where(numb[:, i] > 1.0e+2)[0]
         #_10  = np.where(numb[:, i] > 1.0e+1)[0]
         # must be k + k_rev + 1 in size
-        print("DEBUG SHAPE CHECK:", numb[:, i].shape) 
                
         # this must contain list of indexes of positions with densities > 10cm-3
         # this should be empty for at least one
@@ -255,7 +251,7 @@ def evaluate_reduction(field, numb, follow_index):
         if mask10.size > 0:
             start, end = mask10[0], mask10[-1]
             #print(mask10)
-            print(start, end)
+            print(i, start, end)
 
             if start <= follow_index <= end:
                 try:
@@ -291,9 +287,6 @@ def evaluate_reduction(field, numb, follow_index):
             n_r = numb10[p_r]
 
             print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-
-        
-        print("shapes: n, b: ", numb10.shape, bfield10.shape)
         
         # 0-2*l => x10-y10 so the new middle is l - x10  
         print("p_r: ", p_r)
@@ -342,7 +335,7 @@ def evaluate_reduction(field, numb, follow_index):
         del closest_values, success, B_l, B_h, R, p_r
         
         # this must be an array 
-        mask100 = np.where(numb[:, i] > 1.0e+2)[0]
+        mask100 = np.where(numb[:, i] > threshold)[0]
         
         if mask100.size > 0:
             # both integers
@@ -384,8 +377,6 @@ def evaluate_reduction(field, numb, follow_index):
             n_r = numb10[p_r]
 
             print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-
-        print("shapes: n, b: ", numb100.shape, bfield100.shape)
         
         # 0-2*l => x10-y10 so the new middle is l - x10  
         print("p_r: ", p_r)
@@ -427,7 +418,128 @@ def evaluate_reduction(field, numb, follow_index):
 
     return R10, R100, Numb100, B100
 
-def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
+def eval_reduction(field, numb, follow_index, threshold):
+
+    R10      = []
+    Numb100  = []
+    B100     = []
+
+    _, m = field.shape
+
+    #print("_, m = field.shape => ", _, m)
+    from collections import Counter
+    flag = False
+       
+    for i in range(m):
+
+        mask10 = np.where(numb[:, i] > threshold)[0]
+
+        if mask10.size > 0:
+            start, end = mask10[0], mask10[-1]
+            #print(mask10)
+            #print(i, start, end)
+
+            if start <= follow_index <= end:
+                try:
+                    numb10   = numb[start:end+1, i]
+                    bfield10 = field[start:end+1, i]
+                    p_r = follow_index - start
+                    B_r = bfield10[p_r]
+                    n_r = numb10[p_r]
+
+                    #print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
+                except IndexError:
+                    raise ValueError(f"\nTrying to slice beyond bounds for column {i}. "
+                                    f"start={start}, end={end}, shape={numb.shape}")
+            else:
+                print(f"\n[Info] follow_index {follow_index} outside threshold interval for column {i}.")
+                if follow_index >= numb.shape[0]:
+                    raise ValueError(f"follow_index {follow_index} is out of bounds for shape {numb.shape}")
+                numb10   = np.array([numb[follow_index, i]])
+                bfield10 = np.array([field[follow_index, i]])
+                p_r = 0
+                B_r = bfield10[p_r]
+                n_r = numb10[p_r]
+
+                #print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
+        else:
+            print(f"\n[Info] No densities > {threshold} cm-3 found for column {i}. Using follow_index fallback.")
+            if follow_index >= numb.shape[0]:
+                raise ValueError(f"\nfollow_index {follow_index} is out of bounds for shape {numb.shape}")
+            numb10   = np.array([numb[follow_index, i]])
+            bfield10 = np.array([field[follow_index, i]])
+            p_r = 0
+            B_r = bfield10[p_r]
+            n_r = numb10[p_r]
+
+            #print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
+        
+        # Flatten and count
+        counter = Counter(bfield10.ravel())  # ravel() flattens the array
+        most_common_value, count = counter.most_common(1)[0]
+
+
+        # 0-2*l => x10-y10 so the new middle is l - x10  
+        #print("p_r: ", p_r)
+        if not (0 <= p_r < bfield10.shape[0]):
+            raise IndexError(f"\np_r={p_r} is out of bounds for bfield10 of length {len(bfield10)}")
+
+        #Min, max, and any zeros in numb: 0.0 710.1029394476656 True
+
+        # pockets with density threshold of 10cm-3
+        pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=flag)
+        index_pocket, field_pocket = pocket[0], pocket[1]
+        flag = False
+
+        p_i = np.searchsorted(index_pocket, p_r)
+
+        if count > 20:
+            # if count > 20 we assume that there is a jump into low resolution in magnetic field
+            # which happens at low densities, so we constrict field lines by this 
+            R = 1.
+            R10.append(R)
+            Numb100.append(n_r)
+            B100.append(B_r)   
+            continue         
+        
+        # are there local maxima around our point? 
+        try:
+            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+            B_l = min([bfield10[closest_values[0]], bfield10[closest_values[1]]])
+            B_h = max([bfield10[closest_values[0]], bfield10[closest_values[1]]])
+            # YES! 
+            success = True  
+        except:
+            # NO :c
+            R = 1.
+            R10.append(R)
+            Numb100.append(n_r)
+            B100.append(B_r)
+            success = False 
+            continue
+
+        if success:
+            # Ok, our point is between local maxima, is inside a pocket?
+            if B_r / B_l < 1:
+                # double YES!
+                R = 1. - np.sqrt(1 - B_r / B_l)
+                R10.append(R)
+                Numb100.append(n_r)
+                B100.append(B_r)
+            else:
+                # NO!
+                R = 1.
+                R10.append(R)
+                Numb100.append(n_r)
+                B100.append(B_r)
+
+        if count > 10:
+            flag = True
+            print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
+
+    return R10, Numb100, B100
+
+def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -561,13 +673,17 @@ def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
             csv_line = ','.join(map(str, combined))
             f.write(csv_line + '\n')
 
-            print(max(np.max(np.linalg.norm(line[k, :, :], axis=1)),np.max(np.linalg.norm(line_rev[k_rev, :, :], axis=1))))
+            #print(max(np.max(np.linalg.norm(line[k, :, :], axis=1)),np.max(np.linalg.norm(line_rev[k_rev, :, :], axis=1))))
 
-            #print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
+            print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
 
         
             if (np.sum(mask2) == 0) and (np.sum(mask2_rev) == 0):
                 print("There are no more points meeting the condition (e.g., density > 10cm-3).")
+                break
+            
+            if k+1 > N or k_rev +1>N:
+                print("Index is above allocated memory slot")
                 break
 
     print("counters (rev, fwd): ", k, k_rev)
@@ -609,7 +725,126 @@ def get_along_lines(x_init=np.array([0,0,0]),ncrit=ncrit):
 
     return radius_vector, magnetic_fields, numb_densities, nz_irev #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
 
-def uniform_in_3d(no, rloc=1.0, ncrit=1.0e+2): # modify
+def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold):
+    """
+    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
+    This way, all data is part of a comparison between 10 and 100 
+    """
+    directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
+    dx = 0.5
+
+    """
+    Here you need to 
+    directions = its repeated version 'm' times
+    directions = np.tile(directions, m)
+    x_init     = figure out how to repeat according to the example
+    """
+    m0 = x_init.shape[0]
+    l0 = directions.shape[0]
+    print(m0, l0)
+    directions = np.tile(directions, (m0, 1))
+    x_init = np.repeat(x_init, l0, axis=0)
+    m = x_init.shape[0]
+    l = directions.shape[0]
+    print(m, l)
+    """
+    Now, a new feature that might speed the while loop, can be to double the size of all arrays
+    and start calculating backwards and forwards simultaneously. This creates a more difficult condition
+    for the 'mask', nevertheless, for a large array 'x_init' it may not be as different and it will definitely scale efficiently in parallel
+    """
+
+    line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
+    line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
+    densities = np.zeros((N+1,m))
+    densities_rev = np.zeros((N+1,m))
+    threshold = np.zeros((m,))
+    threshold_rev = np.zeros((m,))
+    line[0,:,:]     = x_init
+    line_rev[0,:,:] = x_init 
+    x = x_init.copy()
+    dummy, _0, densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
+    vol = Volume[cells]
+    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
+    k=0
+    x_rev = x_init.copy()
+    dummy_rev, _00, densities_rev[0,:], cells_rev = dummy, _0, densities[0,:], cells
+    vol_rev = Volume[cells_rev]
+    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    k_rev=0
+    mask  = dens > n_crit# 1 if not finished
+    un_masked = np.logical_not(mask) # 1 if finished
+    mask_rev = dens_rev > n_crit
+    un_masked_rev = np.logical_not(mask_rev)
+    
+    while np.any(mask) or np.any(mask_rev): # 0 or 0 == 0 
+
+        mask = dens > n_crit                # True if continue
+        un_masked = np.logical_not(mask) # True if concluded
+        mask_rev = dens_rev > n_crit               # True if continue
+        un_masked_rev = np.logical_not(mask_rev) # True if concluded
+
+        print(k, dens[:2], dens_rev[:2])
+        
+        _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+
+        #_, bfield, dens, vol, ke, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        
+        #pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
+        dens *= gr_cm3_to_nuclei_cm3
+        
+        vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
+
+        dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        x += dx_vec[:, np.newaxis] * directions
+
+        line[k+1,:,:]    = x
+        densities[k+1,:] = dens
+
+        #_, bfield_rev, dens_rev, vol_rev, ke_rev, pressure_rev = Heun_step(x_rev, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        _, bfield_rev, dens_rev, vol_rev = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+        #pressure_rev *= mass_unit / (length_unit * (time_unit ** 2)) 
+        dens_rev *= gr_cm3_to_nuclei_cm3
+        
+        vol_rev[un_masked_rev] = 0 # unifinished lines will have cero volume for their corresponding cell
+
+        dx_vec = ((4 / 3) * vol_rev / np.pi) ** (1 / 3)  # Increment step size
+
+        threshold_rev += mask_rev.astype(int)  # Increment threshold count only for values still above 100
+
+        x_rev -= dx_vec[:, np.newaxis] * directions
+
+        line_rev[k+1,:,:]    = x_rev
+        densities_rev[k+1,:] = dens_rev
+
+        k_rev += 1
+        k += 1
+    
+    threshold = threshold.astype(int)
+    threshold_rev = threshold_rev.astype(int)
+
+    max_th     = np.max(threshold) + 1
+    max_th_rev = np.max(threshold_rev) + 1 
+
+    radius_vector = np.append(line_rev[:max_th_rev,:,:][::-1, :, :], line[1:max_th,:,:], axis=0)*pc_to_cm
+    numb_densities = np.append(densities_rev[:max_th_rev,:][::-1, :], densities[1:max_th,:], axis=0)
+    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) # list of 'm' column densities
+    
+    print(column_densities.shape, l0, m0)
+
+    average_columns = np.zeros(m0)
+    i = 0
+    for x in range(0, l0*m0, l0): # l0 corresponds with how many directions we have
+        average_columns[i] = np.mean(column_densities[x:x+l0])
+        print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
+        i += 1
+    return radius_vector, numb_densities, average_columns
+
+def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     def xyz_gen(size):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
         U2 = np.random.uniform(low=0.0, high=1.0, size=size)
@@ -657,109 +892,145 @@ def uniform_in_3d(no, rloc=1.0, ncrit=1.0e+2): # modify
     rho_vector = np.array(deepcopy(valid_vectors))
     return rho_vector
 
-x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=10e+2), np.array([0.0,0.0,0.0])])
+x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
 
-# x_input provides with the corresponding values to r_100 and r_10
-#x_input = uniform_in_3d(max_cycles, rloc, ncrit=1.0e+2)
-
-radius_vector, magnetic_fields, numb_densities, follow_index = get_along_lines(x_input, ncrit)
+radius_vector, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
-if np.any(numb_densities > 1.0e2):
-    r_10, r_100, n_rs, B_rs = evaluate_reduction(magnetic_fields, numb_densities, follow_index)
+if np.any(numb_densities > threshold):
+    r_u, n_rs, B_rs = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
+    r_l, _, _ = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold/10)
     print("DEBUG numb_densities type:", type(numb_densities))
 else:
-    print("Skipping evaluate_reduction: no densities above 100 cm⁻³")
+    print("Skipping evaluate_reduction: no densities above 300 cm⁻³")
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
+print("R_upper  = ", len(r_u))
+print("R_lower = ", len(r_l))
+print("B(r) = ", len(B_rs))
+print("n(r) = ", len(n_rs))
+
+distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 # cr path column densities
-c_rs   = np.cumsum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) 
+c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) *pc_to_cm
 
-print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
+print(distance.shape, c_rs.shape)
+# directions
+directions = fibonacci_sphere(20)
+print("No. of directions", directions.shape)
+print("No. of starting pos", x_input.shape)
 
-print("R10  = ", r_10)
-print("R100 = ", r_100)
-print("B(r) = ", B_rs)
-print("n(r) = ", n_rs)
-
-os.makedirs(children_folder, exist_ok=True)
-h5_path = os.path.join(children_folder, f"DataBundle{seed}.h5")
-
-m = magnetic_fields.shape[1]
-# === Writing to HDF5 with metadata ===
-with h5py.File(h5_path, "w") as f:
-    # Datasets
-    #f.create_dataset("positions", data=radius_vector)
-    #f.create_dataset("densities", data=numb_densities)
-    #f.create_dataset("magnetic_fields", data=magnetic_fields)
-    f.create_dataset("starting_point", data=x_input)
-    f.create_dataset("number_densities", data=n_rs)
-    f.create_dataset("magnetic_fields", data=B_rs)
-    f.create_dataset("column_densities", data=c_rs)
-    f.create_dataset("reduction_factor", data=np.array([r_10, r_100]))
-
-    # === Metadata attributes ===
-    #f.attrs["seed"] = seed
-    f.attrs["cores_used"] = os.cpu_count()
-    f.attrs["pre_allocation_number"] = 2 * N
-    f.attrs["rloc"] = rloc
-    f.attrs["max_cycles"] = m
-    f.attrs["center"] = Center
-    f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
-    f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
-    
-    try:
-        pass
-        os.remove(tmp_file)
-    except:
-        print(f"Temp file not found tmp.csv")
-        raise FileNotFoundError
-
-print(f"{h5_path.split('/')[-1]} Created Successfully")
+radius_vector, numb_densities, average_column = line_of_sight(x_input, directions, threshold)
 
 # free space
-del Mass, Volume, Density_grad, Density
+del Mass, Density_grad
 del Bfield, Bfield_grad, Pos, VoronoiPos
 del data
 
+print((time.time()-start_time)//60, " Minutes")
+
+print("No. of averaged columns", average_column.shape)
+print()
+
 distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
+order = np.argsort(distance)
+
+N_path = c_rs[order][1:]
+N_los = average_column[order][1:]
+s = distance[order][1:]
+
+if True:
+    fig, ax = plt.subplots()
+    
+    # Axis labels
+    ax.set_xlabel(r'''Distance $r$ (cm)''')
+    
+    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=12)
+    
+    # Log scales
+    ax.set_yscale('log')
+    #ax.set_xscale('log')
+    
+    # Scatter plot with label for legend
+    ax.scatter(0.0, average_column[order][0], marker='x',color="#8E2BAF", s=8)
+    ax.scatter(0.0, c_rs[order][0], marker ='x',color="#148A02", s=8)
+    ax.scatter(s, N_los, marker='o',color="#8E2BAF", s=5, label=r'$\langle N_{\rm LOS} \rangle$')
+    ax.scatter(s, N_path, marker ='v',color="#148A02", s=5, label=r'$\langle N_{\rm PATH} \rangle$')
+    
+    # Fit for N_LOS
+    log_y = np.log10(N_los)
+    m1, b1 = np.polyfit(s, log_y, 1)
+    fit1 = 10**(m1 * s + b1)
+
+    # Fit for N_PATH
+    log_y2 = np.log10(N_path)
+    m2, b2 = np.polyfit(s, log_y2, 1)
+    fit2 = 10**(m2 * s+ b2)
+
+    # Plot fits
+    ax.plot(s, fit1, '--', color="#8E2BAF", linewidth=1)
+    ax.plot(s, fit2, '--', color="#148A02", linewidth=1)
+
+    # Ticks and grid
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    
+    # Title and legend
+    plt.title(r"$N \propto r$", fontsize=13)
+    ax.legend()
+    
+    # Layout and save
+    fig.tight_layout()
+    plt.savefig('./column_compar.png')
+    plt.close()
+
+log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs[order])
+log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column[order])
 
 if True:
     fig, ax = plt.subplots()
     
     # Axis labels
     ax.set_xlabel(r'''Distance $r$ (cm)
-                
-    Column density along line of sight as a function of distance 
-    away from core
-            $N_{PATH} = \int_0^s n_g(s')ds'$   
-            ''')
+        saturated and unsaturated colors represent model H and L respectively.
+                  ''')
     
-    ax.set_ylabel(r'$N_{\rm LOS}$ (cm$^{-2}$)', fontsize=12)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=12)
     
     # Log scales
-    ax.set_yscale('log')
-    ax.set_xscale('log')
+    #ax.set_yscale('log')
+    #ax.set_xscale('log')
+    ax.set_ylim([-19, -15])
     
     # Scatter plot with label for legend
-    ax.scatter(distance, c_rs, color='dodgerblue', s=2.0, label=r'$\langle N_{\rm LOS} \rangle$')
-    
+    #ax.scatter(0.0, log_ionization_path_l[0], marker='x',color="#8E2BAF", s=8 , alpha = 0.5)
+    #ax.scatter(0.0, log_ionization_path_h[0], marker='x',color="#8E2BAF", s=8)
+    #ax.scatter(0.0, log_ionization_los_l, marker='x',color="#148A02", s=8, alpha = 0.5)
+    #ax.scatter(0.0, log_ionization_los_h(average_column[order][0]), marker='x',color="#148A02", s=8)
+
+    ax.scatter(distance, log_ionization_los_l, marker='o',color="#CB71EA", s=5, alpha = 0.5)
+    ax.scatter(distance, log_ionization_path_l, marker ='v',color="#60D24F", s=5, alpha = 0.5)
+
+    ax.scatter(distance, log_ionization_los_h, marker='o',color="#8E2BAF", s=5, label=r'$\zeta((N_{\rm LOS})$')
+    ax.scatter(distance, log_ionization_path_h, marker ='v',color="#148A02", s=5, label=r'$\zeta(N_{\rm PATH})$')
+
     # Ticks and grid
     ax.tick_params(axis='both')
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     
     # Title and legend
-    plt.title(r"$N_{\rm LOS} \propto r$", fontsize=13)
+    plt.title(rf"$N \propto r$ ({case + num_file})", fontsize=13)
     ax.legend()
     
     # Layout and save
     fig.tight_layout()
-    plt.savefig('./avg_column_path.png')
+    plt.savefig('./zeta_compar.png')
     plt.close()
 
-if True:
+
+if False:
     try:
             
         from matplotlib import cm
@@ -806,3 +1077,43 @@ if True:
 
     except:
         print("Couldnt print B field structure")
+
+os.makedirs(children_folder, exist_ok=True)
+h5_path = os.path.join(children_folder, f"DataBundle.h5")
+
+m = magnetic_fields.shape[1]
+
+print(len(r_u), len(r_l))
+# === Writing to HDF5 with metadata ===
+with h5py.File(h5_path, "w") as f:
+    # Datasets
+    #f.create_dataset("positions", data=radius_vector)
+    #f.create_dataset("densities", data=numb_densities)
+    #f.create_dataset("magnetic_fields", data=magnetic_fields)
+    f.create_dataset("starting_point", data=x_input)
+    f.create_dataset("number_densities", data=n_rs)
+    f.create_dataset("magnetic_fields", data=B_rs)
+    f.create_dataset("column_path", data=c_rs)
+    f.create_dataset("reduction_factor", data=np.array([r_u, r_l]))
+    f.create_dataset("directions", data=directions)
+    f.create_dataset("column_los", data=average_column)
+
+
+    # === Metadata attributes ===
+    #f.attrs["seed"] = seed
+    f.attrs["cores_used"] = os.cpu_count()
+    f.attrs["pre_allocation_number"] = 2 * N
+    f.attrs["rloc"] = rloc
+    f.attrs["max_cycles"] = m
+    f.attrs["center"] = Center
+    f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
+    f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
+    
+    try:
+        pass
+        os.remove(tmp_file)
+    except:
+        print(f"Temp file not found tmp.csv")
+        raise FileNotFoundError
+
+print(f"{h5_path.split('/')[-1]} Created Successfully")
