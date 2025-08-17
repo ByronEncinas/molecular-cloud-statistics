@@ -39,6 +39,11 @@ gauss_code_to_gauss_cgs = (1.99e+33/(3.086e+18*100_000.0))**(-1/2)
 mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 
+""" Ionization Rate Parameters"""
+
+def ionization():
+    
+    pass
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
@@ -100,11 +105,7 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdi
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2, (3, 1)).T
 
     x_final = x + 0.5 * scaled_dx[:, np.newaxis] * (local_fields_1 + local_fields_2)
-    if dx > 0:
-        #print("abs_local_fields_1", abs_local_fields_1)
-        #print("local_fields_1", local_fields_1)
-        #print("position and differential ", x, scaled_dx)
-        pass
+
     return x_final, abs_local_fields_1, local_densities, CellVol
 
 def list_files(directory, ext):
@@ -115,6 +116,41 @@ def list_files(directory, ext):
     files = [directory + f for f in all_files if f.endswith(f'{ext}')]
     return files
 
+""" Ionization rate modules """
+
+def ionization_rate_fit(Neff):
+    """  
+    \mathcal{L} & \mathcal{H} Model: Protons
+
+    """
+    model_H = [1.001098610761e7, -4.231294690194e6,  7.921914432011e5,
+            -8.623677095423e4,  6.015889127529e3, -2.789238383353e2,
+            8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3,
+            -9.937499546711e-6
+    ]
+
+
+    model_L = [-3.331056497233e+6,  1.207744586503e+6,-1.913914106234e+5,
+                1.731822350618e+4, -9.790557206178e+2, 3.543830893824e+1, 
+            -8.034869454520e-1,  1.048808593086e-2,-6.188760100997e-5, 
+                3.122820990797e-8]
+
+    logzl = []
+    for i,Ni in enumerate(Neff):
+        lzl = sum( [cj*(np.log10(Ni))**j for j, cj in enumerate(model_L)] )
+        logzl.append(lzl)
+
+    logzh = []
+
+    for i,Ni in enumerate(Neff):
+        lzh = sum( [cj*(np.log10(Ni))**j for j, cj in enumerate(model_H)] )
+        logzh.append(lzh)
+
+    from scipy import interpolate
+
+    log_L = interpolate.interp1d(Neff, logzl)
+    log_H = interpolate.interp1d(Neff, logzh)
+    return log_L(Neff), log_H(Neff)
 
 """ Process Lines from File into Lists """
 

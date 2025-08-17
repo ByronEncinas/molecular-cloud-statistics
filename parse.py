@@ -894,7 +894,7 @@ if True:
     xlim = min(x), max(x)
     ylim = 0.0, 1.0
 
-    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, figsize=(9, 4))
+    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True)
 
     hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
     ax0.set(xlim=xlim, ylim=ylim)

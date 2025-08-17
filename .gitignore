@@ -2,16 +2,11 @@
 arepo_*/
 
 # Ignore specific directories
-field_shapes/
-pytests/
-cluster_outputs/
-discontinuities/
-density_profiles/
-jsonfiles/
-output
+*los/
+*stats/
+*pytests/
 
 # Ignore all directories or files with these patterns
-*/
 random*
 *generated
 __*
@@ -22,8 +17,4 @@ __*
 .ipynb*
 
 # Ignore specific files
-colors.py
-rs_output
-histograms
-multiprocessing_test.py
 localvenv

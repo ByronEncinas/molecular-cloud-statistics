@@ -15,14 +15,14 @@ IntType = np.int32
 
 N               = 5_000
 
-if len(sys.argv)>5:
+if len(sys.argv)>4:
     rloc          = float(sys.argv[1])
     max_cycles    = int(sys.argv[2]) 
     case          = str(sys.argv[3]) 
     num_file      = str(sys.argv[4]) 
 
 else:
-    rloc            = 0.2
+    rloc            = 0.1
     max_cycles      = 700
     case            = 'ideal'
     num_file        = '430'
@@ -894,6 +894,13 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
 
 x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
 
+# directions
+directions = fibonacci_sphere(20)
+print("No. of directions", directions.shape)
+print("No. of starting pos", x_input.shape)
+
+radius_vector, numb_densities, average_column = line_of_sight(x_input, directions, threshold)
+
 radius_vector, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
@@ -917,12 +924,6 @@ distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) *pc_to_cm
 
 print(distance.shape, c_rs.shape)
-# directions
-directions = fibonacci_sphere(20)
-print("No. of directions", directions.shape)
-print("No. of starting pos", x_input.shape)
-
-radius_vector, numb_densities, average_column = line_of_sight(x_input, directions, threshold)
 
 # free space
 del Mass, Density_grad
@@ -1097,7 +1098,9 @@ with h5py.File(h5_path, "w") as f:
     f.create_dataset("reduction_factor", data=np.array([r_u, r_l]))
     f.create_dataset("directions", data=directions)
     f.create_dataset("column_los", data=average_column)
-
+    f.create_dataset("bfields", data=magnetic_fields)
+    f.create_dataset("vectors", data=radius_vector)
+    f.create_dataset("densities", data=numb_densities)
 
     # === Metadata attributes ===
     #f.attrs["seed"] = seed

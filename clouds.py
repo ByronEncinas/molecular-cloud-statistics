@@ -15,7 +15,7 @@ try:
 	how_many   = int(sys.argv[2])
 except:
     input_snap = '430'
-    how_many   = 10
+    how_many   = 5
 
 file_list = [sorted(glob.glob('arepo_data/ideal_mhd/*.hdf5')), sorted(glob.glob('arepo_data/ambipolar_diffusion/*.hdf5'))]
 
@@ -93,7 +93,14 @@ for list in file_list:
                     radius=(region_radius*0.5, "pc"),  # Radius of the sphere (in physical units, e.g., pc)
                     circle_args={"color": "black", "linewidth": 2}  # Styling for the sphere
                 )
-            
+
+            sp.annotate_text(
+                [CloudCord[0], CloudCord[1], CloudCord[2]],  # Slightly offset to avoid overlap
+                text=f"{each}",  # Your custom label
+                coord_system="data",  # Use data coordinates
+                text_args={"color": "black", "fontsize": 12}
+            )
+
             sp.annotate_timestamp(redshift=False)
 
             sp.save(os.path.join(parent_folder, f"{typpe}_{snap}_{each}.png"))
