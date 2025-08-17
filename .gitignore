@@ -4,7 +4,7 @@ arepo_*/
 # Ignore specific directories
 *los/
 *stats/
-*pytests/
+*pytests/*
 
 # Ignore all directories or files with these patterns
 random*
@@ -17,4 +17,4 @@ __*
 .ipynb*
 
 # Ignore specific files
-localvenv
+*localvenv
