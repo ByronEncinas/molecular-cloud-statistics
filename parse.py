@@ -794,7 +794,7 @@ if True: # Statistical despcriptors and fraction
         ['fraction',  'fraction'],  # Span the full row
     ]
 
-    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 12), sharex=True)
 
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 

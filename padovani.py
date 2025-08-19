@@ -14,9 +14,6 @@ size = 1000
 Ei = 1.0e+0
 Ef = 1.0e+15
 
-N0 = 10e+19
-Nf = 10e+27
-
 n0 = 150 #cm−3 and 
 k  = 0.5 # –0.7
 
@@ -30,7 +27,7 @@ epsilon = 35.14620437477293
 Lstar = 1.4e-14
 
 # Flux constant (eV^-1 cm^-2 s^-1 sr^-1) C*(10e+6)**(0.1)/(Enot+6**2.8)
-Jstar = 2.43e+15*(10e+6)**(0.1)/(500e+6**2.8) # Proton in Low Regime (A. Ivlev 2015) https://iopscience.iop.org/article/10.1088/0004-637X/812/2/135
+Jstar = 2.43e+15*(10e+6)**(0.1)/(500e+6**2.8) # Proton in Low Regime (M. Padovani & A. Ivlev 2015) https://iopscience.iop.org/article/10.1088/0004-637X/812/2/135
 
 # Flux constant (eV^-1 cm^-2 s^-1)
 C = 2.43e+15*4*np.pi
@@ -100,7 +97,7 @@ if True: # Padovani & Alexei Models for CR Ionization-rate
     plt.close()
 
 if True:
-    line = int(sys.argv[-1])
+    line, mus = int(sys.argv[1]), int(sys.argv[2])
 
     import h5py
     import numpy as np
@@ -148,20 +145,20 @@ if True:
     print("magnetic_field:       ", magnetic_field.shape)
 
     am = np.argmax(magnetic_field)
-    numb_density    = numb_density[:am]
-    magnetic_field =  magnetic_field[:am]
-    radius_vector  =  radius_vector[:am, :]
+    #numb_density    = numb_density[:am]
+    #magnetic_field = magnetic_field[:am]
+    #radius_vector  =  radius_vector[:am, :]
     trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1))
-
+    #magnetic_field =  np.mean(magnetic_field)*magnetic_field/magnetic_field
     fig, axs = plt.subplot_mosaic([["a"], ["b"], ["c"]], figsize=(10, 8), layout="constrained")
     axs["a"].plot(trajectory, c="b"); axs["a"].set_title("Trajectory"); axs["a"].set_ylabel("Trajectory")
-    axs["b"].plot(numb_density, c="g"); axs["b"].set_title("Number Density"); axs["b"].set_ylabel("n (cm$^{-3}$)")
-    axs["c"].plot(magnetic_field, c="r"); axs["c"].set_title("Magnetic Field"); axs["c"].set_ylabel("B (μG)"); axs["c"].set_xlabel("Index")
+    axs["b"].plot(numb_density, c="g"); axs["b"].set_yscale("log"); axs["b"].set_title("Number Density"); axs["b"].set_ylabel("n (cm$^{-3}$)")
+    axs["c"].plot(magnetic_field, c="r"); axs["c"].set_yscale("log"); axs["c"].set_title("Magnetic Field"); axs["c"].set_ylabel("B (μG)"); axs["c"].set_xlabel("Index")
     plt.savefig("./images/i_rate/mosaic_plot.png"); plt.close()
     
 """ Column Densities N_+(mu, s) & N_-(mu, s)"""
 
-mu_ism = np.logspace(-1, 0, num=50) #np.array([1.0])#
+mu_ism = np.linspace(0, 1, mus) #np.logspace(-10, 0, num=50) #
 
 def column_density(radius_vector, magnetic_field, numb_density, direction=''):
     trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1)) #np.insert(, 0, 0.0)
@@ -180,10 +177,10 @@ def column_density(radius_vector, magnetic_field, numb_density, direction=''):
             Bsprime = magnetic_field[j]
             mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
             
-            if (mu_local2 <= 0):
+            if (mu_local2 <= 1/100):
                 break
             mu_local[j,i] = np.sqrt(mu_local2)
-            dmu[j,i] = (mui_ism/mu_local[j,i])*(Bsprime/B_ism)*dmui[i]
+            dmu[j,i] = dmui[i]*(mui_ism/mu_local[j,i])*(Bsprime/B_ism)
             Nmu[j, i] = Nmu[j - 1, i] + n_g * ds[j] / mu_local[j, i] if j > 0 else n_g * ds[j] / mu_local[j, i]
     fig, ax = plt.subplots()
 
@@ -282,8 +279,10 @@ def mirrored_column_density(radius_vector, magnetic_field, numb_density, Nmu, di
 
     for i, mu in enumerate(mu_ism):
         plt.plot(Nmir[:, i], label=fr'$\mu_{{\mathrm{{ISM}}}}={mu:.2f}$')
-    
-    plt.title("Column density $N_{mirr}^+(s)$")
+    if direction == 'fwd':
+        plt.title("Column density $N_{mirr}^+(s)$")
+    if direction == 'bwd':
+        plt.title("Column density $N_{mirr}^-(s)$")
     plt.xlabel("Steps")
     plt.yscale('log')
     plt.tight_layout()
@@ -324,8 +323,10 @@ def ionization_rate(Nmu, mu_local, dmu, direction = ''):
             #zeta_mui[j, l] = np.sum(spectra*sigma_ion*diff_energy)
 
     zeta = np.sum(dmu * zeta_mui, axis = 1)
-
-    plt.plot(zeta_mui, label=f'$\zeta_-(s) $', alpha = 0.5)
+    if 'fwd' in direction:
+        plt.plot(zeta_mui, label=f'$\zeta_+(s) $', alpha = 0.5)
+    if 'bwd' in direction:
+        plt.plot(zeta_mui, label=f'$\zeta_-(s) $', alpha = 0.5)
     plt.title(r"$\zeta(N, \mu)$", fontsize=12)
     plt.yscale('log')
     plt.tight_layout()
@@ -340,11 +341,12 @@ def ionization_rate(Nmu, mu_local, dmu, direction = ''):
 zeta_mir_fwd,  zeta_mui_mir_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd[:max_arg,:], dmu_fwd[:max_arg,:], 'mir_fwd')
 zeta_mir_bwd, zeta_mui_mir_bwd = ionization_rate(Nmir_bwd, mu_local_bwd[max_arg+1:,:], dmu_bwd[max_arg+1:,:], 'mir_bwd')
 
-fig, ax = plt.subplots()
 Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
 zeta = np.concatenate((zeta_mir_fwd, zeta_mir_bwd[::-1]), axis=0)
 
-ax.scatter(Nmir, zeta, s=1, marker='x',color="red",label=fr"$\zeta$")
+fig, ax = plt.subplots()
+
+ax.scatter(Nmir, zeta, s=8, marker='|',color="red",label=fr"$\zeta$")
 #ax.plot(Nmir,label=fr"$\zeta$")
 ax.plot(Neff, 10**log_H(Neff), label = 'Model H')
 ax.plot(Neff, 10**log_L(Neff), label = 'Model L')

@@ -22,15 +22,16 @@ if len(sys.argv)>4:
     num_file      = str(sys.argv[4]) 
 
 else:
-    rloc            = 0.1
+    rloc            = 0.
     max_cycles      = 700
     case            = 'ideal'
     num_file        = '430'
-seed            = 12345 
+
+seed = 12345 
 sys.argv.append(seed)
 
-dense_cloud = 1.0e+4
-threshold = 1.0e+1
+dense_cloud = 1.0e+2
+threshold = 1.0e+2
 print(sys.argv, N)
 
 reduction_factor_at_numb_density = defaultdict()
@@ -222,7 +223,7 @@ def pocket_finder(bfield, numb, p_r, plot=False):
         plot_field(axs_bfield, bfield, "Magnetic Field")
 
         plt.tight_layout()
-        plt.savefig('./mosaic.png')
+        plt.savefig('./images/columns/mosaic.png')
         plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
@@ -535,6 +536,7 @@ def eval_reduction(field, numb, follow_index, threshold):
 
         if count > 10:
             flag = True
+            R10[-1] = 1.0
             print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
 
     return R10, Numb100, B100
@@ -861,7 +863,7 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
             plt.xlabel("$r$ (pc)")
             plt.grid()
             plt.tight_layout()
-            plt.savefig('./images/pdf_r.png')
+            plt.savefig('./images/columns/pdf_r.png')
             plt.close()
 
             plt.hist(theta, bins=bins, color = 'skyblue', density =True)
@@ -870,7 +872,7 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
             plt.xlabel('$\\theta$ (rad)')
             plt.grid()
             plt.tight_layout()
-            plt.savefig('./images/pdf_theta.png')
+            plt.savefig('./images/columns/pdf_theta.png')
             plt.close()
         return np.array([[a,b,c] for a,b,c in zip(x,y,z)])
 
@@ -892,8 +894,8 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     rho_vector = np.array(deepcopy(valid_vectors))
     return rho_vector
 
-x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
-
+#x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
+x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
 # directions
 directions = fibonacci_sphere(20)
 print("No. of directions", directions.shape)
@@ -984,7 +986,7 @@ if True:
     
     # Layout and save
     fig.tight_layout()
-    plt.savefig('./column_compar.png')
+    plt.savefig('./images/columns/column_compar.png')
     plt.close()
 
 log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs[order])
@@ -1027,9 +1029,86 @@ if True:
     
     # Layout and save
     fig.tight_layout()
-    plt.savefig('./zeta_compar.png')
+    plt.savefig('./images/columns/zeta_compar.png')
     plt.close()
 
+def reduction_density(reduction_data, density_data, bound = ''):
+
+    reduction_data = np.array(reduction_data)
+    density_data = np.array(density_data)
+    def stats(n):
+        sample_r = []
+        for i in range(0, len(density_data)):
+            if np.abs(np.log10(density_data[i]/n)) < 1/8:
+                sample_r.append(reduction_data[i])
+        sample_r.sort()
+        if len(sample_r) == 0:
+            return [np.nan, np.nan, np.nan]
+
+        mean   = np.mean(sample_r)
+        median = np.quantile(sample_r, .5)
+        ten    = np.quantile(sample_r, .1)
+        return [mean, median, ten]
+        
+    mask = reduction_data != 1
+    reduction_data = reduction_data[mask]
+    density_data = density_data[mask]
+    fraction = (mask.shape[0] - np.sum(mask)) / mask.shape[0] # {R = 1}/{R}
+    Npoints = len(reduction_data)
+    n_min, n_max = np.log10(np.min(density_data)), np.log10(np.max(density_data))
+    x_n = np.logspace(n_min, n_max, Npoints)
+    mean_vec = np.zeros(Npoints)
+    median_vec = np.zeros(Npoints)
+    ten_vec = np.zeros(Npoints)
+    for i in range(0, Npoints):
+        s = stats(x_n[i])
+        mean_vec[i] = s[0]
+        median_vec[i] = s[1]
+        ten_vec[i] = s[2]
+
+                
+    rdcut = []
+    for i in range(0,Npoints):
+        if density_data[i] > n_min:
+            rdcut = rdcut + [reduction_data[i]]
+
+
+    fig = plt.figure(figsize = (12, 6))
+    ax1 = fig.add_subplot(121)
+    ax1.hist(rdcut, round(np.sqrt(Npoints)))
+    ax1.set_xlabel('Reduction factor', fontsize = 20)
+    ax1.set_ylabel('number', fontsize = 20)
+    ax1.set_title(f't = {time_value}', fontsize = 20)
+    plt.setp(ax1.get_xticklabels(), fontsize = 16)
+    plt.setp(ax1.get_yticklabels(), fontsize = 16)
+    ax2 = fig.add_subplot(122)
+    l1, = ax2.plot(x_n, mean_vec)
+    l2, = ax2.plot(x_n, median_vec)
+    l3, = ax2.plot(x_n, ten_vec)
+    try:
+        ax2.scatter(density_data, reduction_data, alpha = 0.5, color = 'grey')
+    except:
+        pass
+    plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
+    plt.xscale('log')
+    plt.ylim(0.25, 1.05)
+    ax2.set_ylabel('Reduction factor', fontsize = 20)
+    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
+    ax2.set_title(f'f(R=1) = {fraction}', fontsize = 20)
+    plt.setp(ax2.get_xticklabels(), fontsize = 16)
+    plt.setp(ax2.get_yticklabels(), fontsize = 16)
+    fig.subplots_adjust(left = .1)
+    fig.subplots_adjust(bottom = .15)
+    fig.subplots_adjust(top = .98)
+    fig.subplots_adjust(right = .98)
+    fig.tight_layout()
+
+    #plt.savefig('histograms/pocket_statistics_ks.pdf')
+    plt.savefig(f'./images/reduction/pocket_stats{bound}.png')
+
+reduction_density(r_l, n_rs, 'l')
+
+reduction_density(r_u, n_rs, 'u')
 
 if False:
     try:
@@ -1075,6 +1154,7 @@ if False:
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
         plt.savefig(os.path.join(children_folder,f"FieldTopology{seed}.png"), bbox_inches='tight')
+        #plt.savefig(os.path.join(children_folder,f"FieldTopology{seed}.png"), bbox_inches='tight')
 
     except:
         print("Couldnt print B field structure")

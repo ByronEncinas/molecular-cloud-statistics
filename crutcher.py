@@ -263,7 +263,7 @@ if True:
     x = 10**xp
     #ax.plot(n1, b1, color='red')
     #ax.plot(n2, b2, color='red')
-    ax.plot(x,y, color='orange', label='Sim Exp Fit')
+    #ax.plot(x,y, color='orange', label='Sim Exp Fit')
     ax.plot(n_H, B, color='red', label='Crutcher et al, 2012')
     ax.scatter(numb_densities, magnetic_fields, color='dodgerblue', s = 0.5)
     ax.tick_params(axis='y')
