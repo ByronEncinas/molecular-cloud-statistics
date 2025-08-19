@@ -4,7 +4,6 @@ arepo_*/
 # Ignore specific directories
 *los/
 *stats/
-*pytests/*
 
 # Ignore all directories or files with these patterns
 random*
