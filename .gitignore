@@ -10,7 +10,7 @@ arepo_*/
 random*
 *generated
 __*
-*.png
+./*.png
 *.gif
 *json
 *.out
