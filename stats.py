@@ -22,7 +22,7 @@ if len(sys.argv)>4:
     num_file      = str(sys.argv[4]) 
 
 else:
-    rloc            = 0.
+    rloc            = 0.1
     max_cycles      = 700
     case            = 'ideal'
     num_file        = '430'
