@@ -11,10 +11,11 @@ reduction_data = json.load(reduction)
 density_data = json.load(density)
 log_density_data = np.log10(density_data)
 
+
 def stats(n):
     sample_r = []
     for i in range(0, len(density_data)):
-        if np.abs(np.log10(density_data[i]/n)) < 1:
+        if np.abs(np.log10(density_data[i]/n)) < 1/8:
             sample_r.append(reduction_data[i])
     sample_r.sort()
     mean = sum(sample_r)/len(sample_r)

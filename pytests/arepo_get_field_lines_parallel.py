@@ -391,3 +391,122 @@ for i, pack_dist_field_dens in enumerate(results):
         # Show the plot
         #plt.show()
         plt.close(fig)
+
+"""
+
+            if k_rev + 1 >= N:
+                if np.all(un_masked2_rev):
+                    print("All values are False: means all density < 10^2")
+                    break
+                if repeat_rev == True:
+                    x_init_not_finished = x_init[un_masked_rev] # keep un-finished lines
+                    x_init              = x_init[mask_rev] # keep finished lines
+                    line_rev_not_finished = line[:,un_masked_rev,:]
+                    volumes_rev_not_finished = volumes[:,un_masked_rev]
+                    bfields_rev_not_finished = bfields[:,un_masked_rev]
+                    densities_rev_not_finished = densities[:,un_masked_rev]
+
+                    line_rev = line_rev[:,mask_rev,:]
+                    volumes_rev = volumes_rev[:,mask_rev]
+                    bfields_rev = bfields_rev[:,mask_rev]
+                    densities_rev = densities_rev[:,mask_rev]
+                    break
+                auxlines = line_rev
+                auxvolumes = volumes_rev
+                auxbfields = bfields_rev
+                auxdensities = densities_rev
+
+                N_old = N+1
+                N *= 2
+
+                line_rev      = np.zeros((N, m, 3))
+                bfields_rev   = np.zeros((N, m))
+                densities_rev = np.zeros((N, m))
+                volumes_rev   = np.zeros((N, m))
+
+                line_rev[:N_old,:,:]    = auxlines
+                volumes_rev[:N_old,:]   = auxvolumes
+                bfields_rev[:N_old,:]   = auxbfields
+                densities_rev[:N_old,:] = auxdensities
+
+                repeat_rev = True
+
+
+            if k + 1 >= N:
+                # if we go over the size of the array, we check if the density threshold 100cm-3 is reached
+                # if not, then resize
+                if np.all(un_masked2):
+                    print("All values are False: means all density < 10^2")
+                    break
+                if repeat == True:
+                    x_init_not_finished = x_init[un_masked] # keep un-finished lines
+                    x_init              = x_init[mask]      # keep finished lines
+                    line_not_finished = line[:,un_masked,:]
+                    volumes_not_finished = volumes[:,un_masked]
+                    bfields_not_finished = bfields[:,un_masked]
+                    densities_not_finished = densities[:,un_masked]
+
+                    line = line[:,mask,:]
+                    volumes = volumes[:,mask]
+                    bfields = bfields[:,mask]
+                    densities = densities[:,mask]
+                    break
+                auxlines = line
+                auxvolumes = volumes
+                auxbfields = bfields
+                auxdensities = densities
+
+                N_old = N+1
+                N *= 2
+
+                line      = np.zeros((N, m, 3))
+                bfields   = np.zeros((N, m))
+                densities = np.zeros((N, m))
+                volumes   = np.zeros((N, m))
+
+                line[:N_old,:,:]    = auxlines
+                volumes[:N_old,:]   = auxvolumes
+                bfields[:N_old,:]   = auxbfields
+                densities[:N_old,:] = auxdensities
+
+                repeat = True
+
+    if repeat_rev and repeat:
+        unfinished_forward = np.logical_not(mask)
+        unfinished_reverse = np.logical_not(mask_rev)
+        unfinished_total = np.logical_or(unfinished_forward, unfinished_reverse)
+        x_init_unfinished = x_init[unfinished_total]
+
+
+        np.savez(os.path.join(children_folder, f"uDataBundle{seed}.npz"),
+        u_seed=seed,
+        u_x_init=x_init_unfinished,
+        u_line_rev=line_rev_not_finished,
+        u_line=line_not_finished,
+        u_volumes_rev=volumes_rev_not_finished,
+        u_volumes=volumes_not_finished,
+        u_bfields_rev=bfields_rev_not_finished,
+        u_bfields=bfields_not_finished,
+        u_densities_rev=densities_rev_not_finished,
+        u_densities=densities_not_finished,
+        )
+
+
+def generate_vectors_in_core(max_cycles, densthresh, rloc=0.1, seed=12345):
+    import numpy as np
+    from scipy.spatial import cKDTree
+    np.random.seed(seed)
+    valid_vectors = []
+    tree = cKDTree(Pos)
+    while len(valid_vectors) < max_cycles:
+        points = np.random.uniform(low=-rloc, high=rloc, size=(max_cycles, 3))
+        distances = np.linalg.norm(points, axis=1)
+        inside_sphere = points[distances <= rloc]
+        _, nearest_indices = tree.query(inside_sphere, workers=-1)
+        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > densthresh
+        valid_points = inside_sphere[valid_mask]
+        valid_vectors.extend(valid_points)
+    valid_vectors = np.array(valid_vectors)
+    random_indices = np.random.choice(len(valid_vectors), max_cycles, replace=False)
+    return valid_vectors[random_indices]
+"""
