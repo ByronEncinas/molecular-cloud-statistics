@@ -19,6 +19,7 @@ km_to_parsec = 1 / 3.085677581e13  # 1 pc in km
 pc_to_cm = 3.086 * 10e+18  # cm per parsec
 AU_to_cm = 1.496 * 10e+13  # cm per AU
 parsec_to_cm3 = 3.086e+18  # cm per parsec
+surface_to_column = 2.55e+23
 
 # Physical Constants
 mass_unit = 1.99e33  # g
@@ -40,10 +41,6 @@ mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 
 """ Ionization Rate Parameters"""
-
-def ionization():
-    
-    pass
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
@@ -369,3 +366,41 @@ def magnitude(v1, v2=None):
         return np.linalg.norm(v1)  # Magnitude of a single vector
     else:
         return np.linalg.norm(v1 - v2)  # Distance between two vectors
+
+def tda(X, distro):
+    # persistence diagrams and barcodes to identify structures
+    # mapper to transform dataset into a easily understandable graph
+    # others
+    try:
+        import plotly.graph_objects as go
+    except ImportError:
+        raise ImportError(
+            "The package 'plotly' is not installed. "
+            "Install it with:\n\n    pip install plotly"
+        )
+
+    try:
+        from ripser import ripser
+    except ImportError:
+        raise ImportError(
+            "The package 'ripser' is not installed. "
+            "Install it with:\n\n    pip install ripser"
+        )
+
+    try:
+        from persim import plot_diagrams
+    except ImportError:
+        raise ImportError(
+            "The package 'persim' is not installed. "
+            "Install it with:\n\n    pip install persim"
+        )
+
+    diagrams = ripser(X, maxdim=2)["dgms"]
+
+    # Plot the diagram
+    fig = plt.figure()
+    plot_diagrams(diagrams)
+
+    # Save it to a file (e.g., PNG or PDF)
+    plt.savefig(f"pd_{distro}.png", dpi=300, bbox_inches='tight')
+    plt.close(fig)

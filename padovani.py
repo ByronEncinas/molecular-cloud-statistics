@@ -9,7 +9,7 @@ import glob
 
 """ Parameters """
 
-size = 1000
+size = 10_000
 
 Ei = 1.0e+0
 Ef = 1.0e+15
@@ -30,7 +30,6 @@ Lstar = 1.4e-14
 Jstar = 2.43e+15*(10e+6)**(0.1)/(500e+6**2.8) # Proton in Low Regime (M. Padovani & A. Ivlev 2015) https://iopscience.iop.org/article/10.1088/0004-637X/812/2/135
 
 # Flux constant (eV^-1 cm^-2 s^-1)
-C = 2.43e+15*4*np.pi
 Enot = 500e+6
 Jstar = 2.4e+15*(1.0e+6)**(0.1)/(Enot**2.8)
 
@@ -43,13 +42,28 @@ print("energy range for CR spectrum (log10): ", logE0, logEf)
 diff_energy = np.array([energy[k]-energy[k-1] for k in range(len(energy))])
 diff_energy[0] = energy[0]
 
-ism_spectrum = lambda x: C*(x**0.1/((Estar + x)**2.8))
-ism_spectrum = lambda x: Jstar*(x/Estar)**a
+#ism_spectrum = lambda x: C*(x**0.1/((Estar + x)**2.8))
+#ism_spectrum = lambda x: Jstar*(x/Estar)**a
+if sys.argv[3] == 'L':
+    C = 2.43e+15 *4*np.pi
+    alpha, beta = 0.1, 2.8
+    Enot = 650e+6
+elif sys.argv[3] == 'H':
+    C = 2.43e+15 *4*np.pi
+    alpha, beta = -0.8, 1.9
+    Enot = 650e+6
+#elif sys.argv[3] == 'e':
+#    C = 2.1e+18#4*np.pi
+#    alpha, beta = -1.5, 1.7
+#    Enot = 710e+6
+
+ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
 loss_function = lambda z: Lstar*(Estar/z)**d
 
-Neff = np.logspace(19, 26, size)
+Neff = np.logspace(19, 27, size)
 
 if True:
+    # only for protons
     cross_data = np.load('arepo_data/cross_pH2_rel_1e18.npz')
     loss_data  = np.load('arepo_data/Kedron_pLoss.npz')
 
@@ -89,15 +103,16 @@ if True: # Padovani & Alexei Models for CR Ionization-rate
 
     log_L = interpolate.interp1d(Neff, logzl)
     log_H = interpolate.interp1d(Neff, logzh)
-    plt.plot(Neff, log_H(Neff), label = 'Model H')
-    plt.plot(Neff, log_L(Neff), label = 'Model L')
-    plt.xscale('log')
-    plt.legend()
-    plt.savefig('./images/i_rate/padovani2018')
-    plt.close()
+    #plt.plot(Neff, log_H(Neff), label = 'Model H')
+    #plt.plot(Neff, log_L(Neff), label = 'Model L')
+    #plt.xscale('log')
+    #plt.legend()
+    #plt.savefig('./images/i_rate/padovani2018')
+    #plt.close()
+
+line, mus = int(sys.argv[1]), int(sys.argv[2])
 
 if True:
-    line, mus = int(sys.argv[1]), int(sys.argv[2])
 
     import h5py
     import numpy as np
@@ -156,9 +171,6 @@ if True:
     axs["c"].plot(magnetic_field, c="r"); axs["c"].set_yscale("log"); axs["c"].set_title("Magnetic Field"); axs["c"].set_ylabel("B (μG)"); axs["c"].set_xlabel("Index")
     plt.savefig("./images/i_rate/mosaic_plot.png"); plt.close()
     
-""" Column Densities N_+(mu, s) & N_-(mu, s)"""
-
-mu_ism = np.linspace(0, 1, mus) #np.logspace(-10, 0, num=50) #
 
 def column_density(radius_vector, magnetic_field, numb_density, direction=''):
     trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1)) #np.insert(, 0, 0.0)
@@ -177,84 +189,29 @@ def column_density(radius_vector, magnetic_field, numb_density, direction=''):
             Bsprime = magnetic_field[j]
             mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
             
-            if (mu_local2 <= 1/100):
+            if (mu_local2 <= 0):
                 break
             mu_local[j,i] = np.sqrt(mu_local2)
             dmu[j,i] = dmui[i]*(mui_ism/mu_local[j,i])*(Bsprime/B_ism)
             Nmu[j, i] = Nmu[j - 1, i] + n_g * ds[j] / mu_local[j, i] if j > 0 else n_g * ds[j] / mu_local[j, i]
-    fig, ax = plt.subplots()
 
-    for mui in range(Nmu.shape[1]):
-        ax.plot(mu_local[:, mui], label=fr"$\mu_i = {mu_ism[mui]}$")
+    if False:
+        fig, ax = plt.subplots()
 
-    ax.set_title(r"Evolution of $cos(\alpha(\alpha_i), s)$ along trajectory")
-    ax.set_xlabel("Index (Visualization Graph)")
-    ax.set_ylabel(r"$\cos(\alpha(\alpha_i), s)$")
-    ax.set_xscale('log')
-    #ax.legend()
-    fig.tight_layout()
+        for mui in range(Nmu.shape[1]):
+            ax.plot(mu_local[:, mui], label=fr"$\mu_i = {mu_ism[mui]}$")
 
-    plt.savefig(f'./images/i_rate/mu_local_{direction}.png')
-    plt.close()
+        ax.set_title(r"Evolution of $cos(\alpha(\alpha_i), s)$ along trajectory")
+        ax.set_xlabel("Index (Visualization Graph)")
+        ax.set_ylabel(r"$\cos(\alpha(\alpha_i), s)$")
+        ax.set_xscale('log')
+        #ax.legend()
+        fig.tight_layout()
+
+        plt.savefig(f'./images/i_rate/{sys.argv[3]}mu_local_{direction}.png')
+        plt.close()
 
     return Nmu, mu_local, dmu, trajectory
-
-Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(radius_vector, magnetic_field, numb_density, "fwd")
-
-Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(radius_vector[::-1, :], magnetic_field[::-1], numb_density[::-1], "bwd")
-
-if True:
-
-    for mui in range(Npmu.shape[1]):
-        plt.plot(Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
-        #plt.legend()
-
-    plt.title("Column density $N_+(\mu_i)$  ")
-    plt.xlabel("Index")
-    plt.ylabel(r"$N_+(\mu_i, s)$")
-    #plt.xscale('log')
-    plt.yscale('log')
-    plt.savefig('./images/i_rate/Nfwd.png')  # Save as PNG with high resolution
-    plt.close()
-
-    for mui in range(Npmu.shape[1]):
-        plt.plot(Nmmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
-        #plt.legend()
-
-    plt.title("Column density $N_-(\mu_i)$  ")
-    plt.xlabel("Index")
-    plt.ylabel(r"$N_-(\mu_i, s)$")
-    #plt.xscale('log')
-    plt.yscale('log')
-    plt.savefig('./images/i_rate/Nbwd.png')  # Save as PNG with high resolution
-    plt.close()
-
-    for mui in range(dmu_fwd.shape[1]):
-        plt.plot(dmu_fwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-        #plt.legend()
-
-    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Forwards)")
-    plt.xlabel("trajectory (cm)")
-    plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
-    plt.xscale('log')
-    plt.savefig('./images/i_rate/Jfwd.png')  # Save as PNG with high resolution
-    plt.close()
-    
-    for mui in range(dmu_bwd.shape[1]):
-        plt.plot(dmu_bwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-        #plt.legend()
-
-    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Backwards)")
-    plt.xlabel("trajectory (cm)")
-    plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
-    plt.xscale('log')
-    plt.savefig('./images/i_rate/Jbwd.png')  # Save as PNG with high resolution
-    plt.close()
-
-"""
-N_mirr = N_+ + int_{s'}
-
-"""
 
 def mirrored_column_density(radius_vector, magnetic_field, numb_density, Nmu, direction=''): 
 
@@ -277,26 +234,20 @@ def mirrored_column_density(radius_vector, magnetic_field, numb_density, Nmu, di
                 N += np.sum(dens*diffs/mu_local)
             Nmir[s,i] = N
 
-    for i, mu in enumerate(mu_ism):
-        plt.plot(Nmir[:, i], label=fr'$\mu_{{\mathrm{{ISM}}}}={mu:.2f}$')
-    if direction == 'fwd':
-        plt.title("Column density $N_{mirr}^+(s)$")
-    if direction == 'bwd':
-        plt.title("Column density $N_{mirr}^-(s)$")
-    plt.xlabel("Steps")
-    plt.yscale('log')
-    plt.tight_layout()
-    plt.savefig(f'./images/i_rate/N{direction}.png')
-    plt.close()
+    if False:
+        for i, mu in enumerate(mu_ism):
+            plt.plot(Nmir[:, i], label=fr'$\mu_{{\mathrm{{ISM}}}}={mu:.2f}$')
+        if direction == 'fwd':
+            plt.title("Column density $N_{mirr}^+(s)$")
+        if direction == 'bwd':
+            plt.title("Column density $N_{mirr}^-(s)$")
+        plt.xlabel("Steps")
+        plt.yscale('log')
+        plt.tight_layout()
+        plt.savefig(f'./images/i_rate/{sys.argv[3]}N{direction}.png')
+        plt.close()
 
     return Nmir
-
-max_arg = np.argmax(magnetic_field)
-
-Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg], Npmu[:max_arg,:], 'mir_fwd')
-Nmir_bwd = mirrored_column_density(radius_vector[max_arg+1:,:][::-1,:], magnetic_field[max_arg+1:][::-1], numb_density[max_arg+1:][::-1], Nmmu[max_arg+1:,:], 'mir_bwd')
-
-""" Ionization Rate for N = N(s) """
 
 def ionization_rate(Nmu, mu_local, dmu, direction = ''):
     zeta_mui = np.zeros_like(Nmu)
@@ -306,7 +257,7 @@ def ionization_rate(Nmu, mu_local, dmu, direction = ''):
 
         for j, Nj in enumerate(Nmu[:,l]):
             mu_ = mu_local[j,l]
-            if mu_ <= 0:
+            if mu_ <= 1.0e-5:
                 break
 
             jl_dE = 0.0
@@ -319,21 +270,89 @@ def ionization_rate(Nmu, mu_local, dmu, direction = ''):
             sigma_ion = cross(energy)
             spectra   = 0.5*isms*llei/loss_function(energy)  
             jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
-            zeta_mui[j, l] = jl_dE / epsilon 
-            #zeta_mui[j, l] = np.sum(spectra*sigma_ion*diff_energy)
+            #zeta_mui[j, l] = jl_dE / epsilon 
+            zeta_mui[j, l] = np.sum(spectra*sigma_ion*diff_energy)
 
     zeta = np.sum(dmu * zeta_mui, axis = 1)
-    if 'fwd' in direction:
-        plt.plot(zeta_mui, label=f'$\zeta_+(s) $', alpha = 0.5)
-    if 'bwd' in direction:
-        plt.plot(zeta_mui, label=f'$\zeta_-(s) $', alpha = 0.5)
-    plt.title(r"$\zeta(N, \mu)$", fontsize=12)
-    plt.yscale('log')
-    plt.tight_layout()
-    plt.savefig(f'./images/i_rate/zeta_{direction}.png')
-    plt.close()
+    if False:
+        if 'fwd' in direction:
+            plt.plot(zeta_mui, label=f'$\zeta_+(s) $', alpha = 0.5)
+        if 'bwd' in direction:
+            plt.plot(zeta_mui, label=f'$\zeta_-(s) $', alpha = 0.5)
+        plt.title(r"$\zeta(N, \mu)$", fontsize=12)
+        plt.yscale('log')
+        plt.tight_layout()
+        plt.savefig(f'./images/i_rate/{sys.argv[3]}zeta_{direction}.png')
+        plt.close()
 
     return zeta, zeta_mui
+
+mu_ism = np.logspace(-1, 0, num=mus) #np.linspace(0, 1, mus) # np.array([1.0])#
+
+""" Column Densities N_+(mu, s) & N_-(mu, s)"""
+
+Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(radius_vector, magnetic_field, numb_density, "fwd")
+
+Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(radius_vector[::-1, :], magnetic_field[::-1], numb_density[::-1], "bwd")
+
+if False:
+
+    for mui in range(Npmu.shape[1]):
+        plt.plot(Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+        #plt.legend()
+
+    plt.title("Column density $N_+(\mu_i)$  ")
+    plt.xlabel("Index")
+    plt.ylabel(r"$N_+(\mu_i, s)$")
+    #plt.xscale('log')
+    plt.yscale('log')
+    plt.savefig(f'./images/i_rate/{sys.argv[3]}Nfwd.png')  # Save as PNG with high resolution
+    plt.close()
+
+    for mui in range(Npmu.shape[1]):
+        plt.plot(Nmmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+        #plt.legend()
+
+    plt.title("Column density $N_-(\mu_i)$  ")
+    plt.xlabel("Index")
+    plt.ylabel(r"$N_-(\mu_i, s)$")
+    #plt.xscale('log')
+    plt.yscale('log')
+    plt.savefig(f'./images/i_rate/{sys.argv[3]}Nbwd.png')  # Save as PNG with high resolution
+    plt.close()
+
+    for mui in range(dmu_fwd.shape[1]):
+        plt.plot(dmu_fwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+        #plt.legend()
+
+    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Forwards)")
+    plt.xlabel("trajectory (cm)")
+    plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
+    plt.xscale('log')
+    plt.savefig(f'./images/i_rate/{sys.argv[3]}Jfwd.png')  # Save as PNG with high resolution
+    plt.close()
+    
+    for mui in range(dmu_bwd.shape[1]):
+        plt.plot(dmu_bwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+        #plt.legend()
+
+    plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Backwards)")
+    plt.xlabel("trajectory (cm)")
+    plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
+    plt.xscale('log')
+    plt.savefig(f'./images/i_rate/{sys.argv[3]}Jbwd.png')  # Save as PNG with high resolution
+    plt.close()
+
+"""
+N_mirr = N_+ + int_{s'}
+
+"""
+max_arg = np.argmax(magnetic_field)
+
+Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg], Npmu[:max_arg,:], 'mir_fwd')
+Nmir_bwd = mirrored_column_density(radius_vector[max_arg+1:,:][::-1,:], magnetic_field[max_arg+1:][::-1], numb_density[max_arg+1:][::-1], Nmmu[max_arg+1:,:], 'mir_bwd')
+
+""" Ionization Rate for N = N(s) """
 
 #zeta_fwd, zeta_mui_fwd  = ionization_rate(Npmu, mu_local_fwd, dmu_fwd, 'fwd')
 #zeta_bwd, zeta_mui_bwd = ionization_rate(Nmmu, mu_local_bwd, dmu_bwd,'bwd')
@@ -359,6 +378,30 @@ ax.set_xscale('log')
 #ax.legend()
 fig.tight_layout()
 
-plt.savefig(f'./images/i_rate/total_zeta.png')
+plt.savefig(f'./images/i_rate/{sys.argv[3]}total_zeta.png')
 plt.close()
 
+fig, ax = plt.subplots(figsize=(8, 3.5))
+
+bins = np.linspace(np.log10(np.min(zeta)),
+                   np.log10(np.max(zeta)),
+                   zeta.shape[0]//10)
+
+ax.hist(np.log10(zeta), bins=bins, alpha=1,
+        histtype='stepfilled', label=f"430 snap")
+
+print("Mean power of $\log_{10}(\zeta}$: ", np.mean(np.log10((zeta))))
+
+ax.set_yscale('log')
+ax.set_ylabel('Counts', fontsize=12)
+ax.set_xlabel('''$\log_{10}(\zeta / s^{-1})$''', fontsize=12)
+ax.legend(frameon=False)
+ax.set_xlim(bins[0], bins[-1])
+#ax.set_xlim(-20, -10)
+
+# Optional “fancy” letter in the panel
+ax.text(0.5, 0.8, r'$\mathcal{'+ f'{sys.argv[3]}' + '}$', transform=ax.transAxes,
+        fontsize=20, ha='center', va='center')
+
+plt.tight_layout()
+plt.savefig(f'./images/i_rate/{sys.argv[3]}ion_rate_hist.png')

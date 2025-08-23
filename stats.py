@@ -13,47 +13,38 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
-N               = 5_000
+N               = 4_000
 
 if len(sys.argv)>4:
     rloc          = float(sys.argv[1])
     max_cycles    = int(sys.argv[2]) 
     case          = str(sys.argv[3]) 
     num_file      = str(sys.argv[4]) 
-
-else:
+else: #  python3 stats.py 0.1 2000 ideal 480
     rloc            = 0.1
     max_cycles      = 700
     case            = 'ideal'
     num_file        = '430'
 
-seed = 12345 
-sys.argv.append(seed)
-
 dense_cloud = 1.0e+2
-threshold = 1.0e+2
-print(sys.argv, N)
-
-reduction_factor_at_numb_density = defaultdict()
-reduction_factor = []
+threshold = 1.0e+1
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
 elif case == 'amb':
     subdirectory = 'ambipolar_diffusion'
-else:
-    subdirectory= ''
 
 file_path       = f'./{case}_cloud_trajectory.txt'
 file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
-snap = []
-time_value = []
+
 with open(file_path, mode='r') as file:
+
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
     print('File opened successfully')
-
+    snap = []
+    time_value = []
     for row in csv_reader:
         if num_file == str(row[0]):
             print("Match found!")
@@ -66,11 +57,10 @@ try:
 except:
     raise ValueError('Center is not defined')
 
-snap_array = np.array(snap)
-time_value_array = np.array(time_value)
-filename = None
+
 
 for f in file_list:
+    filename = None
     if num_file in f:
         filename = f
 if filename is None:
@@ -82,7 +72,6 @@ children_folder = os.path.join(parent_folder, snap)
 os.makedirs(children_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
-header_group = data['Header']
 Boxsize = data['Header'].attrs['BoxSize']
 VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
 Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
@@ -92,7 +81,6 @@ Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
 Bfield_grad = np.zeros((len(Pos), 9))
 Density_grad = np.zeros((len(Density), 3))
 Volume   = Mass/Density
-CloudCord = Center.copy()
 VoronoiPos-=Center
 Pos-=Center
 
@@ -101,6 +89,18 @@ for dim in range(3):  # Loop over x, y, z
     boundary_mask = pos_from_center > Boxsize / 2
     Pos[boundary_mask, dim] -= Boxsize
     VoronoiPos[boundary_mask, dim] -= Boxsize
+
+"""
+for dim in range(3):  # Loop over x, y, z
+    pos_from_center = Pos[:, dim]
+
+    too_high = pos_from_center > Boxsize / 2
+    too_low  = pos_from_center < -Boxsize / 2
+
+    Pos[too_high, dim] -= Boxsize
+    Pos[too_low,  dim] += Boxsize
+
+"""
 
 print("Cores Used          : ", os.cpu_count())
 print("Steps in Simulation : ", 2*N)
@@ -219,12 +219,12 @@ def pocket_finder(bfield, numb, p_r, plot=False):
             axs.grid(True)
 
         # Plot both subplots
-        plot_field(axs_numb, numb, "Density")
-        plot_field(axs_bfield, bfield, "Magnetic Field")
+        #plot_field(axs_numb, numb, "Density")
+        #plot_field(axs_bfield, bfield, "Magnetic Field")
 
-        plt.tight_layout()
-        plt.savefig('./images/columns/mosaic.png')
-        plt.close(fig)
+        #plt.tight_layout()
+        #plt.savefig('./images/columns/mosaic.png')
+        #plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
 
@@ -894,22 +894,20 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     rho_vector = np.array(deepcopy(valid_vectors))
     return rho_vector
 
-#x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
-x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
-# directions
+x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
+#x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
 directions = fibonacci_sphere(20)
-print("No. of directions", directions.shape)
-print("No. of starting pos", x_input.shape)
 
-radius_vector, numb_densities, average_column = line_of_sight(x_input, directions, threshold)
-
+radius_vector, numb_densities, average_column                = line_of_sight(x_input, directions, threshold)
 radius_vector, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
+
+data.close()
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
 if np.any(numb_densities > threshold):
     r_u, n_rs, B_rs = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
-    r_l, _, _ = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold/10)
+    r_l, _, _ = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold*10)
     print("DEBUG numb_densities type:", type(numb_densities))
 else:
     print("Skipping evaluate_reduction: no densities above 300 cm⁻³")
@@ -925,7 +923,6 @@ distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 # cr path column densities
 c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) *pc_to_cm
 
-print(distance.shape, c_rs.shape)
 
 # free space
 del Mass, Density_grad
@@ -934,33 +931,32 @@ del data
 
 print((time.time()-start_time)//60, " Minutes")
 
-print("No. of averaged columns", average_column.shape)
 print()
 
-distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 order = np.argsort(distance)
 
-N_path = c_rs[order][1:]
-N_los = average_column[order][1:]
-s = distance[order][1:]
 
 if True:
+    N_path = c_rs[order][1:]
+    N_los = average_column[order][1:]
+    s = distance[order][1:]
+
     fig, ax = plt.subplots()
     
     # Axis labels
-    ax.set_xlabel(r'''Distance $r$ (cm)''')
+    ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)
     
-    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=12)
+    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=16)
     
     # Log scales
     ax.set_yscale('log')
     #ax.set_xscale('log')
     
     # Scatter plot with label for legend
-    ax.scatter(0.0, average_column[order][0], marker='x',color="#8E2BAF", s=8)
-    ax.scatter(0.0, c_rs[order][0], marker ='x',color="#148A02", s=8)
-    ax.scatter(s, N_los, marker='o',color="#8E2BAF", s=5, label=r'$\langle N_{\rm LOS} \rangle$')
-    ax.scatter(s, N_path, marker ='v',color="#148A02", s=5, label=r'$\langle N_{\rm PATH} \rangle$')
+    #ax.scatter(0.0, average_column[order][0], marker='x',color="#8E2BAF", s=8)
+    #ax.scatter(0.0, c_rs[order][0], marker ='x',color="#148A02", s=8)
+    ax.scatter(s, N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm LOS}$')
+    ax.scatter(s, N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm PATH}$')
     
     # Fit for N_LOS
     log_y = np.log10(N_los)
@@ -976,23 +972,92 @@ if True:
     ax.plot(s, fit1, '--', color="#8E2BAF", linewidth=1)
     ax.plot(s, fit2, '--', color="#148A02", linewidth=1)
 
+    # Add fit equations as text (log10 form)
+    eq1 = rf"$\log_{{10}}(N_{{LOS}}) = {m1:.4e}\,s + {b1:.4f}$"
+    eq2 = rf"$\log_{{10}}(N_{{PATH}}) = {m2:.4e}\,s + {b2:.4f}$"
+
+    print(eq1)
+    print(eq2)
+    # Place them on the plot
+    ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
+    ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
+
     # Ticks and grid
     ax.tick_params(axis='both')
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     
     # Title and legend
-    plt.title(r"$N \propto r$", fontsize=13)
-    ax.legend()
-    
+    #plt.title(r"$N \propto r$", fontsize=16)
+    ax.legend(loc="lower left")
+    #ax.legend()
+
     # Layout and save
     fig.tight_layout()
     plt.savefig('./images/columns/column_compar.png')
     plt.close()
 
-log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs[order])
-log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column[order])
+if True:
+    N_path = c_rs[1:]
+    N_los = average_column[1:]
+    fig, ax = plt.subplots()
+    
+    # Axis labels
+    ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+    
+    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=16)
+    
+    # Log scales
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    
+    # Scatter plot with label for legend
+    ax.scatter(n_rs[0], average_column[0], marker='x',color="#8E2BAF", s=8)
+    ax.scatter(n_rs[0], c_rs[0], marker ='x',color="#148A02", s=8)
+    ax.scatter(n_rs[1:], N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm LOS}$')
+    ax.scatter(n_rs[1:], N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm PATH}$')
+    
+    # Fit for N_LOS
+    log_y = np.log10(N_los)
+    log_x = np.log10(n_rs[1:])
+    m1, b1 = np.polyfit(log_x, log_y, 1)
+    fit1 = 10**(m1 * log_x + b1)
+
+    # Fit for N_PATH
+    log_y2 = np.log10(N_path)
+    m2, b2 = np.polyfit(log_x, log_y2, 1)
+    fit2 = 10**(m2 * log_x+ b2)
+
+    # Plot fits
+    ax.plot(n_rs[1:], fit1, '--', color="#8E2BAF", linewidth=1)
+    ax.plot(n_rs[1:], fit2, '--', color="#148A02", linewidth=1)
+
+    # Add fit equations as text (log10 form)
+    eq1 = rf"$\log_{{10}}(N_{{LOS}}) = {m1:.5f}\,\log_{{10}}(x) + {b1:.5f}$"
+    eq2 = rf"$\log_{{10}}(N_{{PATH}}) = {m2:.5f}\,\log_{{10}}(x) + {b2:.5f}$"
+    ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=12, va="top")
+    ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=12, va="top")
+
+    # Place them on the plot
+    ax.text(n_rs[0], average_column[order][0], eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
+    ax.text(n_rs[0], c_rs[order][0], eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
+
+    # Ticks and grid
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    
+    # Title and legend
+    plt.title(r"$N \propto n_g$", fontsize=16)
+    ax.legend(loc="upper right")
+    
+    # Layout and save
+    fig.tight_layout()
+    plt.savefig('./images/columns/column_density.png')
+    plt.close()
 
 if True:
+    log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs[order])
+    log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column[order])
+
     fig, ax = plt.subplots()
     
     # Axis labels
@@ -1000,12 +1065,12 @@ if True:
         saturated and unsaturated colors represent model H and L respectively.
                   ''')
     
-    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=12)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
     
     # Log scales
     #ax.set_yscale('log')
     #ax.set_xscale('log')
-    ax.set_ylim([-19, -15])
+    ax.set_ylim([-19, -14])
     
     # Scatter plot with label for legend
     #ax.scatter(0.0, log_ionization_path_l[0], marker='x',color="#8E2BAF", s=8 , alpha = 0.5)
@@ -1016,21 +1081,36 @@ if True:
     ax.scatter(distance, log_ionization_los_l, marker='o',color="#CB71EA", s=5, alpha = 0.5)
     ax.scatter(distance, log_ionization_path_l, marker ='v',color="#60D24F", s=5, alpha = 0.5)
 
-    ax.scatter(distance, log_ionization_los_h, marker='o',color="#8E2BAF", s=5, label=r'$\zeta((N_{\rm LOS})$')
-    ax.scatter(distance, log_ionization_path_h, marker ='v',color="#148A02", s=5, label=r'$\zeta(N_{\rm PATH})$')
+    ax.scatter(distance, log_ionization_los_h, marker='o',color="#8E2BAF", s=5, label=r'$\zeta(_{\rm LOS}$')
+    ax.scatter(distance, log_ionization_path_h, marker ='v',color="#148A02", s=5, label=r'$\zeta_{\rm PATH}$')
 
     # Ticks and grid
     ax.tick_params(axis='both')
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     
     # Title and legend
-    plt.title(rf"$N \propto r$ ({case + num_file})", fontsize=13)
+    plt.title(rf"$N \propto r$ ({case + num_file})", fontsize=16)
     ax.legend()
     
     # Layout and save
     fig.tight_layout()
     plt.savefig('./images/columns/zeta_compar.png')
     plt.close()
+
+if True:
+    r_u = np.array(r_u) # threshold * 1
+    r_l = np.array(r_l) # threshold * 10
+
+    total = r_u.shape[0]
+    mask = r_u == 1.0  
+    ones = np.sum(mask)
+    fraction = ones/total
+    x_ones = x_input[mask,:]
+    x_not  = x_input[np.logical_not(mask),:]
+
+    tda(x_input, 'x')
+    tda(x_ones, 'R = 1')
+    tda(x_not , 'R < 1')
 
 def reduction_density(reduction_data, density_data, bound = ''):
 
@@ -1106,9 +1186,9 @@ def reduction_density(reduction_data, density_data, bound = ''):
     #plt.savefig('histograms/pocket_statistics_ks.pdf')
     plt.savefig(f'./images/reduction/pocket_stats{bound}.png')
 
-reduction_density(r_l, n_rs, 'l')
+#reduction_density(r_l, n_rs, 'l')
 
-reduction_density(r_u, n_rs, 'u')
+#reduction_density(r_u, n_rs, 'u')
 
 if False:
     try:
@@ -1153,8 +1233,7 @@ if False:
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
-        plt.savefig(os.path.join(children_folder,f"FieldTopology{seed}.png"), bbox_inches='tight')
-        #plt.savefig(os.path.join(children_folder,f"FieldTopology{seed}.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(children_folder,f"FieldTopology.png"), bbox_inches='tight')
 
     except:
         print("Couldnt print B field structure")

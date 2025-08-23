@@ -1,16 +1,9 @@
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-from matplotlib.patches import Patch
-from matplotlib.ticker import MaxNLocator
-from collections import OrderedDict
 import numpy as np
-import sys, time, glob, re, os
-import warnings, csv
-import random
-
+import time, glob
+import csv
 
 #...............Core Density Comparison..................
-
 
 cases = ['ideal', 'amb']
 

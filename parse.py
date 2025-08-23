@@ -6,6 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import time, glob, re
 import csv
+from library import *
 
 """
 This code will take 200 GB of data and summarize it for further analysis
@@ -13,7 +14,6 @@ This code will take 200 GB of data and summarize it for further analysis
 Ideal and Non-Ideal
 
 (t, snap, Rs, Ns, Bs, N_path, ...?)
-
 
 """
 def dummy_data():
