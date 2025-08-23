@@ -117,7 +117,7 @@ if True:
     import h5py
     import numpy as np
 
-    h5_path = "./stats/ideal/430/DataBundle.h5"
+    h5_path = f"./stats/ideal/{sys.argv[4]}/DataBundle.h5"
 
     with h5py.File(h5_path, "r") as f:
 
