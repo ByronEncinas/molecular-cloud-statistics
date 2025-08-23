@@ -61,6 +61,8 @@ for f in file_list:
     filename = None
     if num_file in f:
         filename = f
+        print(f)
+        print(filename)
 if filename is None:
     raise FileNotFoundError
 
