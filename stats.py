@@ -37,7 +37,7 @@ elif case == 'amb':
 file_path       = f'./{case}_cloud_trajectory.txt'
 file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
-
+print(file_list)
 with open(file_path, mode='r') as file:
 
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
@@ -53,11 +53,9 @@ with open(file_path, mode='r') as file:
             time_value = float(row[1])
             peak_den =  float(row[5])
 try:
-    Center
+    print(Center)
 except:
     raise ValueError('Center is not defined')
-
-
 
 for f in file_list:
     filename = None
