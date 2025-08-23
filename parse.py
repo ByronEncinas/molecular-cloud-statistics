@@ -735,7 +735,7 @@ if True: # Statistical despcriptors and fraction
         ['fraction',  'fraction'],  # Span the full row
     ]
 
-    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 20), sharex=True)
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 12), sharex=True)
 
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -833,8 +833,6 @@ if True: # 3D histogram of R in time (but time is represented by index)
         
     r_red, n_ref, mean_vec, median_vec, ten_vec, sample_size, fraction, n_og = statistics_reduction(r, n)
 
-
-
     times, n, r = zip(*[(float(time), _, r100_distro)
                             for time, _, r100_distro in ReducedBundle['amb']])
     data = [np.array(r_[r_<1]) for r_ in r]
@@ -842,82 +840,3 @@ if True: # 3D histogram of R in time (but time is represented by index)
     hist3d(data, 'amb')
     r_red, n_ref, mean_vec, median_vec, ten_vec, sample_size, fraction, n_og = statistics_reduction(r, n)
 
-
-exit()
-r, x, b, n, f = zip(*[(_r, _x, _b, _n, _f)
-                    for _r, _x, _b, _n, _f in StatsRzero['ideal']])
-
-r_flat = np.concatenate(r)
-r_num, r_bounds, r_means, r_var, r_skew, r_kur = describe(r_flat)
-
-plt.figure(figsize=(10, 6))
-plt.plot(f, label=r'$\mu$ (Mean)', marker='o')
-plt.plot(r_means, label=r'$\mu$ (Mean)', marker='o')
-plt.plot(r_var, label=r'$\sigma$ (Std Dev)', marker='s')
-plt.plot(r_skew, label=r'$\gamma$ (Skewness)', marker='^')
-plt.plot(r_kur, label=r'$\kappa$ (Kurtosis)', marker='d')
-
-plt.xlabel('Time Step')
-plt.ylabel('Moment Value')
-plt.title('Time Evolution of Statistical Moments ($R<1$)')
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig('./ideal_moments.png', dpi=300)
-
-
-gs = 18
-func = np.mean
-times, r100, n_g = zip(
-    *[        (float(time), r100_distro[r100_distro < 1], n_distro[r100_distro < 1])
-        for time, n_distro, r100_distro in ReducedBundle["ideal"]    ])
-
-xyz_triads = [
-    (t, r, n)
-    for t, r_vec, n_vec in zip(times, r100, n_g)
-    for r, n in zip(r_vec, n_vec)]
-
-x = [t for t, _, _ in xyz_triads]
-y = [r for _, r, _ in xyz_triads]
-z = [n for _, _, n in xyz_triads]
-
-times, r100 = zip(*[(float(time), r100_distro)
-                    for time, _, r100_distro in ReducedBundle['amb']])
-
-#xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals]
-xy_pairs = [(t, val) for t, vals in zip(times, r100) for val in vals if val != 1]
-x = [pair[0] for pair in xy_pairs]
-y = [pair[1] for pair in xy_pairs]
-
-if True:
-
-    xlim = min(x), max(x)
-    ylim = 0.0, 1.0
-
-    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True)
-
-    hb = ax0.hexbin(x, y, gridsize=gs, cmap='inferno',reduce_C_function=func) # gridsize=50
-    ax0.set(xlim=xlim, ylim=ylim)
-    ax0.set_title("Hexagon binning")
-    cb = fig.colorbar(hb, ax=ax0, label='counts')
-
-    hb = ax1.hexbin(x, y, gridsize=gs, bins='log', cmap='inferno')
-    ax1.set(xlim=xlim, ylim=ylim)
-    ax1.set_title("log color scale (non-ideal)")
-    cb = fig.colorbar(hb, ax=ax1, label='counts')
-    plt.savefig('./amb_r_t_n')
-
-
-# Generate data
-#x = np.linspace(0, 10, 10000)              # Uniformly spaced x-values (e.g. time)
-#y = np.random.uniform(0, 10, 10000)        # Random y-values
-
-# Create the hexbin plot
-plt.figure(figsize=(10, 8))
-plt.hexbin(x, y, gridsize=50, mincnt=1)    # gridsize controls hexagon resolution
-plt.colorbar(label='Count in bin')
-plt.xlabel('Time (t)')
-plt.ylabel('Value (val)')
-plt.title('Hexbin Plot with Increased Sample Size')
-plt.grid(True, linestyle='--', alpha=0.6)
-plt.savefig('./hex_bin_ex.png')
