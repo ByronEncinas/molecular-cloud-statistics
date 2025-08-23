@@ -824,7 +824,7 @@ if True: # Statistical despcriptors and fraction
     plt.savefig('./amb_moments.png', dpi=300)
     plt.close()
 
-if True: # 3D histogram of R in time (but time is represented by index)
+if False: # 3D histogram of R in time (but time is represented by index)
 
     times, n, r = zip(*[(float(time), _ , r100_distro)
                             for time, _, r100_distro in ReducedBundle['ideal']])

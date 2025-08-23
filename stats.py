@@ -1069,7 +1069,7 @@ if True:
     # Log scales
     #ax.set_yscale('log')
     #ax.set_xscale('log')
-    ax.set_ylim([-19, -14])
+    ax.set_ylim([-19, -15])
     
     # Scatter plot with label for legend
     #ax.scatter(0.0, log_ionization_path_l[0], marker='x',color="#8E2BAF", s=8 , alpha = 0.5)
@@ -1265,6 +1265,7 @@ with h5py.File(h5_path, "w") as f:
     f.attrs["cores_used"] = os.cpu_count()
     f.attrs["pre_allocation_number"] = 2 * N
     f.attrs["rloc"] = rloc
+    f.attrs["index"] = follow_index
     f.attrs["max_cycles"] = m
     f.attrs["center"] = Center
     f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
