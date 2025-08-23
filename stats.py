@@ -57,12 +57,11 @@ try:
 except:
     raise ValueError('Center is not defined')
 
-for f in file_list:
-    filename = None
+filename = None
+for f in file_list:    
     if num_file in f:
         filename = f
-        print(f)
-        print(filename)
+        break
 if filename is None:
     raise FileNotFoundError
 
