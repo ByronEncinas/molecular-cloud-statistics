@@ -3,6 +3,8 @@ import numpy as np
 import time, glob
 import csv
 
+""" Make plots use LaTex """
+
 #...............Core Density Comparison..................
 
 cases = ['ideal', 'amb']
@@ -264,7 +266,7 @@ if True:
     fig.tight_layout()
     plt.grid()
     plt.legend()
-    plt.savefig('./images/crutcher_et_al.png')
+    plt.savefig('./images/crutcher_et_al.png', dpi=300)
     plt.close()
 
 if False:

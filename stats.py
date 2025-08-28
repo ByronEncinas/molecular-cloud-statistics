@@ -13,7 +13,7 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
-N               = 4_000
+N               = 5_000
 
 if len(sys.argv)>4:
     rloc          = float(sys.argv[1])
@@ -22,7 +22,7 @@ if len(sys.argv)>4:
     num_file      = str(sys.argv[4]) 
 else: #  python3 stats.py 0.1 2000 ideal 480
     rloc            = 0.1
-    max_cycles      = 700
+    max_cycles      = 800
     case            = 'ideal'
     num_file        = '430'
 
@@ -170,7 +170,7 @@ def pocket_finder(bfield, numb, p_r, plot=False):
     peaks = lpeaks +  list(reversed(rpeaks))[1:]
     indexes = lindex + list(reversed(rindex))[1:]
 
-    if plot:
+    if False:
         # Find threshold crossing points for 100 cm^-3
         mask = np.log10(numb) < 2  # log10(100) = 2
         slicebelow = mask[:p_r]
@@ -218,205 +218,14 @@ def pocket_finder(bfield, numb, p_r, plot=False):
             axs.grid(True)
 
         # Plot both subplots
-        #plot_field(axs_numb, numb, "Density")
-        #plot_field(axs_bfield, bfield, "Magnetic Field")
+        plot_field(axs_numb, numb, "Density")
+        plot_field(axs_bfield, bfield, "Magnetic Field")
 
-        #plt.tight_layout()
-        #plt.savefig('./images/columns/mosaic.png')
-        #plt.close(fig)
+        plt.tight_layout()
+        plt.savefig('./images/columns/mosaic.png')
+        plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
-
-def evaluate_reduction(field, numb, follow_index):
-
-    R10      = []
-    R100     = []
-    Numb100  = []
-    B100     = []
-
-    _, m = field.shape
-
-    print("_, m = field.shape => ", _, m)
-       
-    for i in range(m):
-
-        #_100 = np.where(numb[:, i] > 1.0e+2)[0]
-        #_10  = np.where(numb[:, i] > 1.0e+1)[0]
-        # must be k + k_rev + 1 in size
-               
-        # this must contain list of indexes of positions with densities > 10cm-3
-        # this should be empty for at least one
-        mask10 = np.where(numb[:, i] > 1.0e+1)[0]
-
-        if mask10.size > 0:
-            start, end = mask10[0], mask10[-1]
-            #print(mask10)
-            print(i, start, end)
-
-            if start <= follow_index <= end:
-                try:
-                    numb10   = numb[start:end+1, i]
-                    bfield10 = field[start:end+1, i]
-                    p_r = follow_index - start
-                    B_r = bfield10[p_r]
-                    n_r = numb10[p_r]
-
-                    print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-                except IndexError:
-                    raise ValueError(f"\nTrying to slice beyond bounds for column {i}. "
-                                    f"start={start}, end={end}, shape={numb.shape}")
-            else:
-                print(f"\n[Info] follow_index {follow_index} outside threshold interval for column {i}.")
-                if follow_index >= numb.shape[0]:
-                    raise ValueError(f"follow_index {follow_index} is out of bounds for shape {numb.shape}")
-                numb10   = np.array([numb[follow_index, i]])
-                bfield10 = np.array([field[follow_index, i]])
-                p_r = 0
-                B_r = bfield10[p_r]
-                n_r = numb10[p_r]
-
-                print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-        else:
-            print(f"\n[Info] No densities > 10 cm⁻³ found for column {i}. Using follow_index fallback.")
-            if follow_index >= numb.shape[0]:
-                raise ValueError(f"\nfollow_index {follow_index} is out of bounds for shape {numb.shape}")
-            numb10   = np.array([numb[follow_index, i]])
-            bfield10 = np.array([field[follow_index, i]])
-            p_r = 0
-            B_r = bfield10[p_r]
-            n_r = numb10[p_r]
-
-            print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-        
-        # 0-2*l => x10-y10 so the new middle is l - x10  
-        print("p_r: ", p_r)
-        if not (0 <= p_r < bfield10.shape[0]):
-            raise IndexError(f"\np_r={p_r} is out of bounds for bfield10 of length {len(bfield10)}")
-
-        #Min, max, and any zeros in numb: 0.0 710.1029394476656 True
-
-        # pockets with density threshold of 10cm-3
-        pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=True)
-        index_pocket, field_pocket = pocket[0], pocket[1]
-
-        p_i = np.searchsorted(index_pocket, p_r)
-        
-        # are there local maxima around our point? 
-        try:
-            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-            B_l = min([bfield10[closest_values[0]], bfield10[closest_values[1]]])
-            B_h = max([bfield10[closest_values[0]], bfield10[closest_values[1]]])
-            # YES! 
-            success = True  
-        except:
-            # NO :c
-            R = 1.
-            R10.append(R)
-            Numb100.append(n_r)
-            B100.append(B_r)
-            success = False 
-            continue
-
-        if success:
-            # Ok, our point is between local maxima, is inside a pocket?
-            if B_r / B_l < 1:
-                # double YES!
-                R = 1. - np.sqrt(1 - B_r / B_l)
-                R10.append(R)
-                Numb100.append(n_r)
-                B100.append(B_r)
-            else:
-                # NO!
-                R = 1.
-                R10.append(R)
-                Numb100.append(n_r)
-                B100.append(B_r)
-
-        del closest_values, success, B_l, B_h, R, p_r
-        
-        # this must be an array 
-        mask100 = np.where(numb[:, i] > threshold)[0]
-        
-        if mask100.size > 0:
-            # both integers
-            start, end = mask100[0], mask100[-1]
-
-            if start <= follow_index <= end:
-                try:
-                    numb100   = numb[start:end+1, i]
-                    bfield100 = field[start:end+1, i]
-                    p_r = follow_index - start
-                    B_r = bfield100[p_r]
-                    n_r = numb100[p_r]
-
-                    print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-
-                except IndexError:
-                    raise ValueError(f"\nTrying to slice beyond bounds for column {i}. "
-                                    f"\nstart={start}, end={end}, shape={numb.shape}")
-            else:
-                print(f"\n[Info] follow_index {follow_index} outside threshold interval for column {i}.")
-                if follow_index >= numb.shape[0]:
-                    raise ValueError(f"follow_index {follow_index} is out of bounds for shape {numb.shape}")
-                numb100   = np.array([numb[follow_index, i]])
-                bfield100 = np.array([field[follow_index, i]])
-                p_r = 0
-                B_r = bfield10[p_r]
-                n_r = numb10[p_r]
-
-                print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-
-        else:
-            print(f"\n[Info] No densities > 100 cm⁻³ found for column {i}. Using follow_index fallback.")
-            if follow_index >= numb.shape[0]:
-                raise ValueError(f"\nfollow_index {follow_index} is out of bounds for shape {numb.shape}")
-            numb100   = np.array([numb[follow_index, i]])
-            bfield100 = np.array([field[follow_index, i]])
-            p_r = 0
-            B_r = bfield10[p_r]
-            n_r = numb10[p_r]
-
-            print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
-        
-        # 0-2*l => x10-y10 so the new middle is l - x10  
-        print("p_r: ", p_r)
-        if not (0 <= p_r < bfield100.shape[0]):
-            raise IndexError(f"p_r={p_r} is out of bounds for bfield10 of length {len(bfield100)}")
-
-        #Min, max, and any zeros in numb: 0.0 710.1029394476656 True
-
-        # pockets with density threshold of 10cm-3
-        pocket, global_info = pocket_finder(bfield100, numb100, p_r, plot=False)
-        index_pocket, field_pocket = pocket[0], pocket[1]
-
-        p_i = np.searchsorted(index_pocket, p_r)
-        
-        # are there local maxima around our point? 
-        try:
-            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
-            B_l = min([bfield100[closest_values[0]], bfield100[closest_values[1]]])
-            B_h = max([bfield100[closest_values[0]], bfield100[closest_values[1]]])
-            # YES! 
-            success = True  
-        except:
-            # NO :c
-            R = 1.
-            R100.append(R)
-            success = False 
-            continue
-
-        if success:
-            # Ok, our point is between local maxima, is inside a pocket?
-            if B_r / B_l < 1:
-                # double YES!
-                R = 1. - np.sqrt(1 - B_r / B_l)
-                R100.append(R)
-            else:
-                # NO!
-                R = 1.
-                R100.append(R)
-
-    return R10, R100, Numb100, B100
 
 def eval_reduction(field, numb, follow_index, threshold):
 
@@ -427,7 +236,7 @@ def eval_reduction(field, numb, follow_index, threshold):
     _, m = field.shape
 
     #print("_, m = field.shape => ", _, m)
-    from collections import Counter
+
     flag = False
        
     for i in range(m):
@@ -474,11 +283,6 @@ def eval_reduction(field, numb, follow_index, threshold):
 
             #print("B_r ", B_r, "n_r ", n_r, "p_r", p_r) 
         
-        # Flatten and count
-        counter = Counter(bfield10.ravel())  # ravel() flattens the array
-        most_common_value, count = counter.most_common(1)[0]
-
-
         # 0-2*l => x10-y10 so the new middle is l - x10  
         #print("p_r: ", p_r)
         if not (0 <= p_r < bfield10.shape[0]):
@@ -492,6 +296,11 @@ def eval_reduction(field, numb, follow_index, threshold):
         flag = False
 
         p_i = np.searchsorted(index_pocket, p_r)
+        # Flatten and count
+        from collections import Counter
+        counter = Counter(bfield10.ravel())  # ravel() flattens the array
+        most_common_value, count = counter.most_common(1)[0]
+
 
         if count > 20:
             # if count > 20 we assume that there is a jump into low resolution in magnetic field
@@ -500,8 +309,9 @@ def eval_reduction(field, numb, follow_index, threshold):
             R10.append(R)
             Numb100.append(n_r)
             B100.append(B_r)   
-            continue         
-        
+            flag = True
+            print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
+            continue      
         # are there local maxima around our point? 
         try:
             closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
@@ -532,11 +342,7 @@ def eval_reduction(field, numb, follow_index, threshold):
                 R10.append(R)
                 Numb100.append(n_r)
                 B100.append(B_r)
-
-        if count > 10:
-            flag = True
-            R10[-1] = 1.0
-            print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
+     
 
     return R10, Numb100, B100
 
@@ -676,7 +482,7 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
 
             #print(max(np.max(np.linalg.norm(line[k, :, :], axis=1)),np.max(np.linalg.norm(line_rev[k_rev, :, :], axis=1))))
 
-            print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
+            #print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
 
         
             if (np.sum(mask2) == 0) and (np.sum(mask2_rev) == 0):
@@ -707,24 +513,24 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
     nz_i    = k + 1
     nz_irev = k_rev + 1
     
-    print(f"get_lines => threshold index for 10cm-3: ", nz_i, nz_irev)
+    print(f"get_lines => threshold index for {threshold}cm-3: ", nz_i, nz_irev)
     print(f"get_lines => original shapes ({2*N+1} to {nz_i + nz_irev - 1})")
     print(f"get_lines => p_r = {N+1} to p_r = {nz_irev} for array with shapes ...")
 
-    radius_vector = np.append(line_rev[:nz_irev,:,:][::-1, :, :], line[1:nz_i,:,:], axis=0)
+    radius_vectors = np.append(line_rev[:nz_irev,:,:][::-1, :, :], line[1:nz_i,:,:], axis=0)
     magnetic_fields = np.append(bfields_rev[:nz_irev,:][::-1, :], bfields[1:nz_i,:], axis=0)
     numb_densities = np.append(densities_rev[:nz_irev,:][::-1, :], densities[1:nz_i,:], axis=0)
 
     #N = magnetic_fields.shape[0]
 
-    print("Radius vector shape:", radius_vector.shape)
+    print("Radius vector shape:", radius_vectors.shape)
 
     m = magnetic_fields.shape[1]
 
-    radius_vector   *= 1.0#* 3.086e+18                                # from Parsec to cm
+    radius_vectors   *= 1.0#* 3.086e+18                                # from Parsec to cm
     magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
 
-    return radius_vector, magnetic_fields, numb_densities, nz_irev #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
+    return radius_vectors, magnetic_fields, numb_densities, nz_irev #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
 
 def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold):
     """
@@ -742,12 +548,12 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     """
     m0 = x_init.shape[0]
     l0 = directions.shape[0]
-    print(m0, l0)
+    #print(m0, l0)
     directions = np.tile(directions, (m0, 1))
     x_init = np.repeat(x_init, l0, axis=0)
     m = x_init.shape[0]
     l = directions.shape[0]
-    print(m, l)
+    #print(m, l)
     """
     Now, a new feature that might speed the while loop, can be to double the size of all arrays
     and start calculating backwards and forwards simultaneously. This creates a more difficult condition
@@ -786,7 +592,7 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
         mask_rev = dens_rev > n_crit               # True if continue
         un_masked_rev = np.logical_not(mask_rev) # True if concluded
 
-        print(k, dens[:2], dens_rev[:2])
+        #print(k, dens[:2], dens_rev[:2])
         
         _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
 
@@ -831,19 +637,19 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     max_th     = np.max(threshold) + 1
     max_th_rev = np.max(threshold_rev) + 1 
 
-    radius_vector = np.append(line_rev[:max_th_rev,:,:][::-1, :, :], line[1:max_th,:,:], axis=0)*pc_to_cm
+    radius_vectors = np.append(line_rev[:max_th_rev,:,:][::-1, :, :], line[1:max_th,:,:], axis=0)*pc_to_cm
     numb_densities = np.append(densities_rev[:max_th_rev,:][::-1, :], densities[1:max_th,:], axis=0)
-    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) # list of 'm' column densities
+    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) # list of 'm' column densities
     
-    print(column_densities.shape, l0, m0)
+    #print(column_densities.shape, l0, m0)
 
     average_columns = np.zeros(m0)
     i = 0
     for x in range(0, l0*m0, l0): # l0 corresponds with how many directions we have
         average_columns[i] = np.mean(column_densities[x:x+l0])
-        print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
+        #print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
         i += 1
-    return radius_vector, numb_densities, average_columns
+    return radius_vectors, numb_densities, average_columns
 
 def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     def xyz_gen(size):
@@ -854,26 +660,10 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
         theta = np.arccos(2*U2-1)
         phi = 2*np.pi*U3
         x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-        if False:                   
-            bins = 100
-            plt.hist(r, bins=bins, color = 'skyblue', density =True)
-            plt.title('PDF $r = R\sqrt[3]{U(0,1)}$')
-            plt.ylabel(r'PDF')
-            plt.xlabel("$r$ (pc)")
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig('./images/columns/pdf_r.png')
-            plt.close()
 
-            plt.hist(theta, bins=bins, color = 'skyblue', density =True)
-            plt.title('PDF $\\theta = \\arccos(2U-1)$')
-            plt.ylabel(r'PDF')
-            plt.xlabel('$\\theta$ (rad)')
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig('./images/columns/pdf_theta.png')
-            plt.close()
-        return np.array([[a,b,c] for a,b,c in zip(x,y,z)])
+        rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
+        rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
+        return rho_cartesian, rho_spherical
 
     from scipy.spatial import cKDTree
     from copy import deepcopy
@@ -882,7 +672,7 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     valid_vectors = []
     rho_vector = np.zeros((no, 3))
     while len(valid_vectors) < no:
-        aux_vector = xyz_gen(no- len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
+        aux_vector, _ = xyz_gen(no- len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
         inside_sphere = aux_vector[distances <= rloc]
         _, nearest_indices = tree.query(inside_sphere)
@@ -891,18 +681,27 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
         valid_vectors.extend(valid_points)
         del aux_vector, distances, inside_sphere, valid_mask, valid_points
     rho_vector = np.array(deepcopy(valid_vectors))
+
+    if True:                   
+        plt.scatter(rho_vector[:, 0], rho_vector[:,1], color = 'skyblue')
+        plt.title('PDF $r = R\sqrt[3]{U(0,1)}$')
+        plt.ylabel(r'PDF')
+        plt.xlabel("$r$ (pc)")
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig('./images/xyz_pre_distro.png', dpi=300)
+        plt.close()
+
     return rho_vector
 
-x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
-#x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
+#x_input = np.vstack([uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud), np.array([0.0,0.0,0.0])])
+x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
 directions = fibonacci_sphere(20)
 
-radius_vector, numb_densities, average_column                = line_of_sight(x_input, directions, threshold)
-radius_vector, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
+radius_vectors, numb_densities, average_column                = line_of_sight(x_input, directions, threshold)
+radius_vectors, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
 
 data.close()
-
-print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
 if np.any(numb_densities > threshold):
     r_u, n_rs, B_rs = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
@@ -919,9 +718,9 @@ print("B(r) = ", len(B_rs))
 print("n(r) = ", len(n_rs))
 
 distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
-# cr path column densities
-c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vector, axis=0), axis=2), axis=0) *pc_to_cm
 
+# cr path column densities
+c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) *pc_to_cm
 
 # free space
 del Mass, Density_grad
@@ -930,186 +729,297 @@ del data
 
 print((time.time()-start_time)//60, " Minutes")
 
-print()
+# size of arrays
+m = magnetic_fields.shape[1]
+N = magnetic_fields.shape[0]
 
-order = np.argsort(distance)
+# reduction factor
+r_u      = np.array(r_u) # threshold * 1
+r_l      = np.array(r_l) # threshold * 10
+subunity = r_u < 1
+unity    = r_u == 1
+rho_subunity = x_input[subunity,:]
+rho_unity = x_input[unity,:]
 
+# removing PATH/LOS passing through core
+order    = np.argsort(distance)
+N_path_ordered = c_rs[order][1:]
+N_los_ordered = average_column[order][1:]
+s_ordered = distance[order][1:]
+N_path = c_rs.copy()
+N_los  = average_column.copy()
+s      = distance.copy()
 
-if True:
-    N_path = c_rs[order][1:]
-    N_los = average_column[order][1:]
-    s = distance[order][1:]
+if True: # N_path & N_los Linear fit vs. Distance away from core
+    fig, ax = plt.subplots()
 
+    log_y = np.log10(N_los_ordered); m1, b1 = np.polyfit(s_ordered, log_y, 1); fit1 = 10**(m1 * s_ordered + b1)
+    log_y2 = np.log10(N_path_ordered); m2, b2 = np.polyfit(s_ordered, log_y2, 1); fit2 = 10**(m2 * s_ordered+ b2)
+
+    eq1 = rf"$\log_{{10}}(N_{{los}}) = {m1:.4e}\,s + {b1:.4f}$"
+    eq2 = rf"$\log_{{10}}(N_{{path}}) = {m2:.4e}\,s + {b2:.4f}$"
+
+    ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)
+    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=16)
+    ax.set_yscale('log')
+    #ax.set_xscale('log')
+
+    ax.scatter(s_ordered, N_los_ordered, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$')
+    ax.scatter(s_ordered, N_path_ordered, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$')
+    ax.plot(s_ordered, fit1, '-' , color="black", linewidth=1,label='$N_{los} fit$')
+    ax.plot(s_ordered, fit2, '--', color="black", linewidth=1,label='$N_{path} fit$')
+
+    ax.text(0.05, 0.65, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=12, va="top")
+    ax.text(0.05, 0.60, eq2, transform=ax.transAxes, color="#148A02", fontsize=12, va="top")
+
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', alpha=0.3)
+    ax.legend(loc="upper left", fontsize=12)
+    
+    plt.title(r"Ratio Column Density (path/los)", fontsize=16)
+    fig.tight_layout()
+    plt.savefig('./images/columns/column_comparison.png', dpi=300)
+    plt.close()
+
+if True: # Ratio N_path/N_los
     fig, ax = plt.subplots()
     
-    # Axis labels
     ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)
-    
-    ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=16)
-    
-    # Log scales
+    ax.set_ylabel(r'$ratio$', fontsize=16)
     ax.set_yscale('log')
     #ax.set_xscale('log')
     
-    # Scatter plot with label for legend
-    #ax.scatter(0.0, average_column[order][0], marker='x',color="#8E2BAF", s=8)
-    #ax.scatter(0.0, c_rs[order][0], marker ='x',color="#148A02", s=8)
-    ax.scatter(s, N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm LOS}$')
-    ax.scatter(s, N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm PATH}$')
-    
-    # Fit for N_LOS
-    log_y = np.log10(N_los)
-    m1, b1 = np.polyfit(s, log_y, 1)
-    fit1 = 10**(m1 * s + b1)
-
-    # Fit for N_PATH
-    log_y2 = np.log10(N_path)
-    m2, b2 = np.polyfit(s, log_y2, 1)
-    fit2 = 10**(m2 * s+ b2)
-
-    # Plot fits
-    ax.plot(s, fit1, '--', color="#8E2BAF", linewidth=1)
-    ax.plot(s, fit2, '--', color="#148A02", linewidth=1)
-
-    # Add fit equations as text (log10 form)
-    eq1 = rf"$\log_{{10}}(N_{{LOS}}) = {m1:.4e}\,s + {b1:.4f}$"
-    eq2 = rf"$\log_{{10}}(N_{{PATH}}) = {m2:.4e}\,s + {b2:.4f}$"
-
-    print(eq1)
-    print(eq2)
-    # Place them on the plot
-    ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
-    ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
-
-    # Ticks and grid
+    ax.scatter(s, N_path/N_los, marker ='v',color="black", s=5, label=r'$N_{\rm path}/N_{\rm los}$', alpha=0.3)
+    ax.legend(loc="upper left", fontsize=12)    
     ax.tick_params(axis='both')
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which='both', alpha=0.3)
     
-    # Title and legend
-    #plt.title(r"$N \propto r$", fontsize=16)
-    ax.legend(loc="lower left")
-    #ax.legend()
-
-    # Layout and save
+    plt.title(r"Ratio $N_{path}/N_{los}$", fontsize=16)
     fig.tight_layout()
-    plt.savefig('./images/columns/column_compar.png')
+    plt.savefig('./images/columns/column_ratio.png', dpi=300)
     plt.close()
 
-if True:
-    N_path = c_rs[1:]
-    N_los = average_column[1:]
+if True: # N_path & N_los vs. Density
+    log_x = np.log10(n_rs)
+    log_y = np.log10(N_los); m1, b1 = np.polyfit(log_x, log_y, 1); fit1 = 10**(m1 * log_x + b1)
+    log_y2 = np.log10(N_path); m2, b2 = np.polyfit(log_x, log_y2, 1); fit2 = 10**(m2 * log_x+ b2)
+    
     fig, ax = plt.subplots()
-    
-    # Axis labels
+
     ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-    
     ax.set_ylabel(r'$N$ (cm$^{-2}$)', fontsize=16)
-    
-    # Log scales
     ax.set_yscale('log')
     ax.set_xscale('log')
+
+    eq1 = rf"$\log_{{10}}(N_{{los}}) = {m1:.5f}\,\log_{{10}}(n_g) + {b1:.5f}$"
+    eq2 = rf"$\log_{{10}}(N_{{path}}) = {m2:.5f}\,\log_{{10}}(n_g) + {b2:.5f}$"
+    ax.text(0.05, 0.85, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=12, va="top")
+    ax.text(0.05, 0.80, eq2, transform=ax.transAxes, color="#148A02", fontsize=12, va="top")
+
+    ax.plot(n_rs, fit1, '-', color="black", linewidth=1,label='$N_{los}$')
+    ax.plot(n_rs, fit2, '--', color="black", linewidth=1,label='$N_{path}$')
+
+    ax.scatter(n_rs, N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$', alpha=0.3)
+    ax.scatter(n_rs, N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$', alpha=0.3)
     
-    # Scatter plot with label for legend
-    ax.scatter(n_rs[0], average_column[0], marker='x',color="#8E2BAF", s=8)
-    ax.scatter(n_rs[0], c_rs[0], marker ='x',color="#148A02", s=8)
-    ax.scatter(n_rs[1:], N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm LOS}$')
-    ax.scatter(n_rs[1:], N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm PATH}$')
-    
-    # Fit for N_LOS
-    log_y = np.log10(N_los)
-    log_x = np.log10(n_rs[1:])
-    m1, b1 = np.polyfit(log_x, log_y, 1)
-    fit1 = 10**(m1 * log_x + b1)
-
-    # Fit for N_PATH
-    log_y2 = np.log10(N_path)
-    m2, b2 = np.polyfit(log_x, log_y2, 1)
-    fit2 = 10**(m2 * log_x+ b2)
-
-    # Plot fits
-    ax.plot(n_rs[1:], fit1, '--', color="#8E2BAF", linewidth=1)
-    ax.plot(n_rs[1:], fit2, '--', color="#148A02", linewidth=1)
-
-    # Add fit equations as text (log10 form)
-    eq1 = rf"$\log_{{10}}(N_{{LOS}}) = {m1:.5f}\,\log_{{10}}(x) + {b1:.5f}$"
-    eq2 = rf"$\log_{{10}}(N_{{PATH}}) = {m2:.5f}\,\log_{{10}}(x) + {b2:.5f}$"
-    ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=12, va="top")
-    ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=12, va="top")
-
-    # Place them on the plot
-    ax.text(n_rs[0], average_column[order][0], eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
-    ax.text(n_rs[0], c_rs[order][0], eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
-
-    # Ticks and grid
     ax.tick_params(axis='both')
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which='both', alpha=0.3)
+
+    plt.title(r"$N(n_g)$", fontsize=16)
+    ax.legend(loc="upper right", fontsize=12)
     
-    # Title and legend
-    plt.title(r"$N \propto n_g$", fontsize=16)
-    ax.legend(loc="upper right")
-    
-    # Layout and save
     fig.tight_layout()
-    plt.savefig('./images/columns/column_density.png')
+    plt.savefig('./images/columns/column_density.png', dpi=300)
     plt.close()
 
-if True:
-    log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs[order])
-    log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column[order])
+log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs)
+log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column)
+
+if True: # Ionization rate (L) vs. Density
 
     fig, ax = plt.subplots()
     
-    # Axis labels
-    ax.set_xlabel(r'''Distance $r$ (cm)
-        saturated and unsaturated colors represent model H and L respectively.
-                  ''')
-    
+    ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)    
     ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
     
-    # Log scales
     #ax.set_yscale('log')
-    #ax.set_xscale('log')
-    ax.set_ylim([-19, -15])
+    ax.set_xscale('log')
     
-    # Scatter plot with label for legend
-    #ax.scatter(0.0, log_ionization_path_l[0], marker='x',color="#8E2BAF", s=8 , alpha = 0.5)
-    #ax.scatter(0.0, log_ionization_path_h[0], marker='x',color="#8E2BAF", s=8)
-    #ax.scatter(0.0, log_ionization_los_l, marker='x',color="#148A02", s=8, alpha = 0.5)
-    #ax.scatter(0.0, log_ionization_los_h(average_column[order][0]), marker='x',color="#148A02", s=8)
+    ax.scatter(n_rs, log_ionization_los_l, marker='o',color="#8E2BAF", s=5, alpha = 0.3, label=r'$\zeta_{\rm los}$')
+    ax.scatter(n_rs, log_ionization_path_l, marker ='v',color="#148A02", s=5, alpha = 0.3, label=r'$\zeta_{\rm path}$')
 
-    ax.scatter(distance, log_ionization_los_l, marker='o',color="#CB71EA", s=5, alpha = 0.5)
-    ax.scatter(distance, log_ionization_path_l, marker ='v',color="#60D24F", s=5, alpha = 0.5)
+    ax.grid(True, which='both', alpha=0.3)
+    ax.legend(fontsize=16)
+    ax.set_ylim(-19.5, -15.5)
 
-    ax.scatter(distance, log_ionization_los_h, marker='o',color="#8E2BAF", s=5, label=r'$\zeta(_{\rm LOS}$')
-    ax.scatter(distance, log_ionization_path_h, marker ='v',color="#148A02", s=5, label=r'$\zeta_{\rm PATH}$')
-
-    # Ticks and grid
-    ax.tick_params(axis='both')
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-    
-    # Title and legend
-    plt.title(rf"$N \propto r$ ({case + num_file})", fontsize=16)
-    ax.legend()
-    
-    # Layout and save
     fig.tight_layout()
-    plt.savefig('./images/columns/zeta_compar.png')
+    plt.savefig(f'./images/columns/zeta_density_l.png', dpi=300)
     plt.close()
 
-if True:
-    r_u = np.array(r_u) # threshold * 1
-    r_l = np.array(r_l) # threshold * 10
+if True: # Ionization rate (H) vs. Density
 
-    total = r_u.shape[0]
-    mask = r_u == 1.0  
-    ones = np.sum(mask)
-    fraction = ones/total
-    x_ones = x_input[mask,:]
-    x_not  = x_input[np.logical_not(mask),:]
+    fig, ax = plt.subplots()
+    
+    ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+    
+    ax.set_xscale('log')
+    
+    ax.scatter(n_rs, log_ionization_los_h, marker='o',color="#8E2BAF", s=5, alpha = 0.3, label=r'$\zeta_{\rm los}$')
+    ax.scatter(n_rs, log_ionization_path_h, marker ='v',color="#148A02", s=5, alpha = 0.3, label=r'$\zeta_{\rm path}$')
 
-    tda(x_input, 'x')
-    tda(x_ones, 'R = 1')
-    tda(x_not , 'R < 1')
+    ax.grid(True, which='both', alpha=0.3)
+    plt.title(rf"$\zeta(n_g)$ ({case + num_file})", fontsize=16)
+    ax.legend(fontsize=16)
+    ax.set_ylim(-19.5, -15.5)
+    fig.tight_layout()
+    plt.savefig(f'./images/columns/zeta_density_h.png', dpi=300)
+    plt.close()
+
+    if True:
+
+        fig, (ax_l, ax_h) = plt.subplots(1, 2, figsize=(10, 5),gridspec_kw={'wspace': 0, 'hspace': 0}, sharey=True)
+
+        ax_l.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+        ax_l.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+        ax_l.set_xscale('log')
+        ax_l.scatter(n_rs, log_ionization_los_l, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
+        ax_l.scatter(n_rs, log_ionization_path_l, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
+        ax_l.grid(True, which='both', alpha=0.3)
+        ax_l.legend(fontsize=16)
+        ax_l.set_ylim(-19.5, -15.5)
+        ax_l.set_title("Model $\mathcal{L}$", fontsize=16)
+
+        ax_h.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+        ax_h.set_xscale('log')
+        ax_h.scatter(n_rs, log_ionization_los_h, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
+        ax_h.scatter(n_rs, log_ionization_path_h, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
+        ax_h.grid(True, which='both', alpha=0.3)
+        ax_h.legend(fontsize=16)
+        ax_h.set_ylim(-19.5, -15.5)
+        ax_h.set_title("Model $\mathcal{H}$", fontsize=16)
+        ax_h.tick_params(labelleft=False)
+
+        fig.suptitle(r"Ionization Rate ($\zeta$) vs. Density ($n_g$)", fontsize=18)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.savefig('./images/zeta_density_combined.png', dpi=300)
+        plt.close()
+
+
+ratio_ionization_path_to_los_l = log_ionization_path_l-log_ionization_los_l
+ratio_ionization_path_to_los_h = log_ionization_path_l-log_ionization_los_h
+
+if True: # Ratio Ionization_path/Ionization_los vs. Density
+    fig, ax = plt.subplots()
+    
+    ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+    ax.set_xscale('log')
+    
+    ax.scatter(n_rs, ratio_ionization_path_to_los_l, marker='o',color="#CB71EA", s=5, alpha = 0.3, label='Model $\mathcal{L}$')
+    ax.scatter(n_rs, ratio_ionization_path_to_los_h, marker ='v',color="#60D24F", s=5, alpha = 0.3, label='Model $\mathcal{H}$')
+
+    ax.grid(True, which='both', alpha=0.3)
+    
+    plt.title(rf"$\zeta_{{path}}/\zeta_{{los}} $ ({case + num_file})", fontsize=16)
+    ax.set_ylim(-5, 5)
+
+    ax.legend(fontsize=16)
+    fig.tight_layout()
+    plt.savefig(f'./images/columns/ratio_zeta_density.png', dpi=300)
+    plt.close()
+
+if True: # Ratio Ionization_path & Ionization_los vs. Distance
+    fig, ax = plt.subplots()
+    
+    ax.scatter(distance, ratio_ionization_path_to_los_l, marker='o', color="#CB71EA", s=5, alpha = 0.5, label='Model $\mathcal{L}$')
+    ax.scatter(distance, ratio_ionization_path_to_los_h, marker ='v', color="#60D24F", s=5, alpha = 0.5, label='Model $\mathcal{H}$')
+
+    ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)    
+    ax.set_ylabel(r'$\zeta_{path}/\zeta_{los}$', fontsize=16)
+    ax.set_xscale('log')
+    ax.grid(True, which='both', alpha=0.3)
+    ax.set_ylim(-5, 5)
+    plt.title(rf"$N(r)$ ({case + num_file})", fontsize=16)
+    ax.legend(fontsize=12)
+    fig.tight_layout()
+    plt.savefig('./images/columns/ratio_zeta_distance.png', dpi=300)
+    plt.close()
+
+if True: # Reduction factor vs. R -- (R < 1) Scatter and Histogram
+    s_subunity = distance[subunity]
+    r_u_subunity = r_u[subunity]
+    
+    fig, ax = plt.subplots()
+    
+    ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)
+    ax.set_ylabel(r'$1-R$', fontsize=16)
+    #ax.set_yscale('log')
+    ax.set_xscale('log')
+
+    ax.scatter(s_subunity, r_u_subunity, marker ='o',color='black', s=5, label="$R<1$")
+
+    ax.grid(True, which='both', alpha=0.3)
+    
+    plt.title(rf"$1 - R(s)$  ({case + num_file})", fontsize=16)
+    ax.legend(fontsize=12)
+    
+    fig.tight_layout()
+    plt.savefig('./images/reduction/r_subunity_complement.png', dpi=300)
+    plt.close()
+
+    # 1 - R Histogram vs. distance
+    fig, ax = plt.subplots(figsize=(8, 3.5))
+
+    bins = np.linspace(
+        np.min(1 - r_u_subunity),
+        np.max(1 - r_u_subunity),
+        r_u_subunity.shape[0] // 20
+    )
+
+    ax.hist(1 - r_u_subunity, bins=bins, alpha=1,
+            histtype='stepfilled', label=f"{time} Myrs")
+
+    print("Mean $R<1$: ", np.mean((1 - r_u_subunity)))
+
+    ax.set_yscale('log')
+    ax.set_ylabel('Counts', fontsize=16)
+    ax.set_xlabel('''$\log_{10}(\zeta / s^{-1})$''', fontsize=12)
+    ax.legend(fontsize=12)
+
+    ax.grid(True, which='both', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(f'./images/reduction/r_complement_histogram.png', dpi=300)
+
+
+if x_input.shape[0] > 100: # Note to self, for small rloc < 1 this code doesnt take long
+    # Subunity
+    fig, ax = plt.subplots()
+    ax.scatter(rho_subunity[:, 0], rho_subunity[:, 1], color='red', s=8, alpha=0.3, label="$R<1$")
+    ax.grid(True, which='both', alpha=0.3)
+    ax.legend(fontsize=12)
+    fig.tight_layout()
+    fig.savefig('./images/xyz_distro/xy_subunity.png')
+    plt.close(fig)
+
+    # Unity
+    fig, ax = plt.subplots()
+    ax.scatter(rho_unity[:, 0], rho_unity[:, 1], color='red', s=8, alpha=0.3, label="$R=1$")
+    ax.grid(True, which='both', alpha=0.3)
+    ax.legend(fontsize=12)
+    fig.tight_layout()
+    fig.savefig('./images/xyz_distro/xy_unity.png')
+    plt.close(fig)
+
+    # Both
+    fig, ax = plt.subplots()
+    ax.scatter(rho_unity[:, 0], rho_unity[:, 1], color='red', s=8, alpha=0.3, label="$R=1$")
+    ax.scatter(rho_subunity[:, 0], rho_subunity[:, 1], color='black', s=8, alpha=0.3, label="$R<1$")
+    ax.grid(True, which='both', alpha=0.3)
+    ax.legend(fontsize=12)
+    fig.tight_layout()
+    fig.savefig('./images/xyz_distro/xy_full.png')
+    plt.close(fig)
 
 def reduction_density(reduction_data, density_data, bound = ''):
 
@@ -1155,9 +1065,9 @@ def reduction_density(reduction_data, density_data, bound = ''):
     fig = plt.figure(figsize = (12, 6))
     ax1 = fig.add_subplot(121)
     ax1.hist(rdcut, round(np.sqrt(Npoints)))
-    ax1.set_xlabel('Reduction factor', fontsize = 20)
-    ax1.set_ylabel('number', fontsize = 20)
-    ax1.set_title(f't = {time_value}', fontsize = 20)
+    ax1.set_xlabel('Reduction factor', fontsize = 16)
+    ax1.set_ylabel('number', fontsize = 16)
+    ax1.set_title(f't = {time_value}', fontsize = 16)
     plt.setp(ax1.get_xticklabels(), fontsize = 16)
     plt.setp(ax1.get_yticklabels(), fontsize = 16)
     ax2 = fig.add_subplot(122)
@@ -1171,9 +1081,9 @@ def reduction_density(reduction_data, density_data, bound = ''):
     plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
     plt.xscale('log')
     plt.ylim(0.25, 1.05)
-    ax2.set_ylabel('Reduction factor', fontsize = 20)
-    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 20)
-    ax2.set_title(f'f(R=1) = {fraction}', fontsize = 20)
+    ax2.set_ylabel('Reduction factor', fontsize = 16)
+    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 16)
+    ax2.set_title(f'f(R=1) = {fraction}', fontsize = 16)
     plt.setp(ax2.get_xticklabels(), fontsize = 16)
     plt.setp(ax2.get_yticklabels(), fontsize = 16)
     fig.subplots_adjust(left = .1)
@@ -1183,13 +1093,28 @@ def reduction_density(reduction_data, density_data, bound = ''):
     fig.tight_layout()
 
     #plt.savefig('histograms/pocket_statistics_ks.pdf')
-    plt.savefig(f'./images/reduction/pocket_stats{bound}.png')
+    plt.savefig(f'./images/reduction/pocket_stats{bound}.png', dpi=300)
 
 #reduction_density(r_l, n_rs, 'l')
 
-#reduction_density(r_u, n_rs, 'u')
+reduction_density(r_u, n_rs, 'u')
 
-if False:
+if True:
+    r_u = np.array(r_u) # threshold * 1
+    r_l = np.array(r_l) # threshold * 10
+
+    total = r_u.shape[0]
+    mask = r_u == 1.0  
+    ones = np.sum(mask)
+    fraction = ones/total
+    x_ones = x_input[mask,:]
+    x_not  = x_input[np.logical_not(mask),:]
+
+    tda(x_input, 'x')
+    tda(x_ones, 'R = 1')
+    tda(x_not , 'R < 1')
+
+if True:
     try:
             
         from matplotlib import cm
@@ -1199,16 +1124,18 @@ if False:
         cmap = cm.viridis
 
         ax = plt.figure().add_subplot(projection='3d')
-        radius_vector /= 3.086e+18
+        radius_vectors /= pc_to_cm
 
         for k in range(m):
+            if m > 100:
+                break
             # mask makes sure that start and ending point arent the zero vector
             numb_densities[:, k]
             mask = numb_densities[:, k] > 0
 
-            x=radius_vector[mask, k, 0]
-            y=radius_vector[mask, k, 1]
-            z=radius_vector[mask, k, 2]
+            x=radius_vectors[mask, k, 0]
+            y=radius_vectors[mask, k, 1]
+            z=radius_vectors[mask, k, 2]
             
             for l in range(len(x) - 1):
                 color = cmap(norm(magnetic_fields[l, k]))
@@ -1232,7 +1159,7 @@ if False:
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
         cbar.set_label('Magnetic Field Strength')
-        plt.savefig(os.path.join(children_folder,f"FieldTopology.png"), bbox_inches='tight')
+        plt.savefig("./images/FieldTopology.png", bbox_inches='tight', dpi=300)
 
     except:
         print("Couldnt print B field structure")
@@ -1240,42 +1167,93 @@ if False:
 os.makedirs(children_folder, exist_ok=True)
 h5_path = os.path.join(children_folder, f"DataBundle.h5")
 
-m = magnetic_fields.shape[1]
+import os
 
-print(len(r_u), len(r_l))
-# === Writing to HDF5 with metadata ===
-with h5py.File(h5_path, "w") as f:
-    # Datasets
-    #f.create_dataset("positions", data=radius_vector)
-    #f.create_dataset("densities", data=numb_densities)
-    #f.create_dataset("magnetic_fields", data=magnetic_fields)
-    f.create_dataset("starting_point", data=x_input)
-    f.create_dataset("number_densities", data=n_rs)
-    f.create_dataset("magnetic_fields", data=B_rs)
-    f.create_dataset("column_path", data=c_rs)
-    f.create_dataset("reduction_factor", data=np.array([r_u, r_l]))
-    f.create_dataset("directions", data=directions)
-    f.create_dataset("column_los", data=average_column)
-    f.create_dataset("bfields", data=magnetic_fields)
-    f.create_dataset("vectors", data=radius_vector)
-    f.create_dataset("densities", data=numb_densities)
+if os.path.exists(h5_path):
+    print("File exists:", h5_path)
 
-    # === Metadata attributes ===
-    #f.attrs["seed"] = seed
-    f.attrs["cores_used"] = os.cpu_count()
-    f.attrs["pre_allocation_number"] = 2 * N
-    f.attrs["rloc"] = rloc
-    f.attrs["index"] = follow_index
-    f.attrs["max_cycles"] = m
-    f.attrs["center"] = Center
-    f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
-    f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
-    
-    try:
-        pass
-        os.remove(tmp_file)
-    except:
-        print(f"Temp file not found tmp.csv")
-        raise FileNotFoundError
+    def append_to_dataset(f, name, new_data, axis):
+        """
+        Append new_data to dataset `name` inside open HDF5 file `f`.
 
-print(f"{h5_path.split('/')[-1]} Created Successfully")
+        Parameters
+        ----------
+        f : h5py.File
+            An open HDF5 file (must be in "a" or "r+" mode).
+        name : str
+            Dataset name.
+        new_data : np.ndarray
+            Data to append. Must match dataset's shape in all but
+            the first dimension.
+        """
+        dset = f[name]
+        dset_shape = dset.shape
+        new_shape = list(dset_shape)
+
+        if axis < 0:
+            axis += len(dset_shape)  # support negative axes
+
+        # Check that new_data matches dset in all axes except the append axis
+        for i, (dim_old, dim_new) in enumerate(zip(dset_shape, new_data.shape)):
+            if i != axis and dim_old != dim_new:
+                raise ValueError(
+                    f"Dimension mismatch at axis {i}: dataset has {dim_old}, new_data has {dim_new}"
+                )
+
+        # Resize along the append axis
+        new_shape[axis] += new_data.shape[axis]
+        dset.resize(new_shape)
+
+        # Build a slicing object to assign new data
+        slicer = [slice(None)] * len(dset_shape)
+        slicer[axis] = slice(dset_shape[axis], new_shape[axis])
+        dset[tuple(slicer)] = new_data     
+    with h5py.File(h5_path, "a") as f:
+
+        # --- Datasets ---
+        append_to_dataset(f, "starting_point", x_input, 0)
+        append_to_dataset(f, "number_densities", np.array(n_rs), 0)
+        append_to_dataset(f, "magnetic_fields", np.array(B_rs), 0)
+        append_to_dataset(f, "reduction_factor", np.array([r_u, r_l]), 1)  # shape (2, m)
+        append_to_dataset(f, "column_path", c_rs, 0)
+        append_to_dataset(f, "column_los", average_column, 0)
+
+        # --- Physical Parameters ---
+        append_to_dataset(f, "densities", numb_densities, 1)
+        append_to_dataset(f, "bfields", magnetic_fields, 1)
+        append_to_dataset(f, "vectors", radius_vectors, 1)
+
+    print(f"{h5_path.split('/')[-1]} Updated Successfully")
+else:
+    print("File does not exist:", h5_path)
+
+    # === Writing to HDF5 with metadata ===
+    with h5py.File(h5_path, "w") as f:
+        # Datasets, chunks=True
+        f.create_dataset("starting_point", data=x_input, maxshape=(None, 3), chunks=True)
+        f.create_dataset("number_densities", data=n_rs, maxshape=(None,)   , chunks=True)
+        f.create_dataset("magnetic_fields", data=B_rs,maxshape=(None,)   , chunks=True)
+        f.create_dataset("column_path", data=c_rs, maxshape=(None,)   , chunks=True)
+        f.create_dataset("reduction_factor", data=np.array([r_u, r_l]), maxshape=(None, None), chunks=True)
+        f.create_dataset("column_los", data=average_column, maxshape=(None,), chunks=True)
+        f.create_dataset("bfields", data=magnetic_fields, maxshape=(None, None), chunks=True)
+        f.create_dataset("vectors", data=radius_vectors,maxshape=(None, None, 3), chunks=True)
+        f.create_dataset("densities", data=numb_densities, maxshape=(None, None), chunks=True)
+
+        # === Metadata attributes ===
+        f.attrs["cores_used"] = os.cpu_count()
+        f.attrs["time"] = time_value
+        f.attrs["rloc"] = rloc
+        f.attrs["index"] = follow_index
+        f.attrs["center"] = Center
+        f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
+        f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
+        
+        try:
+            pass
+            os.remove(tmp_file)
+        except:
+            print(f"Temp file not found tmp.csv")
+            raise FileNotFoundError
+
+    print(f"{h5_path.split('/')[-1]} Created Successfully")

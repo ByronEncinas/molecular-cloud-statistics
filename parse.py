@@ -731,11 +731,10 @@ if True: # Statistical despcriptors and fraction
 
     mosaic = [
         ['mean',      'std_dev'],
-        ['skewness',  'kurtosis'],
-        ['fraction',  'fraction'],  # Span the full row
+        ['skewness',  'kurtosis']
     ]
 
-    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 12), sharex=True)
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 8), sharex=True)
 
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -755,15 +754,61 @@ if True: # Statistical despcriptors and fraction
     axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
     axs['kurtosis'].grid(True)
 
-    axs['fraction'].plot(times, f, marker='x', color=default_colors[4])
-    axs['fraction'].set_xlabel('Time Step')
-    axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
-    axs['fraction'].grid(True)
-
     fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig('./ideal_moments.png', dpi=300)
     plt.close()
+
+    default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Create a dictionary of your data and plot metadata
+    plots = {
+        'mean': {
+            'y': r_means,
+            'ylabel': r'$\mu$ (Mean)',
+            'marker': 'o',
+            'color': default_colors[0]
+        },
+        'std_dev': {
+            'y': r_var,
+            'ylabel': r'$\sigma$ (Std Dev)',
+            'marker': 's',
+            'color': default_colors[1]
+        },
+        'skewness': {
+            'y': r_skew,
+            'ylabel': r'$\gamma$ (Skewness)',
+            'marker': '^',
+            'color': default_colors[2]
+        },
+        'kurtosis': {
+            'y': r_kur,
+            'ylabel': r'$\kappa$ (Kurtosis)',
+            'marker': 'd',
+            'color': default_colors[3]
+        },
+        'fraction': {
+            'y': f,
+            'ylabel': r'$f=\frac{\{R=1\}}{\{R\}}$',
+            'marker': 'x',
+            'color': default_colors[4],
+            'xlabel': 'Time Step'  # Only this one has an x-label
+        },
+    }
+
+    # Loop through each plot and generate/save independently
+    for name, meta in plots.items():
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.plot(times, meta['y'], marker=meta['marker'], color=meta['color'])
+        ax.set_ylabel(meta['ylabel'])
+        ax.grid(True)
+        if 'xlabel' in meta:
+            ax.set_xlabel(meta['xlabel'])
+
+        fig.suptitle(f'{name.capitalize()} Over Time (ideal)', fontsize=14)
+        plt.tight_layout()
+        plt.savefig(f'./{name}_plot.png', dpi=300)
+        plt.close()
 
     times, r = zip(*[(float(time), r100_distro)
                             for time, _, r100_distro in ReducedBundle['amb']])
@@ -790,11 +835,10 @@ if True: # Statistical despcriptors and fraction
 
     mosaic = [
         ['mean',      'std_dev'],
-        ['skewness',  'kurtosis'],
-        ['fraction',  'fraction'],  # Span the full row
+        ['skewness',  'kurtosis']
     ]
 
-    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 12), sharex=True)
+    fig, axs = plt.subplot_mosaic(mosaic, figsize=(8, 8), sharex=True)
 
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -814,15 +858,63 @@ if True: # Statistical despcriptors and fraction
     axs['kurtosis'].set_ylabel(r'$\kappa$ (Kurtosis)')
     axs['kurtosis'].grid(True)
 
-    axs['fraction'].plot(times, f, marker='x', color=default_colors[4])
-    axs['fraction'].set_xlabel('Time Step')
-    axs['fraction'].set_ylabel(r'$f=\frac{\{R=1\}}{\{R\}}$')
-    axs['fraction'].grid(True)
-
     fig.suptitle('Time Evolution of Statistical Moments ($R<1$)', fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig('./amb_moments.png', dpi=300)
     plt.close()
+
+    import matplotlib.pyplot as plt
+
+    default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Create a dictionary of your data and plot metadata
+    plots = {
+        'mean': {
+            'y': r_means,
+            'ylabel': r'$\mu$ (Mean)',
+            'marker': 'o',
+            'color': default_colors[0]
+        },
+        'std_dev': {
+            'y': r_var,
+            'ylabel': r'$\sigma$ (Std Dev)',
+            'marker': 's',
+            'color': default_colors[1]
+        },
+        'skewness': {
+            'y': r_skew,
+            'ylabel': r'$\gamma$ (Skewness)',
+            'marker': '^',
+            'color': default_colors[2]
+        },
+        'kurtosis': {
+            'y': r_kur,
+            'ylabel': r'$\kappa$ (Kurtosis)',
+            'marker': 'd',
+            'color': default_colors[3]
+        },
+        'fraction': {
+            'y': f,
+            'ylabel': r'$f=\frac{\{R=1\}}{\{R\}}$',
+            'marker': 'x',
+            'color': default_colors[4],
+            'xlabel': 'Time Step'  # Only this one has an x-label
+        },
+    }
+
+    # Loop through each plot and generate/save independently
+    for name, meta in plots.items():
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.plot(times, meta['y'], marker=meta['marker'], color=meta['color'])
+        ax.set_ylabel(meta['ylabel'])
+        ax.grid(True)
+        if 'xlabel' in meta:
+            ax.set_xlabel(meta['xlabel'])
+
+        fig.suptitle(f'{name.capitalize()} Over Time (non-ideal)', fontsize=14)
+        plt.tight_layout()
+        plt.savefig(f'./{name}_plot.png', dpi=300)
+        plt.close()
 
 if False: # 3D histogram of R in time (but time is represented by index)
 

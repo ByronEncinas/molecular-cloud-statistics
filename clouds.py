@@ -999,9 +999,6 @@ for list in file_list:
             ax.set_yscale('log')
             #ax.set_xscale('log')
             
-            # Scatter plot with label for legend
-            #ax.scatter(0.0, average_column[order][0], marker='x',color="#8E2BAF", s=8)
-            #ax.scatter(0.0, c_rs[order][0], marker ='x',color="#148A02", s=8)
             ax.scatter(s, N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm LOS}$')
             ax.scatter(s, N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm PATH}$')
             
@@ -1026,8 +1023,8 @@ for list in file_list:
             print(eq1)
             print(eq2)
             # Place them on the plot
-            ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
-            ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
+            ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=16, va="top")
+            ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=16, va="top")
 
             # Ticks and grid
             ax.tick_params(axis='both')
@@ -1041,7 +1038,7 @@ for list in file_list:
             # Layout and save
             fig.tight_layout()
             
-            plt.savefig(os.path.join(children_folder, f'{how_many}clouds_columns.png'))
+            plt.savefig(os.path.join(children_folder, f'{how_many}clouds_columns.png'), dpi=300)
             plt.close()
 
         N_path = c_rs[1:]
@@ -1083,12 +1080,8 @@ for list in file_list:
             # Add fit equations as text (log10 form)
             eq1 = rf"$\log_{{10}}(N_{{LOS}}) = {m1:.5f}\,\log_{10}(x) + {b1:.5f}$"
             eq2 = rf"$\log_{{10}}(N_{{PATH}}) = {m2:.5f}\,\log_{10}(x) + {b2:.5f}$"
-            ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=12, va="top")
-            ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=12, va="top")
-
-            # Place them on the plot
-            ax.text(n_rs[0], average_column[order][0], eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=10, va="top")
-            ax.text(n_rs[0], c_rs[order][0], eq2, transform=ax.transAxes, color="#148A02", fontsize=10, va="top")
+            ax.text(0.05, 0.95, eq1, transform=ax.transAxes, color="#8E2BAF", fontsize=16, va="top")
+            ax.text(0.05, 0.90, eq2, transform=ax.transAxes, color="#148A02", fontsize=16, va="top")
 
             # Ticks and grid
             ax.tick_params(axis='both')
@@ -1100,5 +1093,5 @@ for list in file_list:
             
             # Layout and save
             fig.tight_layout()
-            plt.savefig(os.path.join(children_folder, f'{how_many}clouds_ion.png'))
+            plt.savefig(os.path.join(children_folder, f'{how_many}clouds_ion.png'), dpi=300)
             plt.close()

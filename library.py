@@ -7,6 +7,9 @@ from scipy import spatial
 from scipy.spatial import distance
 from scipy.spatial import cKDTree
 
+import matplotlib as mpl
+
+mpl.rcParams['text.usetex'] = True
 
 """ Toggle Parameters """
 
@@ -195,7 +198,8 @@ def fibonacci_sphere(samples=20):
     z = radius * np.sin(theta)
     return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
 
-def pocket_finder(bfield, cycle=0, plot=False):
+def pocket_finder(bfield, numb, p_r, plot=False):
+    #pocket_finder(bfield, p_r, B_r, img=i, plot=False)
     """  
     Finds peaks in a given magnetic field array.
 
@@ -245,29 +249,61 @@ def pocket_finder(bfield, cycle=0, plot=False):
 
     peaks = lpeaks +  list(reversed(rpeaks))[1:]
     indexes = lindex + list(reversed(rindex))[1:]
-    
+
     if plot:
-        # Create a figure and axes for the subplot layout
-        fig, axs = plt.subplots(1, 1, figsize=(8, 6))
+        # Find threshold crossing points for 100 cm^-3
+        mask = np.log10(numb) < 2  # log10(100) = 2
+        slicebelow = mask[:p_r]
+        sliceabove = mask[p_r:]
+        peaks = np.array(peaks)
+        indexes = np.array(indexes)
 
-        axs.plot(bfield)
-        axs.plot(indexes, peaks, "x", color="green")
-        axs.plot(indexes, peaks, ":", color="green")
-        
-        #for idx in index_global_max:
-        axs.plot(idx, upline, "x", color="black")
-        axs.plot(np.ones_like(bfield) * baseline, "--", color="gray")
-        axs.set_xlabel("Index")
-        axs.set_ylabel("Field")
-        axs.set_title("Actual Field Shape")
-        axs.legend(["bfield", "all peaks", "index_global_max", "baseline"])
-        axs.grid(True)
+        try:
+            above100 = np.where(sliceabove)[0][0] + p_r
+        except IndexError:
+            above100 = None
 
-        # Adjust layout to prevent overlap
-        plt.tight_layout()
-        # Save the figure
-        plt.savefig(f"./field_shape{cycle}.png")
-        plt.close(fig)
+        try:
+            below100 = np.where(slicebelow)[0][-1]
+        except IndexError:
+            below100 = None
+
+        # Create a mosaic layout with two subplots: one for 'numb', one for 'bfield'
+        fig, axs_dict = plt.subplot_mosaic([['numb', 'bfield']], figsize=(12, 5))
+        axs_numb = axs_dict['numb']
+        axs_bfield = axs_dict['bfield']
+
+        def plot_field(axs, data, label):
+
+            axs.plot(data, label=label)
+            if below100 is not None:
+                axs.vlines(below100, data[below100]*(1 - 0.1), data[below100]*(1 + 0.1),
+                        color='black', label='th 100cm⁻³ (left)')
+            if above100 is not None:
+                axs.vlines(above100, data[above100]*(1 - 0.1), data[above100]*(1 + 0.1),
+                        color='black', label='th 100cm⁻³ (right)')
+            if peaks is not None:
+                axs.plot(indexes, data[indexes], "x", color="green", label="all peaks")
+                axs.plot(indexes, data[indexes], ":", color="green")
+
+            if idx is not None and upline is not None:
+                axs.plot(idx, np.max(data), "x", color="black", label="index_global_max")
+
+            axs.axhline(np.min(data), linestyle="--", color="gray", label="baseline")
+            axs.set_yscale('log')
+            axs.set_xlabel("Index")
+            axs.set_ylabel(label)
+            axs.set_title(f"{label} Shape")
+            axs.legend()
+            axs.grid(True)
+
+        # Plot both subplots
+        #plot_field(axs_numb, numb, "Density")
+        #plot_field(axs_bfield, bfield, "Magnetic Field")
+
+        #plt.tight_layout()
+        #plt.savefig('./images/columns/mosaic.png')
+        #plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
 
@@ -402,5 +438,5 @@ def tda(X, distro):
     plot_diagrams(diagrams)
 
     # Save it to a file (e.g., PNG or PDF)
-    plt.savefig(f"pd_{distro}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"images/xyz_distro/pd_{distro}.png", dpi=300, bbox_inches='tight')
     plt.close(fig)
