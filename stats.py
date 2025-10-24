@@ -1,8 +1,6 @@
-from collections import Counter
-from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
-from library import *
+from src.library import *
 import csv, glob, os, sys, time
 import h5py
 
@@ -13,7 +11,7 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
-N               = 5_000
+N               = 2_500
 
 if len(sys.argv)>4:
     rloc          = float(sys.argv[1])
@@ -22,12 +20,12 @@ if len(sys.argv)>4:
     num_file      = str(sys.argv[4]) 
 else: #  python3 stats.py 0.1 2000 ideal 480
     rloc            = 0.1
-    max_cycles      = 800
-    case            = 'ideal'
+    max_cycles      = 100
+    case            = 'amb'
     num_file        = '430'
 
 dense_cloud = 1.0e+2
-threshold = 1.0e+1
+threshold = 1.0e+2
 
 if case == 'ideal':
     subdirectory = 'ideal_mhd'
@@ -38,20 +36,142 @@ file_path       = f'./{case}_cloud_trajectory.txt'
 file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
 print(file_list)
+
+_den = []
+_time = []
 with open(file_path, mode='r') as file:
 
     csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
     next(csv_reader)  # Skip the header row
     print('File opened successfully')
-    snap = []
-    time_value = []
     for row in csv_reader:
+        _den += [float(row[8])]
+        _time += [float(row[1])]
         if num_file == str(row[0]):
             print("Match found!")
             Center = np.array([float(row[2]),float(row[3]),float(row[4])])
             snap =str(row[0])
             time_value = float(row[1])
-            peak_den =  float(row[5])
+            peak_den =  float(row[8])
+if False:
+    _den = np.array(_den[::-1])
+    _time = np.array(_time[::-1])
+    dn_dt = np.gradient(np.log10(_den), _time) #np.diff(_den)/np.diff(_time)
+    dt_dstep  = np.gradient(_time)
+    # 0.06    Myrs is the maximum dt (600    kyrs)
+    # 1.52e-5 Myrs is the minimum dt (0.0152 kyrs)
+    # after core density reached 10^6 cm-3, then continous decrease of dt
+    fig, axes = plt.subplots(2, 2, figsize=(10, 5), sharex = True)
+
+    axes[0,0].scatter(_time, dt_dstep, marker = '.')
+    axes[0,0].set_ylabel('$\Delta t$ at snapshot [Myrs]', fontsize=12)
+    _text = r'''$\max\{dt\} = 0.06 \rm Myrs = 600 \rm kyrs$
+                $\min\{dt\} = 1.52 \times 10^{-5} \rm Myrs = 0.0152 \rm kyrs$'''
+    axes[0,0].text(0.05, 0.075, _text, transform=axes[0,0].transAxes,
+                ha='left', va='bottom', fontsize=6, color='red')
+    _time_grad_kyrs = np.gradient(_time*1_000.0)
+    ax2 = axes[0,0].twinx()
+    ax2.plot(_time, _time_grad_kyrs, '--')
+    ax2.set_ylabel('$\Delta t$ [kyrs]', fontsize=12)
+    #ax2.set_yscale('log')
+
+
+    #axes[1,0].plot(_time, dn_dt, '.', color='black')
+    axes[1,0].plot(_time, _den, '-', color = 'orange', label=r'$n_{core}$')
+    axes[1,0].set_ylabel(r'Density [cm$^{-3}$]', fontsize=14)
+    axes[1,0].set_xlabel(r'time [Myrs]', fontsize=14)
+    axes[1,0].set_yscale('log')
+
+    from scipy.signal import find_peaks
+
+    peaks, _ = find_peaks(_den)
+    axes[1,0].vlines(_time[peaks], ymin=axes[1,0].get_ylim()[0], ymax=np.max(_den), colors='grey', linestyles='dashed', label='Local maxima')
+    axes[1,0].set_yscale('log')
+    axes[1,0].legend(loc='lower center', fontsize=6)
+
+    ax2 = axes[1,0].twinx()
+    ax2.scatter(_time, dt_dstep, marker='.', color = 'green', s=15)
+    ax2.plot(_time, dt_dstep, '-', color = 'green', label=r'Num. Derivative') #$\frac{\Delta t}{\Delta (snap)}$
+    #ax2.plot(_time, dn_dt, '.-', color='green')
+    ax2.set_ylabel('Num. Derivative $\partial_{i} t$', fontsize=14)
+    ax2.set_yscale('log')
+
+    lines1, labels1 = axes[1,0].get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    axes[1,0].legend(lines1 + lines2, labels1 + labels2, loc='center left', fontsize=6)
+
+
+    axes[0,1].plot(_time, dn_dt, '-', color='red', linewidth=1)
+    axes[0,1].set_ylabel(r'$\partial_{t} n_{core}$', fontsize=16)
+    axes[0,1].set_yscale('log')
+    axes[0,1].tick_params(axis='y', labelcolor='red')
+    _text = 'How the peak density grows in time'
+    axes[0,1].text(0.5, 0.85, _text, transform=axes[0,1].transAxes,
+                ha='center', va='bottom', fontsize=6, color='black')
+
+    ax2 = axes[0,1].twinx()
+    ax2.tick_params(axis='y', labelcolor='blue')
+    ax2.scatter(_time, _den, marker='.', s=5, color='blue')
+    ax2.set_ylabel('$n_g$ [cm$^{-3}$]', fontsize=12)
+    ax2.set_yscale('log')
+
+    axes[1,1].tick_params(axis='y', labelcolor='red')
+    axes[1,1].plot(_time, dn_dt, '.-', color='red', lw=1, label=r'ND dn/dt')
+    axes[1,1].set_ylabel(r'Density [cm$^{-3}$]', fontsize=14)
+    axes[1,1].set_xlabel(r'time [Myrs]', fontsize=14)
+    axes[1,1].set_yscale('log')
+
+    peaks, _ = find_peaks(_den)
+    axes[1,1].vlines(_time[peaks], ymin=axes[1,0].get_ylim()[0], ymax=np.max(_den), colors='gray', linestyles='dashed', lw =1, label='Local maxima')
+    axes[1,1].set_yscale('log')
+    #axes[1,1].set_xlim(-0.2,4.3)
+
+    ax2 = axes[1,1].twinx()
+    ax2.tick_params(axis='y', labelcolor='blue')
+    ax2.plot(_time, dt_dstep, '.-', color = 'blue', lw=1, label=r'ND dt/d(step)')
+    #ax2.scatter(_time, dt_dstep, s=5, color = 'blue') #$\frac{\Delta t}{\Delta (snap)}$
+    ax2.set_ylabel('Num. Derivative $\partial_{i} t$', fontsize=14)
+    ax2.set_yscale('log')
+    lines1, labels1 = axes[1,1].get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+
+    axes[1,1].legend(lines1 + lines2, labels1 + labels2, loc='center left', fontsize=6)
+    # Add grid to all subplots
+    for ax_row in axes:
+        for ax in ax_row:
+            ax.grid(True)
+
+    plt.tight_layout()
+    plt.savefig('./timestep.png',dpi=500)
+    plt.close(fig)
+
+
+    # Courant Factor = 0.3 <= adapts timestep base on grid size and velocity
+    # 0.06    Myrs is the maximum dt (600    kyrs)
+    # 1.52e-5 Myrs is the minimum dt (0.0152 kyrs)
+    # after core density reached 10^6 cm-3, then continous decrease of dt
+    # Should try to calculate mass to flux ratio or smth similar
+
+    PARAMETERS : dict = {
+        'CourantFac': np.float64(0.3),     #  C = u dt/dx <= 0.3 standard value
+        'InitGasTemp': np.float64(4500.0), # in Kelvin
+        'JeansNumber': np.float64(32.0),   # possibly related to resolution down to the jeans length parameter
+        'MaxSizeTimestep': np.float64(0.1),# maximum timestep possible
+        'MaxTimebinSpread': np.int32(8),   
+        'MaxVolume': np.float64(128.0),    # max cell volume
+        'MinSizeTimestep': np.float64(1e-20),# miniimum timestep possible
+        'TimeBegin': np.float64(0.0),
+        'TimeBetSnapshot': np.float64(5e-07),
+        'TimeMax': np.float64(12.8),
+        'TimeOfFirstSnapshot': np.float64(0.0),
+        'TypeOfTimestepCriterion': np.int32(0),
+        'WaitingTimeFactor': np.float64(1.0)}
+
+if False:
+    h = 3
+    Center = np.array([106.62494306917117,205.67415032302878,36.807007547204876])
+    peak_den = 13939.02078042445
+
 try:
     print(Center)
 except:
@@ -72,6 +192,9 @@ os.makedirs(children_folder, exist_ok=True)
 
 data = h5py.File(filename, 'r')
 Boxsize = data['Header'].attrs['BoxSize']
+#MagneticFieldDivergence = np.asarray(data['PartType0']['MagneticFieldDivergence'], dtype=FloatType)
+#MagneticFieldDivergenceAlt = np.asarray(data['PartType0']['MagneticFieldDivergenceAlternative'], dtype=FloatType)
+Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
 VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
 Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
 Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
@@ -117,6 +240,81 @@ tmp_file = os.path.join(children_folder, "tmp.csv")
 with open(tmp_file, "w"):
     print('Temp file created successfully')
     pass  # Nothing to write, just clears the file
+
+def reduction_density(reduction_data, density_data, bound = ''):
+
+    reduction_data = np.array(reduction_data)
+    density_data = np.array(density_data)
+    def stats(n):
+        sample_r = []
+        for i in range(0, len(density_data)):
+            if np.abs(np.log10(density_data[i]/n)) < 1/8:
+                sample_r.append(reduction_data[i])
+        sample_r.sort()
+        if len(sample_r) == 0:
+            return [np.nan, np.nan, np.nan]
+
+        mean   = np.mean(sample_r)
+        median = np.quantile(sample_r, .5)
+        ten    = np.quantile(sample_r, .1)
+        return [mean, median, ten]
+        
+    mask = reduction_data != 1
+    reduction_data = reduction_data[mask]
+    density_data = density_data[mask]
+    fraction = (mask.shape[0] - np.sum(mask)) / mask.shape[0] # {R = 1}/{R}
+    Npoints = len(reduction_data)
+    n_min, n_max = np.log10(np.min(density_data)), np.log10(np.max(density_data))
+    x_n = np.logspace(n_min, n_max, Npoints)
+    mean_vec = np.zeros(Npoints)
+    median_vec = np.zeros(Npoints)
+    ten_vec = np.zeros(Npoints)
+    for i in range(0, Npoints):
+        s = stats(x_n[i])
+        mean_vec[i] = s[0]
+        median_vec[i] = s[1]
+        ten_vec[i] = s[2]
+
+                
+    rdcut = []
+    for i in range(0,Npoints):
+        if density_data[i] > n_min:
+            rdcut = rdcut + [reduction_data[i]]
+
+    if True:
+        fig = plt.figure(figsize = (12, 6))
+        ax1 = fig.add_subplot(121)
+        ax1.hist(rdcut, round(np.sqrt(Npoints)))
+        ax1.set_xlabel('Reduction factor', fontsize = 16)
+        ax1.set_ylabel('number', fontsize = 16)
+        ax1.set_title(f't = {time_value}', fontsize = 16)
+        plt.setp(ax1.get_xticklabels(), fontsize = 16)
+        plt.setp(ax1.get_yticklabels(), fontsize = 16)
+        ax2 = fig.add_subplot(122)
+        l1, = ax2.plot(x_n, mean_vec)
+        l2, = ax2.plot(x_n, median_vec)
+        l3, = ax2.plot(x_n, ten_vec)
+        try:
+            ax2.scatter(density_data, reduction_data, alpha = 0.5, color = 'grey')
+        except:
+            pass
+        plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
+        plt.xscale('log')
+        plt.ylim(0.25, 1.05)
+        ax2.set_ylabel('Reduction factor', fontsize = 16)
+        ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 16)
+        ax2.set_title(f'f(R=1) = {fraction}', fontsize = 16)
+        plt.setp(ax2.get_xticklabels(), fontsize = 16)
+        plt.setp(ax2.get_yticklabels(), fontsize = 16)
+        fig.subplots_adjust(left = .1)
+        fig.subplots_adjust(bottom = .15)
+        fig.subplots_adjust(top = .98)
+        fig.subplots_adjust(right = .98)
+        fig.tight_layout()
+
+        #plt.savefig('histograms/pocket_statistics_ks.pdf')
+        plt.savefig(f'./images/reduction/pocket_stats{bound}.png', dpi=300)
+    return None
 
 def pocket_finder(bfield, numb, p_r, plot=False):
     #pocket_finder(bfield, p_r, B_r, img=i, plot=False)
@@ -238,7 +436,8 @@ def eval_reduction(field, numb, follow_index, threshold):
     #print("_, m = field.shape => ", _, m)
 
     flag = False
-       
+    filter_mask = np.ones(m).astype(bool)
+    dead = 0
     for i in range(m):
 
         mask10 = np.where(numb[:, i] > threshold)[0]
@@ -294,25 +493,25 @@ def eval_reduction(field, numb, follow_index, threshold):
         pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=flag)
         index_pocket, field_pocket = pocket[0], pocket[1]
         flag = False
-
         p_i = np.searchsorted(index_pocket, p_r)
-        # Flatten and count
         from collections import Counter
-        counter = Counter(bfield10.ravel())  # ravel() flattens the array
-        most_common_value, count = counter.most_common(1)[0]
-
-
+        most_common_value, count = Counter(bfield10.ravel()) .most_common(1)[0]
+    
         if count > 20:
-            # if count > 20 we assume that there is a jump into low resolution in magnetic field
-            # which happens at low densities, so we constrict field lines by this 
             R = 1.
             R10.append(R)
             Numb100.append(n_r)
             B100.append(B_r)   
             flag = True
             print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
-            continue      
-        # are there local maxima around our point? 
+            filter_mask[i] = False
+            if False:
+                plt.plot(bfield10)
+                plt.savefig(f'./see{i}.png')
+                plt.close()
+            dead +=1
+            continue     
+
         try:
             closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
             B_l = min([bfield10[closest_values[0]], bfield10[closest_values[1]]])
@@ -342,9 +541,12 @@ def eval_reduction(field, numb, follow_index, threshold):
                 R10.append(R)
                 Numb100.append(n_r)
                 B100.append(B_r)
-     
 
-    return R10, Numb100, B100
+     
+    filter_mask = filter_mask.astype(bool)
+    print(dead)
+
+    return np.array(R10), np.array(Numb100), np.array(B100), filter_mask
 
 def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
     """
@@ -356,16 +558,12 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
     line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields   = np.zeros((N+1,m))
     densities = np.zeros((N+1,m))
-    #volumes   = np.zeros((N+1,m))
-    #threshold = np.zeros((m,)).astype(int) # one value for each
-    #threshold2 = np.zeros((m,)).astype(int) # one value for each
+    pst_mask = np.zeros((m,)).astype(int) # one value for each
 
     line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
     bfields_rev = np.zeros((N+1,m))
     densities_rev = np.zeros((N+1,m))
-    #volumes_rev   = np.zeros((N+1,m))
-    #threshold_rev = np.zeros((m,)).astype(int) # one value for each
-    #threshold2_rev = np.zeros((m,)).astype(int) # one value for each
+    pst_mask_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
     line_rev[0,:,:] = x_init 
@@ -375,12 +573,9 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
     dummy, bfields[0,:], densities[0,:], cells = find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos)
 
     vol = Volume[cells]
-    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    #densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
     dens = densities[0,:] * gr_cm3_to_nuclei_cm3
     k=0
-
-    #mask  = dens > 1.0e+1# 1 if not finished
-    #un_masked = np.logical_not(mask) # 1 if finished
 
     mask2 = dens > ncrit
     un_masked2 = np.logical_not(mask2) # 1 if finished
@@ -391,124 +586,74 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
 
     vol_rev = Volume[cells]
 
-    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    #densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
     
     k=0
     k_rev=0
 
-    #mask_rev = dens > 1.0e+1
-    #un_masked_rev = np.logical_not(mask_rev)
     mask2_rev = dens > ncrit
     un_masked2_rev = np.logical_not(mask2_rev)
 
-    if m < 100:
-        buffer = 50 # 131072 # 128 KB
-    else:
-        buffer = 1048576 # 1 MB
+    #while np.any(mask2) or np.any(mask2_rev): 
+    while np.any(mask2) and (k + 1 < N) or np.any(mask2_rev) and (k_rev + 1 < N):
 
-    with open(tmp_file, "a", buffering=buffer) as f: 
-        combined = np.concatenate([line[k, :, :].flatten(), line_rev[k, :, :].flatten(), densities[k, mask2].flatten(), densities_rev[k, mask2].flatten()]) #x.flatten(), x_rev.flatten(), 
-        csv_line = ','.join(map(str, combined))
-        f.write(csv_line + '\n')
+        mask2_rev = dens_rev > ncrit
+        un_masked2_rev = np.logical_not(mask2_rev)
 
-        while np.any(mask2) or np.any(mask2_rev): # 0 or 0 == 0 
-
-            #mask_rev = dens > 1.0e+1
-            #un_masked_rev = np.logical_not(mask_rev)
-            mask2_rev = dens_rev > ncrit
-            un_masked2_rev = np.logical_not(mask2_rev)
-
-            if np.sum(mask2_rev) > 0:
-
-                #aux =  x[un_masked_rev]
-                #aux2 = x[un_masked2_rev]
-                x_rev_aux = x_rev[mask2_rev]
-
-                x_rev_aux, bfield_aux_rev, dens_aux_rev, vol_rev = Heun_step(x_rev_aux, -1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-                dens_aux_rev = dens_aux_rev * gr_cm3_to_nuclei_cm3
-                
-                x_rev[mask2_rev] = x_rev_aux
-                x_rev[un_masked2_rev] = 0
-                dens_rev[mask2_rev] = dens_aux_rev
-                dens_rev[un_masked2_rev] = 0
-
-                #print(x_rev_aux.shape, x_rev.shape) 
-                #threshold_rev += mask_rev.astype(int)
-                #threshold2_rev += mask2_rev.astype(int)
-                #threshold2[mask2_rev] += 1
-
-                #x[un_masked2_rev] = 0.0
-
-                line_rev[k_rev+1,mask2_rev,:] = x_rev_aux
-                #volumes_rev[k_rev+1,:] = vol_rev
-                bfields_rev[k_rev+1,mask2_rev] = bfield_aux_rev
-                densities_rev[k_rev+1,mask2_rev] = dens_aux_rev              
-
-                k_rev += 1
-
-            # Create a mask for values that are 10^2 N/cm^3 above the threshold
-            #mask  = dens > 1.0e+1 # 1 if not finished
-            #un_masked = np.logical_not(mask) # 1 if finished
-            mask2 = dens > ncrit
-            un_masked2 = np.logical_not(mask2) # 1 if finished
-            
-            if np.sum(mask2) > 0:
-                #aux  =x[un_masked]
-                #aux2 =x[un_masked2]
-
-                x_aux = x[mask2]
-                x_aux, bfield_aux, dens_aux, vol = Heun_step(x_aux, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-                dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
-                x[mask2] = x_aux
-                x[un_masked2] = 0
-                dens[mask2] = dens_aux
-                dens[un_masked2] = 0
-                #threshold  += mask.astype(int)  # Increment threshold count only for values still above 100
-                #threshold2[mask2] += mask2.astype(int)  # Increment threshold count only for values still above 100
-                #threshold2[mask2] += 1
-                #x[un_masked2] = 0.0
-
-                line[k + 1, mask2, :]      = x_aux
-                #volumes[k + 1, :]      = vol
-                bfields[k + 1, mask2]      = bfield_aux
-                densities[k + 1, mask2]    = dens_aux
-
-                k += 1
-                
-            combined = np.concatenate([line[k, :, :].flatten(), line_rev[k_rev, :, :].flatten(), densities[k, :].flatten(), densities_rev[k_rev, :].flatten()]) #x.flatten(), x_rev.flatten(), 
-            csv_line = ','.join(map(str, combined))
-            f.write(csv_line + '\n')
-
-            #print(max(np.max(np.linalg.norm(line[k, :, :], axis=1)),np.max(np.linalg.norm(line_rev[k_rev, :, :], axis=1))))
-
-            #print(k, x_aux.shape, k_rev, x_rev_aux.shape) 
-
+        if np.any(mask2_rev) and (k_rev + 1 < N):
         
-            if (np.sum(mask2) == 0) and (np.sum(mask2_rev) == 0):
-                print("There are no more points meeting the condition (e.g., density > 10cm-3).")
-                break
-            
-            if k+1 > N or k_rev +1>N:
-                print("Index is above allocated memory slot")
-                break
+            x_rev_aux = x_rev[mask2_rev]
 
-    print("counters (rev, fwd): ", k, k_rev)
+            x_rev_aux, bfield_aux_rev, dens_aux_rev, vol_rev = Euler_step(x_rev_aux, -1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            dens_aux_rev = dens_aux_rev * gr_cm3_to_nuclei_cm3
+            
+            x_rev[mask2_rev] = x_rev_aux
+            dens_rev[mask2_rev] = dens_aux_rev
+            pst_mask_rev[mask2_rev] = bool(1)
+
+            x_rev[un_masked2_rev] = 0
+            dens_rev[un_masked2_rev] = 0
+            pst_mask_rev[un_masked2_rev] = bool(0)
+            
+            #print(" alive lines? ",  np.any(mask2_rev), "k_rev + 1 < N: ", k_rev + 1 < N)
+
+            line_rev[k_rev+1,mask2_rev,:] = x_rev_aux
+            bfields_rev[k_rev+1,mask2_rev] = bfield_aux_rev
+            densities_rev[k_rev+1,mask2_rev] = dens_aux_rev              
+
+            k_rev += 1
+
+        mask2 = dens > ncrit # above threshold
+        un_masked2 = np.logical_not(mask2)
+        
+        if np.any(mask2) and (k + 1 < N):
+
+            x_aux = x[mask2]
+            x_aux, bfield_aux, dens_aux, vol = Euler_step(x_aux, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
+            
+            x[mask2]                   = x_aux
+            dens[mask2]                = dens_aux
+            pst_mask[mask2]            = bool(1)
+            x[un_masked2]              = 0
+            dens[un_masked2]           = 0
+            pst_mask[un_masked2]       = bool(0)
+            #print("k + 1 < N: ", k + 1 < N," alive lines? ",  np.any(mask2))
+            line[k + 1, mask2, :]      = x_aux
+            bfields[k + 1, mask2]      = bfield_aux
+            densities[k + 1, mask2]    = dens_aux
+
+            k += 1
+
+    print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < N))), np.logical_not((np.any(mask2) and (k + 1 < N))))
     #threshold = threshold.astype(int)
 
-    #updated_mask = np.logical_not(np.logical_and(mask, mask_rev))
+    survivors_mask = np.logical_not(np.logical_and(pst_mask, pst_mask_rev))
 
-    # Apply updated_mask to the second axis of (N+1, m, 3) or (N+1, m) arrays
-    #line = line[:, updated_mask, :]  # Mask applied to the second dimension (m)
-    #volumes = volumes[:, updated_mask]  # Assuming volumes has shape (m,)
-    #bfields = bfields[:, updated_mask]  # Mask applied to second dimension (m)
-    #densities = densities[:, updated_mask]  # Mask applied to second dimension (m)
+    percentage_of_survivors = np.sum(survivors_mask)*100/survivors_mask.shape[0]
 
-    # Apply to the reverse arrays in the same way
-    #line_rev = line_rev[:, updated_mask, :]
-    #volumes_rev = volumes_rev[:, updated_mask]
-    #bfields_rev = bfields_rev[:, updated_mask]
-    #densities_rev = densities_rev[:, updated_mask]
+    print("Percentage of Survivors: ", percentage_of_survivors, " %")
     
     nz_i    = k + 1
     nz_irev = k_rev + 1
@@ -527,10 +672,12 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
 
     m = magnetic_fields.shape[1]
 
-    radius_vectors   *= 1.0#* 3.086e+18                                # from Parsec to cm
-    magnetic_fields *= 1.0#* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+    #* 3.086e+18                                # from Parsec to cm
+    #* (1.99e+33/(3.086e+18*100_000.0))**(-1/2) # in Gauss (cgs)
+    
+    path_column   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) *pc_to_cm
 
-    return radius_vectors, magnetic_fields, numb_densities, nz_irev #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
+    return radius_vectors, magnetic_fields, numb_densities, nz_irev, path_column, survivors_mask #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
 
 def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold):
     """
@@ -548,12 +695,10 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     """
     m0 = x_init.shape[0]
     l0 = directions.shape[0]
-    #print(m0, l0)
     directions = np.tile(directions, (m0, 1))
     x_init = np.repeat(x_init, l0, axis=0)
     m = x_init.shape[0]
     l = directions.shape[0]
-    #print(m, l)
     """
     Now, a new feature that might speed the while loop, can be to double the size of all arrays
     and start calculating backwards and forwards simultaneously. This creates a more difficult condition
@@ -566,71 +711,72 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     densities_rev = np.zeros((N+1,m))
     threshold = np.zeros((m,))
     threshold_rev = np.zeros((m,))
-    line[0,:,:]     = x_init
-    line_rev[0,:,:] = x_init 
+
+    line[0,:,:]     = x_init.copy()
+    line_rev[0,:,:] = x_init.copy()
     x = x_init.copy()
     dummy, _0, densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Density_grad, Pos, VoronoiPos)
     vol = Volume[cells]
-    densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
-    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
+    #densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:].copy()
     k=0
     x_rev = x_init.copy()
-    dummy_rev, _00, densities_rev[0,:], cells_rev = dummy, _0, densities[0,:], cells
+    densities_rev[0,:], cells_rev = densities[0,:].copy(), cells.copy()
     vol_rev = Volume[cells_rev]
-    densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    #densities_rev[0,:] = densities_rev[0,:]
+    dens_rev = densities_rev[0,:].copy()
     k_rev=0
     mask  = dens > n_crit# 1 if not finished
     un_masked = np.logical_not(mask) # 1 if finished
     mask_rev = dens_rev > n_crit
     un_masked_rev = np.logical_not(mask_rev)
-    
-    while np.any(mask) or np.any(mask_rev): # 0 or 0 == 0 
+   
+    while np.any(mask) and (k + 1 < N) or np.any(mask_rev) and (k_rev + 1 < N):
 
-        mask = dens > n_crit                # True if continue
-        un_masked = np.logical_not(mask) # True if concluded
-        mask_rev = dens_rev > n_crit               # True if continue
-        un_masked_rev = np.logical_not(mask_rev) # True if concluded
+        mask = dens > n_crit              # still alive?
+        un_masked = np.logical_not(mask)  # any deaths?
+        mask_rev = dens_rev > n_crit     
+        un_masked_rev = np.logical_not(mask_rev)
 
-        #print(k, dens[:2], dens_rev[:2])
+        if np.any(mask) and (k + 1 < N): # any_alive? and below_allocation?
+            # continue if still lines alive and below allocation
+
+            _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+
+            dens *= gr_cm3_to_nuclei_cm3
+            
+            vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
+
+            dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+            threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+            x += dx_vec[:, np.newaxis] * directions
+
+            line[k+1,:,:]    = x
+            densities[k+1,:] = dens
+
+            k += 1
+
+        if np.any(mask_rev) and (k_rev + 1 < N):
+            # continue if still lines alive and below allocation
+
+            _, bfield_rev, dens_rev, vol_rev = Heun_step(x_rev, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            dens_rev *= gr_cm3_to_nuclei_cm3
+            
+            vol_rev[un_masked_rev] = 0
+
+            dx_vec = ((4 / 3) * vol_rev / np.pi) ** (1 / 3) 
+
+            threshold_rev += mask_rev.astype(int)
+
+            x_rev -= dx_vec[:, np.newaxis] * directions
+
+            line_rev[k_rev+1,:,:]    = x_rev
+            densities_rev[k_rev+1,:] = dens_rev
+
+            k_rev += 1
         
-        _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-
-        #_, bfield, dens, vol, ke, pressure = Heun_step(x, +1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        
-        #pressure *= mass_unit / (length_unit * (time_unit ** 2)) 
-        dens *= gr_cm3_to_nuclei_cm3
-        
-        vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
-
-        dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
-
-        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
-
-        x += dx_vec[:, np.newaxis] * directions
-
-        line[k+1,:,:]    = x
-        densities[k+1,:] = dens
-
-        #_, bfield_rev, dens_rev, vol_rev, ke_rev, pressure_rev = Heun_step(x_rev, -1, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        _, bfield_rev, dens_rev, vol_rev = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
-        #pressure_rev *= mass_unit / (length_unit * (time_unit ** 2)) 
-        dens_rev *= gr_cm3_to_nuclei_cm3
-        
-        vol_rev[un_masked_rev] = 0 # unifinished lines will have cero volume for their corresponding cell
-
-        dx_vec = ((4 / 3) * vol_rev / np.pi) ** (1 / 3)  # Increment step size
-
-        threshold_rev += mask_rev.astype(int)  # Increment threshold count only for values still above 100
-
-        x_rev -= dx_vec[:, np.newaxis] * directions
-
-        line_rev[k+1,:,:]    = x_rev
-        densities_rev[k+1,:] = dens_rev
-
-        k_rev += 1
-        k += 1
-    
     threshold = threshold.astype(int)
     threshold_rev = threshold_rev.astype(int)
 
@@ -641,17 +787,78 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     numb_densities = np.append(densities_rev[:max_th_rev,:][::-1, :], densities[1:max_th,:], axis=0)
     column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) # list of 'm' column densities
     
-    #print(column_densities.shape, l0, m0)
-
-    average_columns = np.zeros(m0)
+    mean_columns = np.zeros(m0)
+    median_columns= np.zeros(m0)
     i = 0
-    for x in range(0, l0*m0, l0): # l0 corresponds with how many directions we have
-        average_columns[i] = np.mean(column_densities[x:x+l0])
-        #print(i, x, x+l0, np.log10(average_columns[i]), column_densities[x:x+l0].shape)
+    
+    print("\n", l0, m0, l0*m0)
+    print(numb_densities.shape)
+    print(radius_vectors.shape)
+    print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
+
+    for x in range(0, l0*m0, l0): 
+
+        mean_columns[i] = np.mean(column_densities[x:x+l0])
+        median_columns[i] = np.median(column_densities[x:x+l0])
         i += 1
-    return radius_vectors, numb_densities, average_columns
+
+    if True: # for a single point in space with l0 directions
+        fig0, ax0 = plt.subplots()
+        h = 0
+        ax0.set_xlabel(r'''$s$ [cm]''' + f'''
+        x0 = [{Center[0], Center[1], Center[2]}]
+        cloud = {h}
+        ''', fontsize=16)
+        ax0.set_ylabel(r'$n_g$ [cm$^{-3}$]', fontsize=16)
+        #ax0.set_yscale('log')
+        ax0.set_xscale('log')
+        
+        for j in range(l0):
+
+            s  = np.cumsum(np.linalg.norm(np.diff(radius_vectors[:, j, :], axis=0), axis=1))
+            ng = numb_densities[1:, j] #* np.linalg.norm(np.diff(radius_vectors[:, j, :], axis=0), axis=1)
+
+            ax0.plot(s, ng, '-',label=f'{j}')
+
+        ax0.tick_params(axis='both')
+        ax0.grid(True, which='both', alpha=0.3)
+        ax0.legend(loc="upper left", fontsize=6)
+        
+        plt.title(r'Density [$n_g$] vs Distance [$s$]', fontsize=16)
+
+        plt.savefig(f'./stats/ng_vs_s.png',dpi=300)
+        plt.close(fig0)
+
+        fig1, ax1 = plt.subplots()
+
+        # x0, ... 20 veces, x1, ..., 20 veces
+
+        ax1.set_xlabel(r'''$s$ [cm]''', fontsize=16)
+        ax1.set_ylabel(r'$N_{los}$ [cm$^{-2}$]', fontsize=16)
+        ax1.set_yscale('log')
+        ax1.set_xscale('log')
+
+        for j in range(l0):
+
+            c  = np.cumsum(numb_densities[1:, j]*np.linalg.norm(np.diff(radius_vectors[:, j, :], axis=0), axis=1))
+            ax1.plot(s, c, '-', label=f'{j}',linewidth=1)
+
+        ax1.tick_params(axis='both')
+        ax1.grid(True, which='both', alpha=0.3)
+        ax1.legend(loc="upper left", fontsize=6)
+        
+        plt.title(r'Column [$N_{los}$] vs Distance [$s$]', fontsize=16)
+
+        plt.savefig(f'./stats/c_vs_s.png',dpi=300)
+        plt.close(fig1)
+
+    print(mean_columns.shape)
+    print(median_columns.shape)
+    return radius_vectors, numb_densities, mean_columns, median_columns
 
 def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
+    print("points gen...")
+    #np.random.seed(0)
     def xyz_gen(size):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
         U2 = np.random.uniform(low=0.0, high=1.0, size=size)
@@ -673,6 +880,8 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     rho_vector = np.zeros((no, 3))
     while len(valid_vectors) < no:
         aux_vector, _ = xyz_gen(no- len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
+        # if aux_vector.shape[0] == 0:
+        # raise Exception("[error] this regions density is below the threshold")
         distances = np.linalg.norm(aux_vector, axis=1)
         inside_sphere = aux_vector[distances <= rloc]
         _, nearest_indices = tree.query(inside_sphere)
@@ -681,6 +890,7 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
         valid_vectors.extend(valid_points)
         del aux_vector, distances, inside_sphere, valid_mask, valid_points
     rho_vector = np.array(deepcopy(valid_vectors))
+    print("points generated")
 
     if True:                   
         plt.scatter(rho_vector[:, 0], rho_vector[:,1], color = 'skyblue')
@@ -698,29 +908,96 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
 x_input = uniform_in_3d(max_cycles, rloc, ncrit=dense_cloud)
 directions = fibonacci_sphere(20)
 
-radius_vectors, numb_densities, average_column                = line_of_sight(x_input, directions, threshold)
-radius_vectors, magnetic_fields, numb_densities, follow_index = crs_path(x_input, threshold)
+print(x_input.shape, directions.shape)
+
+radius_vectors_los, numb_densities_los, mean_column, median_column                     = line_of_sight(x_input, directions, threshold)
+radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_input, threshold)
 
 data.close()
 
 if np.any(numb_densities > threshold):
-    r_u, n_rs, B_rs = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
-    r_l, _, _ = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold*10)
+    r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
+    r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold) # not needed
     print("DEBUG numb_densities type:", type(numb_densities))
 else:
-    print("Skipping evaluate_reduction: no densities above 300 cm⁻³")
+    print(f"[error] No densities above {threshold} cm⁻³")
+    raise ValueError
+
+print(np.sum(survivors1), survivors1.shape)
+print(np.sum(survivors2), survivors2.shape) 
+
+survivors = np.logical_and(survivors1, survivors2)
 
 print(f"Elapsed Time: ", (time.time()-start_time)//60., " Minutes")
 
-print("R_upper  = ", len(r_u))
-print("R_lower = ", len(r_l))
-print("B(r) = ", len(B_rs))
-print("n(r) = ", len(n_rs))
+print(np.sum(survivors))  
+
+# survivors is a mask array that discriminates field lines longer that the allocated size. This are usually small > 5 %
+u_input         = x_input[np.logical_not(survivors),:] 
+x_input         = x_input[survivors,:]
+radius_vectors  = radius_vectors[:, survivors, :]
+numb_densities  = numb_densities[:, survivors]
+magnetic_fields = magnetic_fields[:, survivors]
+mean_column     = mean_column[survivors]
+median_column   = median_column[survivors]
+path_column     = path_column[survivors]
+n_rs = n_rs[survivors]
+B_rs = B_rs[survivors] 
+r_u  = r_u[survivors]
+r_l  = r_l[survivors]
+
+print("Shapes: \n")
+print("u_input shape        :", u_input.shape)
+print("x_input shape        :", x_input.shape)
+print("radius_vectors shape :", radius_vectors.shape)
+print("numb_densities shape :", numb_densities.shape)
+print("magnetic_fields shape:", magnetic_fields.shape)
+print("mean_column shape    :", mean_column.shape)
+print("median_column shape  :", median_column.shape)
+print("path_column shape    :", path_column.shape)
+print("n_rs shape           :", n_rs.shape)
+print("B_rs shape           :", B_rs.shape)
+print("r_u shape            :", r_u.shape)
+print("r_l shape            :", r_l.shape)
+
+ratio_mean = np.log10(mean_column/path_column)
+ratio_median = np.log10(mean_column/path_column)
+
+for p, _ in enumerate(ratio_mean):
+    
+    if not (abs(_) > 2):
+        #print(f"[info] {p} - N_los/N_path < 10^2 for all lines")
+        continue
+
+    print(path_column[p], ratio_mean[p], ratio_median[p])
+    continue
+    fig0, ax0 = plt.subplots()
+    h = 0
+    l0 = directions.shape[0]
+    ax0.set_xlabel(r'''x_input index''' + f'''
+    x0 = [{Center[0], Center[1], Center[2]}]
+    cloud = {h}, point {x_input[p]}
+    ''', fontsize=16)
+    ax0.set_ylabel(r'$log_{10}(N_{los} /N_{path})$ [adimensional]', fontsize=16)
+    #ax0.set_yscale('log')
+    ax0.set_xscale('log')
+
+    ax0.scatter(path_column, ratio_mean, label=f'{p}-mean-to-index', color='blue', s=5)
+    ax0.scatter(path_column, ratio_median, label=f'{p}-median-to-index', color='green', s=5)
+
+    ax0.tick_params(axis='both')
+    ax0.grid(True, which='both', alpha=0.3)
+    ax0.legend(loc="upper left", fontsize=6)
+
+    plt.title(r'$log_{10}(N_{los}/N_{path})$ vs x_input index', fontsize=16)
+
+    plt.savefig(f'./ratio_vs_los_{h}-{p}.png',dpi=300)
+    plt.close(fig0)
 
 distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 
 # cr path column densities
-c_rs   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) *pc_to_cm
+path_column   = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0) *pc_to_cm
 
 # free space
 del Mass, Density_grad
@@ -733,9 +1010,10 @@ print((time.time()-start_time)//60, " Minutes")
 m = magnetic_fields.shape[1]
 N = magnetic_fields.shape[0]
 
+print(magnetic_fields.shape)
+
 # reduction factor
-r_u      = np.array(r_u) # threshold * 1
-r_l      = np.array(r_l) # threshold * 10
+
 subunity = r_u < 1
 unity    = r_u == 1
 rho_subunity = x_input[subunity,:]
@@ -743,18 +1021,35 @@ rho_unity = x_input[unity,:]
 
 # removing PATH/LOS passing through core
 order    = np.argsort(distance)
-N_path_ordered = c_rs[order][1:]
-N_los_ordered = average_column[order][1:]
+path_column_ordered = path_column[order][1:]
+los_column_ordered = mean_column[order][1:]
 s_ordered = distance[order][1:]
-N_path = c_rs.copy()
-N_los  = average_column.copy()
+los_column  = mean_column.copy()
 s      = distance.copy()
 
-if True: # N_path & N_los Linear fit vs. Distance away from core
+if True: # path_column & los_column Linear fit vs. Distance away from core
+    fig, ax = plt.subplots()
+    ax.set_xlabel(r'''$N_{path}$ (cm$^{-2}$)''', fontsize=16)
+    ax.set_ylabel(r'$N_{los}$ (cm$^{-2}$)', fontsize=16)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+
+    ax.scatter(path_column, los_column, marker='^',color="black", s=5)
+
+    ax.tick_params(axis='both')
+    ax.grid(True, which='both', alpha=0.3)
+    #ax.legend(loc="upper left", fontsize=12)
+    
+    plt.title(r"Correlation between columns densities", fontsize=16)
+    fig.tight_layout()
+    plt.savefig('./images/columns/column_column.png', dpi=300)
+    plt.close()
+
+if True: # path_column & los_column Linear fit vs. Distance away from core
     fig, ax = plt.subplots()
 
-    log_y = np.log10(N_los_ordered); m1, b1 = np.polyfit(s_ordered, log_y, 1); fit1 = 10**(m1 * s_ordered + b1)
-    log_y2 = np.log10(N_path_ordered); m2, b2 = np.polyfit(s_ordered, log_y2, 1); fit2 = 10**(m2 * s_ordered+ b2)
+    log_y = np.log10(los_column_ordered); m1, b1 = np.polyfit(s_ordered, log_y, 1); fit1 = 10**(m1 * s_ordered + b1)
+    log_y2 = np.log10(path_column_ordered); m2, b2 = np.polyfit(s_ordered, log_y2, 1); fit2 = 10**(m2 * s_ordered+ b2)
 
     eq1 = rf"$\log_{{10}}(N_{{los}}) = {m1:.4e}\,s + {b1:.4f}$"
     eq2 = rf"$\log_{{10}}(N_{{path}}) = {m2:.4e}\,s + {b2:.4f}$"
@@ -764,8 +1059,8 @@ if True: # N_path & N_los Linear fit vs. Distance away from core
     ax.set_yscale('log')
     #ax.set_xscale('log')
 
-    ax.scatter(s_ordered, N_los_ordered, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$')
-    ax.scatter(s_ordered, N_path_ordered, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$')
+    ax.scatter(s_ordered, los_column_ordered, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$')
+    ax.scatter(s_ordered, path_column_ordered, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$')
     ax.plot(s_ordered, fit1, '-' , color="black", linewidth=1,label='$N_{los} fit$')
     ax.plot(s_ordered, fit2, '--', color="black", linewidth=1,label='$N_{path} fit$')
 
@@ -781,7 +1076,7 @@ if True: # N_path & N_los Linear fit vs. Distance away from core
     plt.savefig('./images/columns/column_comparison.png', dpi=300)
     plt.close()
 
-if True: # Ratio N_path/N_los
+if True: # Ratio path_column/los_column
     fig, ax = plt.subplots()
     
     ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)
@@ -789,7 +1084,7 @@ if True: # Ratio N_path/N_los
     ax.set_yscale('log')
     #ax.set_xscale('log')
     
-    ax.scatter(s, N_path/N_los, marker ='v',color="black", s=5, label=r'$N_{\rm path}/N_{\rm los}$', alpha=0.3)
+    ax.scatter(s, path_column/los_column, marker ='v',color="black", s=5, label=r'$N_{\rm path}/N_{\rm los}$', alpha=0.3)
     ax.legend(loc="upper left", fontsize=12)    
     ax.tick_params(axis='both')
     ax.grid(True, which='both', alpha=0.3)
@@ -799,10 +1094,10 @@ if True: # Ratio N_path/N_los
     plt.savefig('./images/columns/column_ratio.png', dpi=300)
     plt.close()
 
-if True: # N_path & N_los vs. Density
+if True: # path_column & los_column vs. Density
     log_x = np.log10(n_rs)
-    log_y = np.log10(N_los); m1, b1 = np.polyfit(log_x, log_y, 1); fit1 = 10**(m1 * log_x + b1)
-    log_y2 = np.log10(N_path); m2, b2 = np.polyfit(log_x, log_y2, 1); fit2 = 10**(m2 * log_x+ b2)
+    log_y = np.log10(los_column); m1, b1 = np.polyfit(log_x, log_y, 1); fit1 = 10**(m1 * log_x + b1)
+    log_y2 = np.log10(path_column); m2, b2 = np.polyfit(log_x, log_y2, 1); fit2 = 10**(m2 * log_x+ b2)
     
     fig, ax = plt.subplots()
 
@@ -819,8 +1114,8 @@ if True: # N_path & N_los vs. Density
     ax.plot(n_rs, fit1, '-', color="black", linewidth=1,label='$N_{los}$')
     ax.plot(n_rs, fit2, '--', color="black", linewidth=1,label='$N_{path}$')
 
-    ax.scatter(n_rs, N_los, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$', alpha=0.3)
-    ax.scatter(n_rs, N_path, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$', alpha=0.3)
+    ax.scatter(n_rs, los_column, marker='o',color="#8E2BAF", s=5, label=r'$N_{\rm los}$', alpha=0.3)
+    ax.scatter(n_rs, path_column, marker ='v',color="#148A02", s=5, label=r'$N_{\rm path}$', alpha=0.3)
     
     ax.tick_params(axis='both')
     ax.grid(True, which='both', alpha=0.3)
@@ -832,15 +1127,15 @@ if True: # N_path & N_los vs. Density
     plt.savefig('./images/columns/column_density.png', dpi=300)
     plt.close()
 
-log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(c_rs)
-log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(average_column)
+log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(path_column)
+log_ionization_los_l, log_ionization_los_h  = ionization_rate_fit(mean_column)
 
 if True: # Ionization rate (L) vs. Density
 
     fig, ax = plt.subplots()
     
     ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)    
-    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
     
     #ax.set_yscale('log')
     ax.set_xscale('log')
@@ -861,7 +1156,7 @@ if True: # Ionization rate (H) vs. Density
     fig, ax = plt.subplots()
     
     ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
     
     ax.set_xscale('log')
     
@@ -876,34 +1171,34 @@ if True: # Ionization rate (H) vs. Density
     plt.savefig(f'./images/columns/zeta_density_h.png', dpi=300)
     plt.close()
 
-    if True:
+if True:
 
-        fig, (ax_l, ax_h) = plt.subplots(1, 2, figsize=(10, 5),gridspec_kw={'wspace': 0, 'hspace': 0}, sharey=True)
+    fig, (ax_l, ax_h) = plt.subplots(1, 2, figsize=(10, 5),gridspec_kw={'wspace': 0, 'hspace': 0}, sharey=True)
 
-        ax_l.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-        ax_l.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
-        ax_l.set_xscale('log')
-        ax_l.scatter(n_rs, log_ionization_los_l, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
-        ax_l.scatter(n_rs, log_ionization_path_l, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
-        ax_l.grid(True, which='both', alpha=0.3)
-        ax_l.legend(fontsize=16)
-        ax_l.set_ylim(-19.5, -15.5)
-        ax_l.set_title("Model $\mathcal{L}$", fontsize=16)
+    ax_l.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+    ax_l.set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
+    ax_l.set_xscale('log')
+    ax_l.scatter(n_rs, log_ionization_los_l, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
+    ax_l.scatter(n_rs, log_ionization_path_l, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
+    ax_l.grid(True, which='both', alpha=0.3)
+    ax_l.legend(fontsize=16)
+    ax_l.set_ylim(-19.5, -15.5)
+    ax_l.set_title("Model $\mathcal{L}$", fontsize=16)
 
-        ax_h.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-        ax_h.set_xscale('log')
-        ax_h.scatter(n_rs, log_ionization_los_h, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
-        ax_h.scatter(n_rs, log_ionization_path_h, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
-        ax_h.grid(True, which='both', alpha=0.3)
-        ax_h.legend(fontsize=16)
-        ax_h.set_ylim(-19.5, -15.5)
-        ax_h.set_title("Model $\mathcal{H}$", fontsize=16)
-        ax_h.tick_params(labelleft=False)
+    ax_h.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
+    ax_h.set_xscale('log')
+    ax_h.scatter(n_rs, log_ionization_los_h, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta_{\rm los}$')
+    ax_h.scatter(n_rs, log_ionization_path_h, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta_{\rm path}$')
+    ax_h.grid(True, which='both', alpha=0.3)
+    ax_h.legend(fontsize=16)
+    ax_h.set_ylim(-19.5, -15.5)
+    ax_h.set_title("Model $\mathcal{H}$", fontsize=16)
+    ax_h.tick_params(labelleft=False)
 
-        fig.suptitle(r"Ionization Rate ($\zeta$) vs. Density ($n_g$)", fontsize=18)
-        fig.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig('./images/zeta_density_combined.png', dpi=300)
-        plt.close()
+    fig.suptitle(r"Ionization Rate ($\zeta$) vs. Density ($n_g$)", fontsize=18)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig('./images/zeta_density_combined.png', dpi=300)
+    plt.close()
 
 
 ratio_ionization_path_to_los_l = log_ionization_path_l-log_ionization_los_l
@@ -913,7 +1208,7 @@ if True: # Ratio Ionization_path/Ionization_los vs. Density
     fig, ax = plt.subplots()
     
     ax.set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-    ax.set_ylabel(r'$log_{10}(\zeta /\rm{cm}^{-2})$', fontsize=16)
+    ax.set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
     ax.set_xscale('log')
     
     ax.scatter(n_rs, ratio_ionization_path_to_los_l, marker='o',color="#CB71EA", s=5, alpha = 0.3, label='Model $\mathcal{L}$')
@@ -936,11 +1231,11 @@ if True: # Ratio Ionization_path & Ionization_los vs. Distance
     ax.scatter(distance, ratio_ionization_path_to_los_h, marker ='v', color="#60D24F", s=5, alpha = 0.5, label='Model $\mathcal{H}$')
 
     ax.set_xlabel(r'''Distance $r$ (cm)''', fontsize=16)    
-    ax.set_ylabel(r'$\zeta_{path}/\zeta_{los}$', fontsize=16)
+    ax.set_ylabel(r'Ratio', fontsize=16)
     ax.set_xscale('log')
     ax.grid(True, which='both', alpha=0.3)
     ax.set_ylim(-5, 5)
-    plt.title(rf"$N(r)$ ({case + num_file})", fontsize=16)
+    plt.title(rf"$\zeta_{{path}}/\zeta_{{los}} $ ({case + num_file})", fontsize=16)
     ax.legend(fontsize=12)
     fig.tight_layout()
     plt.savefig('./images/columns/ratio_zeta_distance.png', dpi=300)
@@ -991,7 +1286,6 @@ if True: # Reduction factor vs. R -- (R < 1) Scatter and Histogram
     plt.tight_layout()
     plt.savefig(f'./images/reduction/r_complement_histogram.png', dpi=300)
 
-
 if x_input.shape[0] > 100: # Note to self, for small rloc < 1 this code doesnt take long
     # Subunity
     fig, ax = plt.subplots()
@@ -999,7 +1293,7 @@ if x_input.shape[0] > 100: # Note to self, for small rloc < 1 this code doesnt t
     ax.grid(True, which='both', alpha=0.3)
     ax.legend(fontsize=12)
     fig.tight_layout()
-    fig.savefig('./images/xyz_distro/xy_subunity.png')
+    fig.savefig('./images/xyz_distro/xy_subunity.png', dpi=300)
     plt.close(fig)
 
     # Unity
@@ -1008,7 +1302,7 @@ if x_input.shape[0] > 100: # Note to self, for small rloc < 1 this code doesnt t
     ax.grid(True, which='both', alpha=0.3)
     ax.legend(fontsize=12)
     fig.tight_layout()
-    fig.savefig('./images/xyz_distro/xy_unity.png')
+    fig.savefig('./images/xyz_distro/xy_unity.png', dpi=300)
     plt.close(fig)
 
     # Both
@@ -1018,86 +1312,10 @@ if x_input.shape[0] > 100: # Note to self, for small rloc < 1 this code doesnt t
     ax.grid(True, which='both', alpha=0.3)
     ax.legend(fontsize=12)
     fig.tight_layout()
-    fig.savefig('./images/xyz_distro/xy_full.png')
+    fig.savefig('./images/xyz_distro/xy_full.png', dpi=300)
     plt.close(fig)
 
-def reduction_density(reduction_data, density_data, bound = ''):
-
-    reduction_data = np.array(reduction_data)
-    density_data = np.array(density_data)
-    def stats(n):
-        sample_r = []
-        for i in range(0, len(density_data)):
-            if np.abs(np.log10(density_data[i]/n)) < 1/8:
-                sample_r.append(reduction_data[i])
-        sample_r.sort()
-        if len(sample_r) == 0:
-            return [np.nan, np.nan, np.nan]
-
-        mean   = np.mean(sample_r)
-        median = np.quantile(sample_r, .5)
-        ten    = np.quantile(sample_r, .1)
-        return [mean, median, ten]
-        
-    mask = reduction_data != 1
-    reduction_data = reduction_data[mask]
-    density_data = density_data[mask]
-    fraction = (mask.shape[0] - np.sum(mask)) / mask.shape[0] # {R = 1}/{R}
-    Npoints = len(reduction_data)
-    n_min, n_max = np.log10(np.min(density_data)), np.log10(np.max(density_data))
-    x_n = np.logspace(n_min, n_max, Npoints)
-    mean_vec = np.zeros(Npoints)
-    median_vec = np.zeros(Npoints)
-    ten_vec = np.zeros(Npoints)
-    for i in range(0, Npoints):
-        s = stats(x_n[i])
-        mean_vec[i] = s[0]
-        median_vec[i] = s[1]
-        ten_vec[i] = s[2]
-
-                
-    rdcut = []
-    for i in range(0,Npoints):
-        if density_data[i] > n_min:
-            rdcut = rdcut + [reduction_data[i]]
-
-
-    fig = plt.figure(figsize = (12, 6))
-    ax1 = fig.add_subplot(121)
-    ax1.hist(rdcut, round(np.sqrt(Npoints)))
-    ax1.set_xlabel('Reduction factor', fontsize = 16)
-    ax1.set_ylabel('number', fontsize = 16)
-    ax1.set_title(f't = {time_value}', fontsize = 16)
-    plt.setp(ax1.get_xticklabels(), fontsize = 16)
-    plt.setp(ax1.get_yticklabels(), fontsize = 16)
-    ax2 = fig.add_subplot(122)
-    l1, = ax2.plot(x_n, mean_vec)
-    l2, = ax2.plot(x_n, median_vec)
-    l3, = ax2.plot(x_n, ten_vec)
-    try:
-        ax2.scatter(density_data, reduction_data, alpha = 0.5, color = 'grey')
-    except:
-        pass
-    plt.legend((l1, l2, l3), ('mean', 'median', '10$^{\\rm th}$ percentile'), loc = "lower right", prop = {'size':14.0}, ncol =1, numpoints = 5, handlelength = 3.5)
-    plt.xscale('log')
-    plt.ylim(0.25, 1.05)
-    ax2.set_ylabel('Reduction factor', fontsize = 16)
-    ax2.set_xlabel('gas density (hydrogens per cm$^3$)', fontsize = 16)
-    ax2.set_title(f'f(R=1) = {fraction}', fontsize = 16)
-    plt.setp(ax2.get_xticklabels(), fontsize = 16)
-    plt.setp(ax2.get_yticklabels(), fontsize = 16)
-    fig.subplots_adjust(left = .1)
-    fig.subplots_adjust(bottom = .15)
-    fig.subplots_adjust(top = .98)
-    fig.subplots_adjust(right = .98)
-    fig.tight_layout()
-
-    #plt.savefig('histograms/pocket_statistics_ks.pdf')
-    plt.savefig(f'./images/reduction/pocket_stats{bound}.png', dpi=300)
-
-#reduction_density(r_l, n_rs, 'l')
-
-reduction_density(r_u, n_rs, 'u')
+reduction_density(r_u, n_rs, 'u')#; reduction_density(r_l, n_rs, 'l')
 
 if True:
     r_u = np.array(r_u) # threshold * 1
@@ -1114,29 +1332,74 @@ if True:
     tda(x_ones, 'R = 1')
     tda(x_not , 'R < 1')
 
+
+m = radius_vectors.shape[1]
+
+zoom = 2*rloc#np.mean(np.sqrt(x**2 + y**2 + z**2))-2
+
+print(np.max(numb_densities))
+
+if True:
+           
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+
+    norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
+    cmap = cm.viridis
+
+    ax = plt.figure().add_subplot(projection='3d')
+    #radius_vectors /= pc_to_cm
+
+    for k in range(m):
+
+        x0=x_input[k, 0]
+        y0=x_input[k, 1]
+        z0=x_input[k, 2]
+
+        ax.scatter(x0, y0, z0, marker="x",color="g",s=6)            
+            
+    ax.set_xlim(-zoom,zoom)
+    ax.set_ylim(-zoom,zoom)
+    ax.set_zlim(-zoom,zoom)
+    ax.set_xlabel('x [Pc]')
+    ax.set_ylabel('y [Pc]')
+    ax.set_zlabel('z [Pc]')
+    ax.set_title('Starting Points')
+
+    # Add a colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+    cbar.set_label('Arbitrary Units')
+    plt.savefig("./images/StartingPoints.png", bbox_inches='tight', dpi=300)
+
 if True:
     try:
             
         from matplotlib import cm
         from matplotlib.colors import Normalize
 
-        norm = Normalize(vmin=np.min(magnetic_fields), vmax=np.max(magnetic_fields))
-        cmap = cm.viridis
+
 
         ax = plt.figure().add_subplot(projection='3d')
-        radius_vectors /= pc_to_cm
+        #radius_vectors /= pc_to_cm
 
         for k in range(m):
-            if m > 100:
-                break
             # mask makes sure that start and ending point arent the zero vector
-            numb_densities[:, k]
-            mask = numb_densities[:, k] > 0
+            mask = magnetic_fields[:, k] > 0
 
-            x=radius_vectors[mask, k, 0]
-            y=radius_vectors[mask, k, 1]
-            z=radius_vectors[mask, k, 2]
-            
+            x0=x_input[k, 0]
+            y0=x_input[k, 1]
+            z0=x_input[k, 2]
+
+            x=radius_vectors[mask,k, 0]
+            y=radius_vectors[mask,k, 1]
+            z=radius_vectors[mask,k, 2]
+
+            norm = Normalize(vmin=np.min(magnetic_fields[:, k]), vmax=np.max(magnetic_fields[:,k]))
+            cmap = cm.viridis
+
+            ax.scatter(x0, y0, z0, marker="x",color="black",s=3, alpha=0.5)            
             for l in range(len(x) - 1):
                 color = cmap(norm(magnetic_fields[l, k]))
                 ax.plot(x[l:l+2], y[l:l+2], z[l:l+2], color=color, linewidth=0.3)
@@ -1145,7 +1408,6 @@ if True:
             ax.scatter(x[-1], y[-1], z[-1], marker="x", color="r",s=6)
                 
         radius_to_origin = np.sqrt(x**2 + y**2 + z**2)
-        zoom = (np.max(radius_to_origin) + rloc)/2.0
         ax.set_xlim(-zoom,zoom)
         ax.set_ylim(-zoom,zoom)
         ax.set_zlim(-zoom,zoom)
@@ -1158,102 +1420,158 @@ if True:
         sm = cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
-        cbar.set_label('Magnetic Field Strength')
+        cbar.set_label('Arbitrary Units')
         plt.savefig("./images/FieldTopology.png", bbox_inches='tight', dpi=300)
 
-    except:
+    except Exception as e:
+        print(e)
         print("Couldnt print B field structure")
+
 
 os.makedirs(children_folder, exist_ok=True)
 h5_path = os.path.join(children_folder, f"DataBundle.h5")
 
-import os
+from filelock import FileLock
+"""
+Time ──────────────────────────────────────────▶
 
-if os.path.exists(h5_path):
-    print("File exists:", h5_path)
+Script 1:  ──[Acquire Lock]───[Create/Append HDF5]───[Release Lock]───
 
-    def append_to_dataset(f, name, new_data, axis):
-        """
-        Append new_data to dataset `name` inside open HDF5 file `f`.
+Script 2:  ──────────[Wait for Lock]───────────────────────────[Append HDF5]───[Release Lock]───
+"""
+lock = FileLock(h5_path + ".lock")
 
-        Parameters
-        ----------
-        f : h5py.File
-            An open HDF5 file (must be in "a" or "r+" mode).
-        name : str
-            Dataset name.
-        new_data : np.ndarray
-            Data to append. Must match dataset's shape in all but
-            the first dimension.
-        """
-        dset = f[name]
-        dset_shape = dset.shape
-        new_shape = list(dset_shape)
+with lock:  # acquire lock (waits if another process is holding it)
 
-        if axis < 0:
-            axis += len(dset_shape)  # support negative axes
+    if os.path.exists(h5_path):
+        print("File exists:", h5_path)
 
-        # Check that new_data matches dset in all axes except the append axis
-        for i, (dim_old, dim_new) in enumerate(zip(dset_shape, new_data.shape)):
-            if i != axis and dim_old != dim_new:
-                raise ValueError(
-                    f"Dimension mismatch at axis {i}: dataset has {dim_old}, new_data has {dim_new}"
-                )
+        def append_to_dataset(f, name, new_data, axis):
+            """
+            Append new_data to dataset `name` inside open HDF5 file `f`.
 
-        # Resize along the append axis
-        new_shape[axis] += new_data.shape[axis]
-        dset.resize(new_shape)
+            Parameters
+            ----------
+            f : h5py.File
+                An open HDF5 file (must be in "a" or "r+" mode).
+            name : str
+                Dataset name.
+            new_data : np.ndarray
+                Data to append. Must match dataset's shape in all but
+                the first dimension.
+            """
+            dset = f[name]
+            dset_shape = dset.shape
+            new_shape = list(dset_shape)
 
-        # Build a slicing object to assign new data
-        slicer = [slice(None)] * len(dset_shape)
-        slicer[axis] = slice(dset_shape[axis], new_shape[axis])
-        dset[tuple(slicer)] = new_data     
-    with h5py.File(h5_path, "a") as f:
+            if axis < 0:
+                axis += len(dset_shape)  # support negative axes
 
-        # --- Datasets ---
-        append_to_dataset(f, "starting_point", x_input, 0)
-        append_to_dataset(f, "number_densities", np.array(n_rs), 0)
-        append_to_dataset(f, "magnetic_fields", np.array(B_rs), 0)
-        append_to_dataset(f, "reduction_factor", np.array([r_u, r_l]), 1)  # shape (2, m)
-        append_to_dataset(f, "column_path", c_rs, 0)
-        append_to_dataset(f, "column_los", average_column, 0)
+            # Check that new_data matches dset in all axes except the append axis
+            for i, (dim_old, dim_new) in enumerate(zip(dset_shape, new_data.shape)):
+                if i != axis and dim_old != dim_new:
+                    raise ValueError(
+                        f"Dimension mismatch at axis {i}: dataset has {dim_old}, new_data has {dim_new}"
+                    )
 
-        # --- Physical Parameters ---
-        append_to_dataset(f, "densities", numb_densities, 1)
-        append_to_dataset(f, "bfields", magnetic_fields, 1)
-        append_to_dataset(f, "vectors", radius_vectors, 1)
+            # Resize along the append axis
+            new_shape[axis] += new_data.shape[axis]
+            dset.resize(new_shape)
 
-    print(f"{h5_path.split('/')[-1]} Updated Successfully")
-else:
-    print("File does not exist:", h5_path)
+            # Build a slicing object to assign new data
+            slicer = [slice(None)] * len(dset_shape)
+            slicer[axis] = slice(dset_shape[axis], new_shape[axis])
+            dset[tuple(slicer)] = new_data     
+        with h5py.File(h5_path, "a") as f:
 
-    # === Writing to HDF5 with metadata ===
-    with h5py.File(h5_path, "w") as f:
-        # Datasets, chunks=True
-        f.create_dataset("starting_point", data=x_input, maxshape=(None, 3), chunks=True)
-        f.create_dataset("number_densities", data=n_rs, maxshape=(None,)   , chunks=True)
-        f.create_dataset("magnetic_fields", data=B_rs,maxshape=(None,)   , chunks=True)
-        f.create_dataset("column_path", data=c_rs, maxshape=(None,)   , chunks=True)
-        f.create_dataset("reduction_factor", data=np.array([r_u, r_l]), maxshape=(None, None), chunks=True)
-        f.create_dataset("column_los", data=average_column, maxshape=(None,), chunks=True)
-        f.create_dataset("bfields", data=magnetic_fields, maxshape=(None, None), chunks=True)
-        f.create_dataset("vectors", data=radius_vectors,maxshape=(None, None, 3), chunks=True)
-        f.create_dataset("densities", data=numb_densities, maxshape=(None, None), chunks=True)
+            # --- Datasets ---
+            append_to_dataset(f, "starting_point", x_input, 0)
+            append_to_dataset(f, "number_densities", np.array(n_rs), 0)
+            append_to_dataset(f, "magnetic_fields", np.array(B_rs), 0)
+            append_to_dataset(f, "reduction_factor", np.array([r_u, r_l]), 1)  # shape (2, m)
+            append_to_dataset(f, "column_path", path_column, 0)
+            append_to_dataset(f, "column_los", mean_column, 0)
 
-        # === Metadata attributes ===
-        f.attrs["cores_used"] = os.cpu_count()
-        f.attrs["time"] = time_value
-        f.attrs["rloc"] = rloc
-        f.attrs["index"] = follow_index
-        f.attrs["center"] = Center
-        f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
-        f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
-        
-        try:
-            pass
-            os.remove(tmp_file)
-        except:
-            print(f"Temp file not found tmp.csv")
-            raise FileNotFoundError
+            # --- Physical Parameters ---
+            append_to_dataset(f, "densities", numb_densities, 1)
+            append_to_dataset(f, "bfields", magnetic_fields, 1)
+            append_to_dataset(f, "vectors", radius_vectors, 1)
 
-    print(f"{h5_path.split('/')[-1]} Created Successfully")
+        print(f"{h5_path.split('/')[-1]} Updated Successfully")
+    else:
+        print("File does not exist:", h5_path)
+
+        # === Writing to HDF5 with metadata ===
+        with h5py.File(h5_path, "w") as f:
+            # Datasets, chunks=True
+            f.create_dataset("starting_point", data=x_input, maxshape=(None, 3), chunks=True)
+            f.create_dataset("number_densities", data=n_rs, maxshape=(None,)   , chunks=True)
+            f.create_dataset("magnetic_fields", data=B_rs,maxshape=(None,)   , chunks=True)
+            f.create_dataset("column_path", data=path_column, maxshape=(None,)   , chunks=True)
+            f.create_dataset("reduction_factor", data=np.array([r_u, r_l]), maxshape=(None, None), chunks=True)
+            f.create_dataset("column_los", data=mean_column, maxshape=(None,), chunks=True)
+
+            f.create_dataset("bfields", data=magnetic_fields, maxshape=(None, None), chunks=True)
+            f.create_dataset("vectors", data=radius_vectors,maxshape=(None, None, 3), chunks=True)
+            f.create_dataset("densities", data=numb_densities, maxshape=(None, None), chunks=True)
+            # === Metadata attributes ===
+            f.attrs["cores_used"] = os.cpu_count()
+            f.attrs["time"] = time_value
+            f.attrs["rloc"] = rloc
+            f.attrs["index"] = follow_index
+            f.attrs["center"] = Center
+            f.attrs["volume_range"] = [Volume[np.argmin(Volume)],Volume[np.argmax(Volume)]]
+            f.attrs["density_range"] = [float(gr_cm3_to_nuclei_cm3 * Density[np.argmin(Volume)]) ,float(gr_cm3_to_nuclei_cm3 * Density[np.argmax(Volume)])]
+            
+            try:
+                pass
+                os.remove(tmp_file)
+            except:
+                print(f"Temp file not found tmp.csv")
+                raise FileNotFoundError
+
+        print(f"{h5_path.split('/')[-1]} Created Successfully")
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+simulation_name = "Magnetic Pockets"
+runtime =(time.time()-start_time)//60
+
+
+pdf_file = "stats/single_stats.pdf"
+c = canvas.Canvas(pdf_file, pagesize=letter)
+width, height = letter
+
+c.setFont("Helvetica-Bold", 16)
+c.drawString(72, height - 72, "Simulation Report")
+
+c.setFont("Helvetica", 12)
+lines = [
+    f"Name:              {simulation_name}",
+    f"Runtime:           {runtime:.2f} Minutes",
+    f"Allocated Storage:  {2*(N+1)}",
+    f"No. of Lines:       {max_cycles}",
+    f"Assumptions:        {case}",
+    f"Cloud Density:      {dense_cloud}",
+    f"Threshold Density:  {threshold}",
+    f"Filtered Lines:     {np.sum(np.logical_not(survivors))}",
+    f"Final Lines:        {np.sum(survivors)}",
+    f"Fraction Non-CNVRG Lines:  {np.sum(np.logical_not(survivors))/np.sum(survivors)}",
+]
+
+y = height - 120
+for line in lines:
+    c.drawString(72, y, line)
+    y -= 20
+
+# Add PNG image
+image_file = "images/FieldTopology.png"  # replace with your PNG path
+img_width = 400  # width in points
+img_height = 300  # height in points
+y_image = y - img_height - 20  # position below the last line of text
+
+c.drawImage(image_file, 72, y_image, width=img_width, height=img_height)
+
+c.save()
+print(f"Report saved to {pdf_file}")

@@ -1,4 +1,4 @@
-# Simulation Configuration for Cosmic Ray and Plasma Research
+# Simulation Configuration for Cosmic Ray in Plasma Environments
 
 This repository provides scripts for running simulations related to cosmic rays and plasma behavior. The scripts allow users to easily configure simulation parameters via command-line arguments. 
 
@@ -8,7 +8,7 @@ Contains graphs related to the steps and calculation of the ionization rate usin
 
 # Padovani.py
 
-Uses heuristic methods to calculate the ionization rate taking into the account magnetic focusing and mirroring using simulated magnetic field lines.
+Uses methods to calculate the ionization rate taking into the account magnetic focusing and mirroring using simulated magnetic field lines.
 
 <span style="color:white">The spacing of the 'mu_ism' variable can affect the final column density calculated. Procedure for the calculation of the column density with local 'mu' has to reach a threshold from which the particle performs a smooth reflection without stepping on the pi halves angle which inflates the column density down to the previous computable value before reaching a denominator equal to zero. This has to be bounded in order to choose the separation </span>.
 
