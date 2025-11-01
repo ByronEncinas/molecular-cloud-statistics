@@ -22,6 +22,7 @@ pc_to_cm = 3.086 * 10e+18  # cm per parsec
 AU_to_cm = 1.496 * 10e+13  # cm per AU
 parsec_to_cm3 = 3.086e+18  # cm per parsec
 surface_to_column = 2.55e+23
+pc_myrs_to_km_s = 0.9785
 
 # Physical Constants
 mass_unit = 1.99e33  # g
@@ -183,40 +184,6 @@ def ionization_rate_fit(Neff):
     log_L = interpolate.interp1d(Neff, logzl)
     log_H = interpolate.interp1d(Neff, logzh)
     return log_L(Neff), log_H(Neff)
-
-""" Process Lines from File into Lists """
-
-def process_line(line):
-    """
-    Process a line of data containing information about a trajectory.
-
-    Args:
-        line (str): Input line containing comma-separated values.
-
-    Returns:
-        dict or None: A dictionary containing processed data if the line is valid, otherwise None.
-    """
-    parts = line.split(',')
-    if len(parts) > 1:
-        iteration = int(parts[0])
-        traj_distance = float(parts[1])
-        initial_position = [float(parts[2:5][0]), float(parts[2:5][1]), float(parts[2:5][2])]
-        field_magnitude = float(parts[5])
-        field_vector = [float(parts[6:9][0]), float(parts[6:9][1]), float(parts[6:9][2])]
-        posit_index = [float(parts[9:][0]), float(parts[9:][1]), float(parts[9:][2])]
-
-        data_dict = {
-            'iteration': int(iteration),
-            'trajectory (s)': traj_distance,
-            'Initial Position (r0)': initial_position,
-            'field magnitude': field_magnitude,
-            'field vector': field_vector,
-            'indexes': posit_index
-        }
-
-        return data_dict
-    else:
-        return None
     
 """ Energies """
 
@@ -472,3 +439,85 @@ def tda(X, distro):
     # Save it to a file (e.g., PNG or PDF)
     plt.savefig(f"images/xyz_distro/pd_{distro}.png", dpi=300, bbox_inches='tight')
     plt.close(fig)
+
+def dendogram_analysis(DensityField):
+
+    from astrodendro import Dendrogram
+    d = Dendrogram.compute(DensityField, min_value=10e+4)
+    p = d.plotter()
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    # Plot the whole tree
+    p.plot_tree(ax, color='black')
+
+    # Highlight two branches
+    p.plot_tree(ax, structure=8, color='red', lw=2, alpha=0.5)
+    p.plot_tree(ax, structure=24, color='orange', lw=2, alpha=0.5)
+
+    # Add axis labels
+    ax.set_xlabel("Structure")
+    ax.set_ylabel("Flux")
+
+""" Decorators 
+Obtained from: https://towardsdatascience.com/python-decorators-for-data-science-6913f717669a/
+
+I like this for runs that take time and are not in parallel
+"""
+
+def timing_decorator(func):
+    import time
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Function {func.__name__} took {end_time - start_time} seconds to run.")
+        return result
+    return wrapper
+
+import smtplib
+import traceback
+from email.mime.text import MIMEText
+
+def email_on_failure(sender_email, password, recipient_email):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # format the error message and traceback
+                err_msg = f"Error: {str(e)}nnTraceback:n{traceback.format_exc()}"
+
+                # create the email message
+                message = MIMEText(err_msg)
+                message['Subject'] = f"{func.__name__} failed"
+                message['From'] = sender_email
+                message['To'] = recipient_email
+
+                # send the email
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                    smtp.login(sender_email, password)
+                    smtp.sendmail(sender_email, recipient_email, message.as_string())
+                # re-raise the exception
+                raise
+        return wrapper
+    return decorator
+
+import time
+from functools import wraps
+
+def retry(max_tries=3, delay_seconds=1):
+    def decorator_retry(func):
+        @wraps(func)
+        def wrapper_retry(*args, **kwargs):
+            tries = 0
+            while tries < max_tries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    tries += 1
+                    if tries == max_tries:
+                        raise e
+                    time.sleep(delay_seconds)
+        return wrapper_retry
+    return decorator_retry

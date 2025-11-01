@@ -44,8 +44,6 @@ def explore_snapshot_config(filename):
                 except AttributeError:
                     pass  # not a group
 
-# Example usage:
-explore_snapshot_config('arepo_data/ideal_mhd/snap_000.hdf5')
 
 import h5py
 import json
@@ -82,10 +80,10 @@ def extract_simulation_config(filename):
         else:
             print("No 'Config' group found.")
 
-# Run on your snapshot file:
-extract_simulation_config('arepo_data/ideal_mhd/snap_000.hdf5')
- 
-PARAMETERS : dict = {'CourantFac': np.float64(0.3),
+
+PARAMETERS : dict = {
+    'CourantFac': np.float64(0.3),
+     'ErrTolIntAccuracy': np.float64(0.012),
  'InitGasTemp': np.float64(4500.0),
  'JeansNumber': np.float64(32.0), 
  'MaxSizeTimestep': np.float64(0.1),
@@ -99,4 +97,10 @@ PARAMETERS : dict = {'CourantFac': np.float64(0.3),
  'TypeOfTimestepCriterion': np.int32(0),
  'WaitingTimeFactor': np.float64(1.0)}
 
-print(PARAMETERS)
+
+# Run on your snapshot file:
+import glob
+s = glob.glob(f"arepo_data/ideal_mhd/*000.hdf5")
+
+extract_simulation_config(s[0])
+explore_snapshot_config(s[0])

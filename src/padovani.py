@@ -820,231 +820,229 @@ def ionization_rate(Nmu, mu_local, dmu, direction = ''):
 
     return zeta, zeta_mui, jspectra
 
-lines = magnetic_fields.shape[1]
 
-zeta_at_x = np.zeros(lines)
-nmir_at_x = np.zeros(lines)
+if __name__ == '__main__':
+    lines = magnetic_fields.shape[1]
 
-zeta_full = []
-nmir_full = []
+    zeta_at_x = np.zeros(lines)
+    nmir_at_x = np.zeros(lines)
 
-for line in range(lines):
-    #if line <= _exit_:
-    #    break
-    print("\n",line,"/",lines)
-    numb_density    = numb_densities[:, line]
-    magnetic_field =  magnetic_fields[:, line]
-    radius_vector  =  radius_vectors[:, line, :]
-    
-    # --- Adjustments / Resizing ---
-    mask = np.where(numb_density > 0.0)[0]
-    start, end = mask[0], mask[-1]
+    zeta_full = []
+    nmir_full = []
 
-    #print(start, follow_index//2, end)
-    numb_density    = numb_density[start:end]
-    magnetic_field =  magnetic_field[start:end]
-    radius_vector  =  radius_vector[start:end, :]
-    trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1)) #np.insert(, 0, 0.0)
-    
-    #magnetic_field =  np.ones_like(magnetic_field)* np.mean(magnetic_field)
-    #magnetic_field[magnetic_field.shape[0]//2] *= 1.01
-
-    if follow_index0 > end - start:
-        follow_index = follow_index0 - start
-
-    #trajectory = np.cumsum(np.linalg.norm(np.diff(radius_vector, axis=0), axis=1))
-
-    """ Column Densities N_+(mu, s) & N_-(mu, s)"""
-
-    Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(radius_vector, magnetic_field, numb_density, "fwd")
-
-    Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(radius_vector[::-1, :], magnetic_field[::-1], numb_density[::-1], "bwd")
-
-    if False:
-
-        for mui in range(Npmu.shape[1]):
-            plt.plot(Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
-            #plt.legend()
-
-        plt.title("Column density $N_+(\mu_i)$  ")
-        plt.xlabel("Index")
-        plt.ylabel(r"$N_+(\mu_i, s)$")
-        #plt.xscale('log')
-        plt.yscale('log')
-        plt.savefig(f'./images/i_rate/Model{model}_forward_column.png', dpi=300)  # Save as PNG with high resolution
-        plt.close()
-
-        for mui in range(Npmu.shape[1]):
-            plt.plot(Nmmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
-            #plt.legend()
-
-        plt.title("Column density $N_-(\mu_i)$  ")
-        plt.xlabel("Index")
-        plt.ylabel(r"$N_-(\mu_i, s)$")
-        #plt.xscale('log')
-        plt.yscale('log')
-        plt.savefig(f'./images/i_rate/Model{model}_backward_column.png', dpi=300)  # Save as PNG with high resolution
-        plt.close()
-
-        for mui in range(dmu_fwd.shape[1]):
-            plt.plot(dmu_fwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-            #plt.legend()
-
-        plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Forwards)")
-        plt.xlabel("trajectory (cm)")
-        plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
-        plt.xscale('log')
-        plt.savefig(f'./images/i_rate/Model{model}_forward_jacobian.png', dpi=300)  # Save as PNG with high resolution
-        plt.close()
+    for line in range(lines):
+        #if line <= _exit_:
+        #    break
+        print("\n",line,"/",lines)
+        numb_density    = numb_densities[:, line]
+        magnetic_field =  magnetic_fields[:, line]
+        radius_vector  =  radius_vectors[:, line, :]
         
-        for mui in range(dmu_bwd.shape[1]):
-            plt.plot(dmu_bwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
-            #plt.legend()
+        # --- Adjustments / Resizing ---
+        mask = np.where(numb_density > 0.0)[0]
+        start, end = mask[0], mask[-1]
 
-        plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Backwards)")
-        plt.xlabel("trajectory (cm)")
-        plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
-        plt.xscale('log')
-        plt.savefig(f'./images/i_rate/Model{model}_backward_jacobian.png', dpi=300)  # Save as PNG with high resolution
-        plt.close()
+        #print(start, follow_index//2, end)
+        numb_density    = numb_density[start:end]
+        magnetic_field =  magnetic_field[start:end]
+        radius_vector  =  radius_vector[start:end, :]
+        trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1)) #np.insert(, 0, 0.0)
+        
+        #magnetic_field =  np.ones_like(magnetic_field)* np.mean(magnetic_field)
+        #magnetic_field[magnetic_field.shape[0]//2] *= 1.01
 
-    max_arg = np.argmax(magnetic_field)
+        if follow_index0 > end - start:
+            follow_index = follow_index0 - start
 
-    #Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg+1], Npmu[:max_arg,:], 'mir_fwd')
-    #Nmir_bwd = mirrored_column_density(radius_vector[max_arg:,:][::-1,:], magnetic_field[max_arg:][::-1], numb_density[max_arg:][::-1], Nmmu[max_arg:,:], 'mir_bwd')
+        #trajectory = np.cumsum(np.linalg.norm(np.diff(radius_vector, axis=0), axis=1))
 
-    Nmir_fwd = mirrored_column_density(radius_vector, magnetic_field, numb_density, Npmu, 'mir_fwd')
-    Nmir_bwd = mirrored_column_density(radius_vector[::-1,:], magnetic_field[::-1], numb_density[::-1], Nmmu, 'mir_bwd')
+        """ Column Densities N_+(mu, s) & N_-(mu, s)"""
 
-    """ Ionization Rate for N = N(s) """
+        Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(radius_vector, magnetic_field, numb_density, "fwd")
 
-    #zeta_mir_fwd,  zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd[:max_arg,:], dmu_fwd[:max_arg,:], 'mir_fwd')
-    #zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd = ionization_rate(Nmir_bwd, mu_local_bwd[max_arg:,:], dmu_bwd[max_arg:,:], 'mir_bwd')
+        Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(radius_vector[::-1, :], magnetic_field[::-1], numb_density[::-1], "bwd")
 
-    zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
-    zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
+        if False:
 
-    Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
-    #zeta = np.concatenate((zeta_mir_fwd, zeta_mir_bwd[::-1]), axis=0)
-    zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
-    
-    #print(zeta.shape, zeta_at_x.shape)
-    zeta_full += zeta.tolist()
-    nmir_full += Nmir.tolist()
-    print(trajectory.shape)
-    print(zeta.shape)
+            for mui in range(Npmu.shape[1]):
+                plt.plot(Npmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+                #plt.legend()
+
+            plt.title("Column density $N_+(\mu_i)$  ")
+            plt.xlabel("Index")
+            plt.ylabel(r"$N_+(\mu_i, s)$")
+            #plt.xscale('log')
+            plt.yscale('log')
+            plt.savefig(f'./images/i_rate/Model{model}_forward_column.png', dpi=300)  # Save as PNG with high resolution
+            plt.close()
+
+            for mui in range(Npmu.shape[1]):
+                plt.plot(Nmmu[:, mui], label=f"$\mu_i = ${mu_ism[mui]}")    
+                #plt.legend()
+
+            plt.title("Column density $N_-(\mu_i)$  ")
+            plt.xlabel("Index")
+            plt.ylabel(r"$N_-(\mu_i, s)$")
+            #plt.xscale('log')
+            plt.yscale('log')
+            plt.savefig(f'./images/i_rate/Model{model}_backward_column.png', dpi=300)  # Save as PNG with high resolution
+            plt.close()
+
+            for mui in range(dmu_fwd.shape[1]):
+                plt.plot(dmu_fwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+                #plt.legend()
+
+            plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Forwards)")
+            plt.xlabel("trajectory (cm)")
+            plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
+            plt.xscale('log')
+            plt.savefig(f'./images/i_rate/Model{model}_forward_jacobian.png', dpi=300)  # Save as PNG with high resolution
+            plt.close()
+            
+            for mui in range(dmu_bwd.shape[1]):
+                plt.plot(dmu_bwd[:, mui], label=f"$\mu_i = ${mu_ism[mui]}") 
+                #plt.legend()
+
+            plt.title(r"Evolution of $\frac{B}{B_i}\frac{\mu_i}{\mu}$ (Backwards)")
+            plt.xlabel("trajectory (cm)")
+            plt.ylabel(r"$\frac{\partial \mu_i}{\partial \mu}$")
+            plt.xscale('log')
+            plt.savefig(f'./images/i_rate/Model{model}_backward_jacobian.png', dpi=300)  # Save as PNG with high resolution
+            plt.close()
+
+        max_arg = np.argmax(magnetic_field)
+
+        #Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg+1], Npmu[:max_arg,:], 'mir_fwd')
+        #Nmir_bwd = mirrored_column_density(radius_vector[max_arg:,:][::-1,:], magnetic_field[max_arg:][::-1], numb_density[max_arg:][::-1], Nmmu[max_arg:,:], 'mir_bwd')
+
+        Nmir_fwd = mirrored_column_density(radius_vector, magnetic_field, numb_density, Npmu, 'mir_fwd')
+        Nmir_bwd = mirrored_column_density(radius_vector[::-1,:], magnetic_field[::-1], numb_density[::-1], Nmmu, 'mir_bwd')
+
+        """ Ionization Rate for N = N(s) """
+
+        #zeta_mir_fwd,  zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd[:max_arg,:], dmu_fwd[:max_arg,:], 'mir_fwd')
+        #zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd = ionization_rate(Nmir_bwd, mu_local_bwd[max_arg:,:], dmu_bwd[max_arg:,:], 'mir_bwd')
+
+        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
+        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
+
+        Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
+        #zeta = np.concatenate((zeta_mir_fwd, zeta_mir_bwd[::-1]), axis=0)
+        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
+        
+        #print(zeta.shape, zeta_at_x.shape)
+        zeta_full += zeta.tolist()
+        nmir_full += Nmir.tolist()
+        print(trajectory.shape)
+        print(zeta.shape)
+
+        if False:
+            fig, ax = plt.subplots()
+
+            #ax.scatter(nmir_reduced, zeta_reduced, s=8, marker='x', color="red", label=fr"$\zeta$")
+            #ax.plot(trajectory, np.log10(zeta), "-",color="red", label=fr"$\zeta$")
+            #ax.plot(trajectory, np.log10(zeta_mir_fwd), ".",color="grey", label=fr"$\zeta_+$", alpha=0.5)
+            #ax.plot(trajectory, np.log10(zeta_mir_bwd[::-1]), "--",color="grey", label=fr"$\zeta_-$", alpha=0.5)
+            zeta_log = np.log10(zeta)
+            ax.plot(trajectory, zeta_log, "-", color="black", label=fr"$\zeta$")
+            ax.plot(trajectory,(magnetic_field - magnetic_field.min()) / (magnetic_field.max() - magnetic_field.min()) * ((-16.5) - (-19)) + (-19),"--", ms=3,  color="red", label=fr"$B(s)$")
+            #ax.set_title("Total Ionization at X", fontsize=16)
+            ax.set_xlabel("Distance (cm)", fontsize=16)
+            ax.set_ylabel("$\log_{10}(\zeta / s^{-1})$", fontsize=16)
+            #ax.set_xscale('log')
+            ax.set_ylim(-19.5, -16)
+            fig.tight_layout()
+            plt.grid(True)
+            plt.savefig(f'./images/i_rate/Model{model}_marginal.png', dpi=300)
+            plt.close(fig)
+
+        zeta_at_x[line] = zeta[follow_index]
+        nmir_at_x[line] = Nmir[follow_index]
+
+
+    from scipy.stats import binned_statistic_2d
+    from matplotlib.colors import LogNorm
+
+    if True:
+        x = x_input[:line+1,0]
+        y = x_input[:line+1,1]
+        z = x_input[:line+1,2]
+
+        if x.shape[0] < 100:
+            bin = 25
+        else:
+            bin = np.ceil(np.sqrt(x.shape[0]))
+
+        stat, x_edges, y_edges, _ = binned_statistic_2d(x, y, zeta_at_x, statistic='mean', bins=bin)
+
+        plt.figure(figsize=(6, 6))
+        im = plt.imshow(stat.T, origin='lower',
+                        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],
+                        aspect='equal', cmap='plasma',
+                        norm=LogNorm(vmin=np.nanmin(stat[stat > 0]),  # avoid log(0)
+                                    vmax=np.nanmax(stat)))
+
+        plt.colorbar(im, label=r"$\zeta $")
+        plt.scatter(x, y, s=1, c='white', alpha=0.05)
+
+        plt.xlabel("x")
+        plt.ylabel("y")
+        plt.title("Projection of Scatter Data (Log Colorbar)")
+        plt.savefig(f'./images/i_rate/Model{model}_ionization_rate_map.png', dpi=300)
 
     if False:
         fig, ax = plt.subplots()
 
-        #ax.scatter(nmir_reduced, zeta_reduced, s=8, marker='x', color="red", label=fr"$\zeta$")
-        #ax.plot(trajectory, np.log10(zeta), "-",color="red", label=fr"$\zeta$")
-        #ax.plot(trajectory, np.log10(zeta_mir_fwd), ".",color="grey", label=fr"$\zeta_+$", alpha=0.5)
-        #ax.plot(trajectory, np.log10(zeta_mir_bwd[::-1]), "--",color="grey", label=fr"$\zeta_-$", alpha=0.5)
-        zeta_log = np.log10(zeta)
-        ax.plot(trajectory, zeta_log, "-", color="black", label=fr"$\zeta$")
-        ax.plot(trajectory,(magnetic_field - magnetic_field.min()) / (magnetic_field.max() - magnetic_field.min()) * ((-16.5) - (-19)) + (-19),"--", ms=3,  color="red", label=fr"$B(s)$")
-        #ax.set_title("Total Ionization at X", fontsize=16)
-        ax.set_xlabel("Distance (cm)", fontsize=16)
-        ax.set_ylabel("$\log_{10}(\zeta / s^{-1})$", fontsize=16)
-        #ax.set_xscale('log')
-        ax.set_ylim(-19.5, -16)
+        ax.scatter(nmir_full, zeta_full, s=8, marker='|', color="red", label=fr"$\zeta$")
+        #ax.plot(Nmir,label=fr"$\zeta$")
+        ax.plot(Neff, 10**log_H(Neff), label='Model H')
+        ax.plot(Neff, 10**log_L(Neff), label='Model L')
+        ax.set_title(r"Total Ionization at X")
+        ax.set_xlabel("Distance (cm)")
+        ax.set_ylabel(r"$\zeta(s)$")
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        #ax.legend()
         fig.tight_layout()
         plt.grid(True)
-        plt.savefig(f'./images/i_rate/Model{model}_marginal.png', dpi=300)
+        plt.savefig(f'./images/i_rate/Model{model}_ionization_rate0.png', dpi=300)
+        plt.close()
         plt.close(fig)
 
-    zeta_at_x[line] = zeta[follow_index]
-    nmir_at_x[line] = Nmir[follow_index]
+    fig, ax = plt.subplots(figsize=(8, 3.5))
 
+    print("zeta_at_x.shape = ", zeta_at_x.shape)
 
-from scipy.stats import binned_statistic_2d
-from matplotlib.colors import LogNorm
+    ax.hist(np.log10(zeta_at_x), bins=zeta_at_x.shape[0]//10, alpha=1,
+            histtype='stepfilled', label=f"{time} Myrs")
 
-if True:
-    x = x_input[:line+1,0]
-    y = x_input[:line+1,1]
-    z = x_input[:line+1,2]
+    print("Mean power of $\log_{10}(\zeta}$: ", np.mean(np.log10((zeta_at_x))))
 
-    if x.shape[0] < 100:
-        bin = 25
-    else:
-        bin = np.ceil(np.sqrt(x.shape[0]))
+    ax.set_yscale('log')
+    ax.set_ylabel('Counts', fontsize=16)
+    ax.set_xlabel('''$\log_{10}(\zeta / s^{-1})$''', fontsize=12)
+    ax.set_xlim(np.max(np.log10(zeta_at_x)), np.max(np.log10(zeta_at_x)))
+    ax.legend(frameon=False)
+    ax.set_title('''Histogram $\log_{10}(\zeta / s^{-1})$''')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f'./images/i_rate/Model{model}_histogram.png', dpi=300)
+    plt.close(fig)
 
-    stat, x_edges, y_edges, _ = binned_statistic_2d(x, y, zeta_at_x, statistic='mean', bins=bin)
-
-    plt.figure(figsize=(6, 6))
-    im = plt.imshow(stat.T, origin='lower',
-                    extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],
-                    aspect='equal', cmap='plasma',
-                    norm=LogNorm(vmin=np.nanmin(stat[stat > 0]),  # avoid log(0)
-                                vmax=np.nanmax(stat)))
-
-    plt.colorbar(im, label=r"$\zeta $")
-    plt.scatter(x, y, s=1, c='white', alpha=0.05)
-
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.title("Projection of Scatter Data (Log Colorbar)")
-    plt.savefig(f'./images/i_rate/Model{model}_ionization_rate_map.png', dpi=300)
-
-if False:
     fig, ax = plt.subplots()
 
-    ax.scatter(nmir_full, zeta_full, s=8, marker='|', color="red", label=fr"$\zeta$")
-    #ax.plot(Nmir,label=fr"$\zeta$")
-    ax.plot(Neff, 10**log_H(Neff), label='Model H')
-    ax.plot(Neff, 10**log_L(Neff), label='Model L')
-    ax.set_title(r"Total Ionization at X")
-    ax.set_xlabel("Distance (cm)")
-    ax.set_ylabel(r"$\zeta(s)$")
-    ax.set_yscale('log')
+    #ax.scatter(nmir_reduced, zeta_reduced, s=8, marker='x', color="red", label=fr"$\zeta$")
+    ax.scatter(nmir_at_x, np.log10(zeta_at_x), s=5, marker='x', color="red", label=fr"$\zeta$", alpha=0.2)
+    ax.plot(Neff, log_H(Neff), label='Model H', linestyle='-', color='black')
+    ax.plot(Neff, log_L(Neff), label='Model L', linestyle='--', color='black')
+    ax.set_title("Total Ionization at X", fontsize=16)
+    ax.set_xlabel("Distance (cm)", fontsize=16)
+    ax.set_ylabel("$\zeta(s)$", fontsize=16)
     ax.set_xscale('log')
+    ax.set_ylim(-23.5, -15.5)
     #ax.legend()
     fig.tight_layout()
     plt.grid(True)
-    plt.savefig(f'./images/i_rate/Model{model}_ionization_rate0.png', dpi=300)
-    plt.close()
+    plt.savefig(f'./images/i_rate/Model{model}_ionization_rate1.png', dpi=300)
     plt.close(fig)
-
-fig, ax = plt.subplots(figsize=(8, 3.5))
-
-print("zeta_at_x.shape = ", zeta_at_x.shape)
-
-ax.hist(np.log10(zeta_at_x), bins=zeta_at_x.shape[0]//10, alpha=1,
-        histtype='stepfilled', label=f"{time} Myrs")
-
-print("Mean power of $\log_{10}(\zeta}$: ", np.mean(np.log10((zeta_at_x))))
-
-ax.set_yscale('log')
-ax.set_ylabel('Counts', fontsize=16)
-ax.set_xlabel('''$\log_{10}(\zeta / s^{-1})$''', fontsize=12)
-ax.set_xlim(np.max(np.log10(zeta_at_x)), np.max(np.log10(zeta_at_x)))
-ax.legend(frameon=False)
-ax.set_title('''Histogram $\log_{10}(\zeta / s^{-1})$''')
-plt.grid(True)
-plt.tight_layout()
-plt.savefig(f'./images/i_rate/Model{model}_histogram.png', dpi=300)
-plt.close(fig)
-
-fig, ax = plt.subplots()
-
-#ax.scatter(nmir_reduced, zeta_reduced, s=8, marker='x', color="red", label=fr"$\zeta$")
-ax.scatter(nmir_at_x, np.log10(zeta_at_x), s=5, marker='x', color="red", label=fr"$\zeta$", alpha=0.2)
-ax.plot(Neff, log_H(Neff), label='Model H', linestyle='-', color='black')
-ax.plot(Neff, log_L(Neff), label='Model L', linestyle='--', color='black')
-ax.set_title("Total Ionization at X", fontsize=16)
-ax.set_xlabel("Distance (cm)", fontsize=16)
-ax.set_ylabel("$\zeta(s)$", fontsize=16)
-ax.set_xscale('log')
-ax.set_ylim(-23.5, -15.5)
-#ax.legend()
-fig.tight_layout()
-plt.grid(True)
-plt.savefig(f'./images/i_rate/Model{model}_ionization_rate1.png', dpi=300)
-plt.close(fig)
-
-if __name__ == '__main__':
-    pass
-    #re_do_stats_py_plots()
 
