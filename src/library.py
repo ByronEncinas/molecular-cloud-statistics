@@ -8,7 +8,7 @@ from scipy.spatial import cKDTree
 
 import matplotlib as mpl
 
-mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.usetex'] = False
 
 """ Toggle Parameters """
 
@@ -43,6 +43,10 @@ gauss_code_to_gauss_cgs = (4 * np.pi)**0.5   * (3.086e18)**(-1.5) * (1.99e33)**0
 mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 
+# cache-ing spatial.cKDTree(Pos[:]).query(x, k=1)
+_cached_tree = None
+_cached_pos = None
+
 """ Ionization Rate Parameters"""
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
@@ -68,9 +72,10 @@ def find_points_and_relative_positions(x, Pos, VoronoiPos):
     rel_pos = VoronoiPos[cells] - x
     return dist, cells, rel_pos
 
-# cache-ing spatial.cKDTree(Pos[:]).query(x, k=1)
-_cached_tree = None
-_cached_pos = None
+def find_points_and_relative_positions_tree_dependent(tree, x, Pos, VoronoiPos):
+    dist, cells = _cached_tree.query(x, k=1, workers=-1)
+    rel_pos = VoronoiPos[cells] - x
+    return dist, cells, rel_pos
 
 def find_points_and_relative_positions(x, Pos, VoronoiPos):
     global _cached_tree, _cached_pos
