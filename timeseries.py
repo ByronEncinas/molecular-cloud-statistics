@@ -410,7 +410,6 @@ def match_files_to_data(__input_case__):
 
     return clst, dlst, tlst, slst, file_hdf5
 
-@timing_decorator
 def describe(data, band=False, percent=False):
 
     # data shape: (50, 1000)
@@ -510,7 +509,6 @@ def larson_width_line_relation(**kwargs):
     # remember that L represents a diameters or width of the cloud
     return L, sigma_vel # width of cloud, velocity dispersion
 
-@timing_decorator
 def evolution_descriptors():
     df_factor = pd.read_pickle('./series/r_stats.pkl')
     df_column = pd.read_pickle('./series/c_stats.pkl')
@@ -554,7 +552,6 @@ def evolution_descriptors():
     plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
-@timing_decorator
 def declare_globals_and_constants():
 
     # global variables that can be modified from anywhere in the code
