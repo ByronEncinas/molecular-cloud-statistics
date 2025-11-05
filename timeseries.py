@@ -640,7 +640,7 @@ if __name__=='__main__':
             "n0_los": mean_column,
             "n1_los": median_column
         }
-        df_c_stats[str(snap) + str(_time)]  = c_stats_dict
+        df_c_stats[str(snap)]  = c_stats_dict
 
         #r_stats = [_time, mean_r_u, median_r_u,skew_r_u,kurt_r_u, mean_r_l, median_r_l,skew_r_l,kurt_r_l]
         r_stats_dict = {
@@ -656,7 +656,7 @@ if __name__=='__main__':
             "kurt_r_l": kurt_r_l
         }
 
-        df_r_stats[str(snap) + str(_time)]  = r_stats_dict # multiindex dataframe
+        df_r_stats[str(snap)]  = r_stats_dict # multiindex dataframe
         
 
         if 'Pos' in globals():
