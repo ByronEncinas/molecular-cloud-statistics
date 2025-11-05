@@ -373,7 +373,7 @@ def match_files_to_data(__input_case__):
     assert os.path.exists(file_xyz), f"[{file_xyz} cloud data not present]"
  
     with open(file_xyz, mode='r') as file:
-        centerlst = []; densetlst = []; timestlst = []; snapstlst = []
+        clst = []; dlst = []; tlst = []; slst = []
         csv_reader = csv.reader(file)  # Use csv.reader to access rows directly
         next(csv_reader)  # Skip the header row
         
@@ -381,30 +381,30 @@ def match_files_to_data(__input_case__):
             #print(row[0],row[1], np.log10(float(row[8])))
             if (int(row[0]) < int(__start_snap__)):
                 break
-            centerlst.append([np.float64(row[2]),np.float64(row[3]),np.float64(row[4])])
-            densetlst.append(np.float64(row[8]))
-            timestlst.append(np.float64(row[1]))
-            snapstlst.append(int(row[0]))
+            clst.append([np.float64(row[2]),np.float64(row[3]),np.float64(row[4])])
+            dlst.append(np.float64(row[8]))
+            tlst.append(np.float64(row[1]))
+            slst.append(int(row[0]))
         
-    assert len(snapstlst) != 0, "Error accessing cloud data"
+    assert len(slst) != 0, "Error accessing cloud data"
 
-    centerlst, densetlst, timestlst, snapstlst = [np.array(arr, dtype=FloatType) for arr in (centerlst[::-1], densetlst[::-1], timestlst[::-1], snapstlst[::-1])]
+    clst, dlst, tlst, slst = [np.array(arr, dtype=FloatType) for arr in (clst[::-1], dlst[::-1], tlst[::-1], slst[::-1])]
 
-    validated = np.logical_not(densetlst); white_list = []
+    validated = np.logical_not(dlst); white_list = []
 
     for i, f in enumerate(file_hdf5):
-        if int(f.split('.')[0][-3:]) in snapstlst: 
-            #print(int(f.split('.')[0][-3:]), np.where(snapstlst == int(f.split('.')[0][-3:])))    
-            validated[np.where(snapstlst == int(f.split('.')[0][-3:]))] = True
+        if int(f.split('.')[0][-3:]) in slst: 
+            #print(int(f.split('.')[0][-3:]), np.where(slst == int(f.split('.')[0][-3:])))    
+            validated[np.where(slst == int(f.split('.')[0][-3:]))] = True
             white_list += [True]
         else:
             white_list += [False]
 
-    centerlst, densetlst, timestlst, snapstlst = [arr[validated] for arr in (centerlst, densetlst, timestlst, snapstlst)]
+    clst, dlst, tlst, slst = [arr[validated] for arr in (clst, dlst, tlst, slst)]
 
     file_hdf5 = np.sort(file_hdf5[np.array(white_list)][::-1])
 
-    return centerlst, densetlst, timestlst, snapstlst, file_hdf5
+    return clst, dlst, tlst, slst, file_hdf5
 
 def describe(data, band=False, percent=False):
 
@@ -505,16 +505,60 @@ def larson_width_line_relation(**kwargs):
     # remember that L represents a diameters or width of the cloud
     return L, sigma_vel # width of cloud, velocity dispersion
 
+def evolution_descriptors():
+    df_factor = pd.read_pickle('./series/r_stats.pkl')
+    df_column = pd.read_pickle('./series/c_stats.pkl')
+
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
+
+    df_factor.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
+    df_factor.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
+    ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
+    ax0.set_ylabel('$R$ Factor', fontsize=16)
+    ax0.legend(fontsize=16)
+    ax0.grid(True)
+
+    df_factor.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
+    df_factor.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
+    ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
+    ax1.legend(fontsize=16)
+    ax1.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.93])  # leave space for legend
+    plt.savefig(f'./series/descriptors_{__input_case__}.png', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    ax.boxplot(
+        df_column['n_path'].tolist(),       # convert Series of arrays -> list of arrays
+        positions=df_column['snapshot'],    # x-axis positions
+        widths=2,                           # adjust width
+        patch_artist=True,                  # color the boxes
+        medianprops=dict(color='red')       # median line color
+    )
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("ratio0")
+    ax.set_yscale("log")
+    ax.set_title("Evolution of ratio0 over Time")
+
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+
 def declare_globals_and_constants():
 
     # global variables that can be modified from anywhere in the code
     global __rloc__, __sample_size__, __input_case__, __start_snap__, __alloc_slots__, __dense_cloud__,__threshold__, N
     global Pos, VoronoiPos, Bfield, Mass, Density, Bfield_grad, Density_grad, Volume
+    global flag, FloatType, FloatType2, IntType
     
     # immutable objects, use type hinting to debug if error
     N               = 2_500
     __rloc__        = 0.1
-    __sample_size__ = 100
+    __sample_size__ = 1_000
     __input_case__  = 'ideal'
     __start_snap__  = sys.argv[1]
     __alloc_slots__ = 2_000
@@ -531,42 +575,41 @@ def declare_globals_and_constants():
 
     # output directory
     os.makedirs("series", exist_ok=True)
+
+    # flag to import data
+    flag = True
     return None
 
-if __name__=='__main__':
-    declare_globals_and_constants()
 
-    centerlst, densetlst, timestlst, snapstlst, file_hdf5 = match_files_to_data(__input_case__)
+if __name__=='__main__':
+    declare_globals_and_constants()   
+
+    # coordinates, cell center density, time and snapshot of evolving cloud
+    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
-    cloud_width = []
-    cloud_vel_disp = []
-    timeseries = dict()
     df_r_stats = dict()
     df_c_stats = dict()
-    df_x       = dict()
 
     for each, filename in enumerate(file_hdf5):
-        print(filename)
 
         snap = int(filename.split('.')[0][-3:])
-        parent_folder = "series/" 
         data = h5py.File(filename, 'r')
         __Boxsize__ = data['Header'].attrs['BoxSize']
 
         Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
         Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
         VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-        Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
+        #Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
         Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
         Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
         Bfield_grad = np.zeros((len(Pos), 9))
         Density_grad = np.zeros((len(Density), 3))
         Volume   = Mass/Density
-        center = centerlst[each,:]
+        center = clst[each,:]
         VoronoiPos-=center
         Pos       -=center    
-        _time = timestlst[each]
+        _time = tlst[each]
 
         for dim in range(3):
             pos_from_center = Pos[:, dim]
@@ -597,7 +640,7 @@ if __name__=='__main__':
             raise ValueError("[Error] Faulty generation of 'x_input'")
 
         directions=fibonacci_sphere(10)
-        radius_vectors_los, numb_densities_los, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
+        __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
         radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
 
         assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
@@ -625,27 +668,28 @@ if __name__=='__main__':
         r_u             = r_u[survivors]
         r_l             = r_l[survivors]
 
-        distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
+        #distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 
         mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
         mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
 
-        #c_stats = [_time, x_input, n_rs, B_rs, path_column, mean_column, median_column]
-        """"""
+        """
+        smth
+        """
         c_stats_dict = {
+            "time": _time,
             "x_input": x_input,
             "n_rs": n_rs,
             "B_rs": B_rs,
             "n_path": path_column,
-            "n0_los": mean_column,
-            "n1_los": median_column
+            "ratio0": mean_column/path_column,
+            "ratio1": median_column/path_column
         }
         df_c_stats[str(snap)]  = c_stats_dict
 
-        #r_stats = [_time, mean_r_u, median_r_u,skew_r_u,kurt_r_u, mean_r_l, median_r_l,skew_r_l,kurt_r_l]
         r_stats_dict = {
             "time": _time,
-            "surv_fraction": survivors_fraction,
+            "surv_fraction": survivors_fraction[each],
             "mean_r_u": mean_r_u,
             "median_r_u": median_r_u,
             "skew_r_u": skew_r_u,
@@ -676,37 +720,24 @@ if __name__=='__main__':
 
     # Loop through each plot and generate/save independently
 
-    df_r = pd.DataFrame.from_dict(df_r_stats, orient='index')
-    df_r.reset_index(inplace=True)
-    df_r.rename(columns={'index': 'snapshot'}, inplace=True)
+    # to save dataframes into values other than strings it must be pickleized
+    df_r = pd.DataFrame.from_dict(df_r_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
+    df_c = pd.DataFrame.from_dict(df_c_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
 
-    df_c = pd.DataFrame.from_dict(df_c_stats, orient='index')
-    df_c.reset_index(inplace=True)
-    df_c.rename(columns={'index': 'snapshot'}, inplace=True)
+    df_r.to_pickle('./series/r_stats.pkl')
+    df_c.to_pickle('./series/c_stats.pkl')
 
-    df_x = pd.DataFrame.from_dict(df_x, orient='index')
-
-    #print(df_r)
-
-    df_r.to_csv('r_stats.csv', index=False) 
-    df_c.to_csv('c_stats.csv', index=False) 
+    print("Saved r_stats.pkl and c_stats.pkl with full NumPy arrays intact.")
 
     print(df_r.describe())
-
     print(df_c.describe())
 
-    time_sim = df_r['time']
-    mean_r = df_r['mean_r_u']
-    mead_r = df_r['median_r_u']
-    skew_r = df_r['skew_r_u']
-    kurt_r = df_r['kurt_r_u']
-
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
 
     df_r.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
     df_r.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
     ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax0.set_ylabel('Reduction Factor', fontsize=16)
+    ax0.set_ylabel('$R$ Factor', fontsize=16)
     #ax0.set_title('Ideal MHD', fontsize=16)
     ax0.legend(fontsize=16)
     ax0.grid(True)
@@ -714,37 +745,19 @@ if __name__=='__main__':
     df_r.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
     df_r.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
     ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax1.set_ylabel('Reduction Factor', fontsize=16)
+    ax1.set_ylabel('$R$ Factor', fontsize=16)
     #ax1.set_title('Non-ideal MHD - AD', fontsize=16)
     ax1.legend(fontsize=16)
     ax1.grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # leave space for legend
-    plt.savefig('series/descriptors.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'series/descriptors_{__input_case__}.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-    ratio0 = df_c['n0_los']/df_c['n_path']
-    ratio1 = df_c['n1_los']/df_c['n_path']
+    # plot and save n^mean_los / n_path and n^median_los / n_path
+    # plot and save n^mean_los / n_path and n^median_los / n_path
 
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
-
-    df_r.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
-    df_r.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
-    ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax0.set_ylabel('Reduction Factor', fontsize=16)
-    #ax0.set_title('Ideal MHD', fontsize=16)
-    ax0.legend(fontsize=16)
-    ax0.grid(True)
-
-    df_r.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
-    df_r.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
-    ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax1.set_ylabel('Reduction Factor', fontsize=16)
-    #ax1.set_title('Non-ideal MHD - AD', fontsize=16)
-    ax1.legend(fontsize=16)
-    ax1.grid(True)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # leave space for legend
-    plt.savefig('series/ratios.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
+    # plot together
+    # plot and save Reduction factor over n_g using log10(n_g(p)/n_{ref}) < 1/8
+    # mean, median, 1sigma band and 25, 10, 5 th percentiles
+    # n_ref must be between 10^2 and max value of density in the 495 snapshot (10^4)
