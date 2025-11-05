@@ -13,6 +13,7 @@ from scipy.spatial import cKDTree
 from src.library import *
 from stats import *
 
+@timing_decorator
 def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=threshold):
 
     valid_vectors = []
@@ -44,6 +45,7 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=threshold):
 
     return np.array(deepcopy(valid_vectors))
 
+@timing_decorator
 def crs_path(*args, **kwargs):
     x_init = kwargs.get('x_init', None)
     n_crit = kwargs.get('n_crit', 1.0e+2)
@@ -181,6 +183,7 @@ def crs_path(*args, **kwargs):
 
     return radius_vectors, magnetic_fields, numb_densities, nz_irev, path_column, survivors_mask #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
 
+@timing_decorator
 def line_of_sight(*args, **kwargs):
     # Unpack positional arguments
     #Bfield, Density, Mass, Bfield_grad, Density_grad = args[:5]
@@ -359,6 +362,7 @@ def line_of_sight(*args, **kwargs):
 
     return radius_vectors, numb_densities, mean_columns, median_columns
 
+@timing_decorator
 def match_files_to_data(__input_case__):
     
     if __input_case__ in 'ideal_mhd':
@@ -406,6 +410,7 @@ def match_files_to_data(__input_case__):
 
     return clst, dlst, tlst, slst, file_hdf5
 
+@timing_decorator
 def describe(data, band=False, percent=False):
 
     # data shape: (50, 1000)
@@ -505,6 +510,7 @@ def larson_width_line_relation(**kwargs):
     # remember that L represents a diameters or width of the cloud
     return L, sigma_vel # width of cloud, velocity dispersion
 
+@timing_decorator
 def evolution_descriptors():
     df_factor = pd.read_pickle('./series/r_stats.pkl')
     df_column = pd.read_pickle('./series/c_stats.pkl')
@@ -548,6 +554,7 @@ def evolution_descriptors():
     plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
+@timing_decorator
 def declare_globals_and_constants():
 
     # global variables that can be modified from anywhere in the code
