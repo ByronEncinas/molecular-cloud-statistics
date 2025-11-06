@@ -12,15 +12,64 @@ mpl.rcParams['text.usetex'] = False
 
 """ Toggle Parameters """
 
+""" Statistics Methods """
+
+def reduction_to_density(factor, numb):
+    factor = np.array(factor)
+    numb = np.array(numb)
+    # R is numpy array
+    def match_ref(n, d_data, r_data, p_data=0):
+        sample_r = []
+
+        for i in range(0, len(d_data)):
+            if np.abs(np.log10(d_data[i]/n)) < 1/8:
+                sample_r.append(r_data[i])
+        sample_r.sort()
+        try:
+            mean = sum(sample_r)/len(sample_r)
+            median = np.quantile(sample_r, .5)
+            ten = np.quantile(sample_r, .1)
+            size = len(sample_r)
+        except:
+            raise ValueError("[Error] Statistics of empty sample")
+        return [mean, median, ten, size]
+        if len(sample_r) == 0:
+            mean = None
+            median = None
+            ten = None
+            size = 0
+        else:
+            mean = sum(sample_r)/len(sample_r)
+            median = np.quantile(sample_r, .5)
+            ten = np.quantile(sample_r, .1)
+            size = len(sample_r)
+
+    total = factor.shape[0]
+    numb = numb[factor<1]
+    factor = factor[factor<1]    
+    x_n = np.logspace(np.min(np.log10(numb)), np.max(np.log10(numb)), total)
+    mean_vec = np.zeros(total)
+    median_vec = np.zeros(total)
+    ten_vec = np.zeros(total)
+    sample_size = np.zeros(total)
+    for i in range(0, total):
+        s = match_ref(x_n[i], numb, factor)
+        mean_vec[i] = s[0]
+        median_vec[i] = s[1]
+        ten_vec[i] = s[2]
+        sample_size[i] = s[3]
+    
+    return x_n, mean_vec, median_vec, ten_vec, sample_size
+
+
 """ Constants and convertion factor """
 
 hydrogen_mass = 1.6735e-24 # gr
 
 # Unit Conversions
 km_to_parsec = 1 / 3.085677581e13  # 1 pc in km
-pc_to_cm = 3.086 * 10e+18  # cm per parsec
-AU_to_cm = 1.496 * 10e+13  # cm per AU
-parsec_to_cm3 = 3.086e+18  # cm per parsec
+pc_to_cm = 3.086 * 1.0e+18  # cm per parsec
+AU_to_cm = 1.496 * 1.0e+13  # cm per AU
 surface_to_column = 2.55e+23
 pc_myrs_to_km_s = 0.9785
 
@@ -469,6 +518,22 @@ Obtained from: https://towardsdatascience.com/python-decorators-for-data-science
 
 I like this for runs that take time and are not in parallel
 """
+
+def use_lock_and_save(path):
+    from filelock import FileLock
+    """
+    Time ──────────────────────────────▶
+
+    Script 1:  ──[Acquire Lock]─────[Create/Append HDF5]─────[Release Lock]───
+
+    Script 2:             ──[Wait for Lock]─────────────[Append HDF5]─────[Release Lock]───
+    """
+    lock = FileLock(path + ".lock")
+
+    with lock:  # acquire lock (waits if another process is holding it)
+
+        pass
+        # Use this to create and update a dataframe
 
 def timing_decorator(func):
     import time
