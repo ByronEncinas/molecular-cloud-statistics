@@ -368,11 +368,11 @@ def match_files_to_data(__input_case__):
     if __input_case__ in 'ideal_mhd':
         subdirectory = 'ideal_mhd'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
-        file_xyz       = f'./{__input_case__}_cloud_trajectory.txt'
+        file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
     elif __input_case__ in 'ambipolar_diffusion':
         subdirectory = 'ambipolar_diffusion'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
-        file_xyz       = f'./{__input_case__}_cloud_trajectory.txt'
+        file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
 
     assert os.path.exists(file_xyz), f"[{file_xyz} cloud data not present]"
  
@@ -583,7 +583,6 @@ def declare_globals_and_constants():
     # flag to import data
     flag = True
     return None
-
 
 if __name__=='__main__':
     declare_globals_and_constants()   

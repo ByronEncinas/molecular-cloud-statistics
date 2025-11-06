@@ -822,7 +822,7 @@ if __name__ == '__main__':
 
     subdirectory = 'ideal_mhd' if case == 'ideal' else 'ambipolar_diffusion'
     
-    file_path       = f'./{case}_cloud_trajectory.txt'
+    file_path       = f'./util/{case}_cloud_trajectory.txt'
     file_list = glob.glob(f"arepo_data/{subdirectory}/*.hdf5")
 
     _den = []
@@ -1219,12 +1219,11 @@ if __name__ == '__main__':
         plt.savefig('./images/ratio_columns1.png', dpi=300)
         plt.close(fig)
 
-    R = 0.0025 # Radius 5000 [Au]
-    H = 1.0e-2 # Height [Pc]
-
-    x = Pos[:, 0] 
-    y = Pos[:, 1] 
-    z = Pos[:, 2] 
+    R = 0.0025 # Radius 5000 [Au] => 0.05 [pc]
+    H = 1.0e-6 # Height [Pc]
+    x = Pos[:, 0]
+    y = Pos[:, 1]
+    z = Pos[:, 2]
     c = (x**2 + y**2 + z**2 < R**2)
     s = np.logical_and(-H < z, z < H)
     d = Density * gr_cm3_to_nuclei_cm3 > 1.0e+2
@@ -1234,9 +1233,9 @@ if __name__ == '__main__':
     if True: # Density Hexbin heatmap
         
         c_Density = Density[csd] * gr_cm3_to_nuclei_cm3
-        xc = Pos[csd, 0] 
-        yc = Pos[csd, 1] 
-        zc = Pos[csd, 2] 
+        xc = Pos[csd, 0] * pc_to_cm / AU_to_cm
+        yc = Pos[csd, 1] * pc_to_cm / AU_to_cm
+        zc = Pos[csd, 2] * pc_to_cm / AU_to_cm
         
         fig, ax = plt.subplots()
 
@@ -1255,20 +1254,17 @@ if __name__ == '__main__':
         #ax.text(x_start + bar_length/2, y_start - 0.5, f'{R/2} Pc', ha='center')
 
         plt.xlabel('X Position (Au)')
-        plt.ylabel('Y Position (kpc)')
+        plt.ylabel('Y Position (au)')
         plt.title('Density Map of Astrophysical System (Irregular Data)')
         plt.savefig('./images/density_map.png', dpi=300)
         plt.close(fig)
         
     if True: # Streamplot
-        x = Pos[:, 0] 
-        y = Pos[:, 1] 
-        z = Pos[:, 2] 
 
         c_Density = Density[csd] * gr_cm3_to_nuclei_cm3
 
-        X = Pos[csd, 0] 
-        Y = Pos[csd, 1]
+        X = Pos[csd, 0] * pc_to_cm / AU_to_cm 
+        Y = Pos[csd, 1] * pc_to_cm / AU_to_cm
         print(X.shape, Y.shape)
         vec = Pos[csd,:]
 
@@ -1312,12 +1308,12 @@ if __name__ == '__main__':
         cbar.ax.set_ylabel('|B| (µG)', rotation=270, labelpad=15)
 
         # Labels and layout
-        ax.set_xlabel('X Position (kpc)')
-        ax.set_ylabel('Y Position (kpc)')
+        ax.set_xlabel('X Position (au)')
+        ax.set_ylabel('Y Position (au)')
         ax.set_title('Magnetic Field and Density Map (Irregular Data)')
         ax.set_aspect('equal', 'box')
-        ax.set_xticks([])
-        ax.set_yticks([])
+        #ax.set_xticks([])
+        #ax.set_yticks([])
 
         ax.text(0.02, 0.95, '1', transform=ax.transAxes, fontsize=18, color='white', fontweight='bold')
 
@@ -1603,13 +1599,11 @@ if __name__ == '__main__':
         cbar.set_label('Arbitrary Units')
         plt.savefig("./images/StartingPoints.png", bbox_inches='tight', dpi=300)
 
-    if False:
+    if True:
         try:
                 
             from matplotlib import cm
             from matplotlib.colors import Normalize
-
-
 
             ax = plt.figure().add_subplot(projection='3d')
             #radius_vectors /= pc_to_cm
