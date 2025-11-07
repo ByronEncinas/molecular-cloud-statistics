@@ -684,19 +684,11 @@ if __name__=='__main__':
             "n_rs": n_rs,
             "B_rs": B_rs,
             "n_path": path_column,
-            "ratio0": mean_column/path_column,
-            "ratio1": median_column/path_column,
-            "mean_r_u": mean_r_u,
-            "median_r_u": median_r_u,
-            "skew_r_u": skew_r_u,
-            "kurt_r_u": kurt_r_u,
-            "mean_r_l": mean_r_l,
-            "median_r_l": median_r_l,
-            "skew_r_l": skew_r_l,
-            "kurt_r_l": kurt_r_l,
+            "n_los0": mean_column,
+            "n_los1": median_column,
             "surv_fraction": survivors_fraction[each],
-            "r_u": mean_r_u,
-            "r_l": mean_r_u
+            "r_u": r_u,
+            "r_l": r_l
         }
 
         df_stats[str(snap)]  = stats_dict
@@ -727,28 +719,6 @@ if __name__=='__main__':
     print("Saved data.pkl with full NumPy arrays intact.")
 
     print(df.describe())
-
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
-
-    df.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
-    df.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
-    ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax0.set_ylabel('$R$ Factor', fontsize=16)
-    #ax0.set_title('Ideal MHD', fontsize=16)
-    ax0.legend(fontsize=16)
-    ax0.grid(True)
-
-    df.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
-    df.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
-    ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax1.set_ylabel('$R$ Factor', fontsize=16)
-    #ax1.set_title('Non-ideal MHD - AD', fontsize=16)
-    ax1.legend(fontsize=16)
-    ax1.grid(True)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # leave space for legend
-    plt.savefig(f'series/descriptors_{__input_case__}.png', dpi=300, bbox_inches='tight')
-    plt.close()
 
     # plot and save n^mean_los / n_path and n^median_los / n_path
     # plot and save n^mean_los / n_path and n^median_los / n_path
