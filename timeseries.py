@@ -334,7 +334,7 @@ def line_of_sight(*args, **kwargs):
         
         plt.title(r'Density [$n_g$] vs Distance [$s$]', fontsize=16)
 
-        plt.savefig(f'./stats/ng_vs_s.png',dpi=300)
+        plt.savefig(f'./series/ng_vs_s.png',dpi=300)
         plt.close(fig0)
 
         fig1, ax1 = plt.subplots()
@@ -357,7 +357,7 @@ def line_of_sight(*args, **kwargs):
         
         plt.title(r'Column [$N_{los}$] vs Distance [$s$]', fontsize=16)
 
-        plt.savefig(f'./stats/c_vs_s.png',dpi=300)
+        plt.savefig(f'./series/c_vs_s.png',dpi=300)
         plt.close(fig1)
 
     return radius_vectors, numb_densities, mean_columns, median_columns
@@ -561,7 +561,7 @@ def declare_globals_and_constants():
     # immutable objects, use type hinting to debug if error
     N               = 2_500
     __rloc__        = 0.1
-    __sample_size__ = 1_000
+    __sample_size__ = 100
     __input_case__  = 'ideal'
     __start_snap__  = sys.argv[1]
     __alloc_slots__ = 2_000
@@ -595,9 +595,7 @@ if __name__=='__main__':
     clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
-    df_r_stats = dict()
-    df_c_stats = dict()
-
+    df_stats = dict()
     for each, filename in enumerate(file_hdf5):
 
         snap = int(filename.split('.')[0][-3:])
@@ -662,41 +660,32 @@ if __name__=='__main__':
         print(np.sum(survivors)/survivors.shape[0], " Survivor fraction")  
 
         survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
-        u_input         = x_input[np.logical_not(survivors),:] 
-        x_input         = x_input[survivors,:]
-        radius_vectors  = radius_vectors[:, survivors, :]
-        numb_densities  = numb_densities[:, survivors]
-        magnetic_fields = magnetic_fields[:, survivors]
-        mean_column     = mean_column[survivors]
-        median_column   = median_column[survivors]
-        path_column     = path_column[survivors]
-        n_rs            = n_rs[survivors]
-        B_rs            = B_rs[survivors] 
-        r_u             = r_u[survivors]
-        r_l             = r_l[survivors]
+        u_input         = x_input[np.logical_not(survivors),:] # pc
+        x_input         = x_input[survivors,:]                 # pc
+        radius_vectors  = radius_vectors[:, survivors, :]      # pc
+        numb_densities  = numb_densities[:, survivors]         # cm-3
+        magnetic_fields = magnetic_fields[:, survivors]*gauss_code_to_gauss_cgs # Gauss CGS
+        mean_column     = mean_column[survivors]               # cm-2
+        median_column   = median_column[survivors]             # cm-2
+        path_column     = path_column[survivors]               # cm-2
+        n_rs            = n_rs[survivors]                      # cm-3
+        B_rs            = B_rs[survivors] *gauss_code_to_gauss_cgs # Gauss CGS
+        r_u             = r_u[survivors]                       # Adim
+        r_l             = r_l[survivors]                       # Adim
 
         #distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
 
         mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
         mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
 
-        """
-        smth
-        """
-        c_stats_dict = {
+        stats_dict = {
             "time": _time,
             "x_input": x_input,
             "n_rs": n_rs,
             "B_rs": B_rs,
             "n_path": path_column,
             "ratio0": mean_column/path_column,
-            "ratio1": median_column/path_column
-        }
-        df_c_stats[str(snap)]  = c_stats_dict
-
-        r_stats_dict = {
-            "time": _time,
-            "surv_fraction": survivors_fraction[each],
+            "ratio1": median_column/path_column,
             "mean_r_u": mean_r_u,
             "median_r_u": median_r_u,
             "skew_r_u": skew_r_u,
@@ -704,10 +693,13 @@ if __name__=='__main__':
             "mean_r_l": mean_r_l,
             "median_r_l": median_r_l,
             "skew_r_l": skew_r_l,
-            "kurt_r_l": kurt_r_l
+            "kurt_r_l": kurt_r_l,
+            "surv_fraction": survivors_fraction[each],
+            "r_u": mean_r_u,
+            "r_l": mean_r_u
         }
 
-        df_r_stats[str(snap)]  = r_stats_dict # multiindex dataframe
+        df_stats[str(snap)]  = stats_dict
         
 
         if 'Pos' in globals():
@@ -728,29 +720,26 @@ if __name__=='__main__':
     # Loop through each plot and generate/save independently
 
     # to save dataframes into values other than strings it must be pickleized
-    df_r = pd.DataFrame.from_dict(df_r_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-    df_c = pd.DataFrame.from_dict(df_c_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
+    df = pd.DataFrame.from_dict(df_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
 
-    df_r.to_pickle('./series/r_stats.pkl')
-    df_c.to_pickle('./series/c_stats.pkl')
+    df.to_pickle('./series/data.pkl')
 
-    print("Saved r_stats.pkl and c_stats.pkl with full NumPy arrays intact.")
+    print("Saved data.pkl with full NumPy arrays intact.")
 
-    print(df_r.describe())
-    print(df_c.describe())
+    print(df.describe())
 
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
 
-    df_r.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
-    df_r.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
+    df.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
+    df.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
     ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
     ax0.set_ylabel('$R$ Factor', fontsize=16)
     #ax0.set_title('Ideal MHD', fontsize=16)
     ax0.legend(fontsize=16)
     ax0.grid(True)
 
-    df_r.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
-    df_r.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
+    df.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
+    df.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
     ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
     ax1.set_ylabel('$R$ Factor', fontsize=16)
     #ax1.set_title('Non-ideal MHD - AD', fontsize=16)
