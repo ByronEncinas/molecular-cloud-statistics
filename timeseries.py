@@ -558,7 +558,6 @@ def declare_globals_and_constants():
     global __rloc__, __sample_size__, __input_case__, __start_snap__, __alloc_slots__, __dense_cloud__,__threshold__, N
     global Pos, VoronoiPos, Bfield, Mass, Density, Bfield_grad, Density_grad, Volume
     global flag, FloatType, FloatType2, IntType
-    
     # immutable objects, use type hinting to debug if error
     N               = 2_500
     __rloc__        = 0.1
@@ -582,6 +581,11 @@ def declare_globals_and_constants():
 
     # flag to import data
     flag = True
+    
+    # if cluster with capacity per node greater than my pc, then increase __sample_size__
+    if os.cpu_count() > 8:
+        __sample_size__ = 2_000
+
     return None
 
 if __name__=='__main__':
