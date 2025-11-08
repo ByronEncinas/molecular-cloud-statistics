@@ -562,7 +562,7 @@ def declare_globals_and_constants():
     N               = 2_500
     __rloc__        = 0.1
     __sample_size__ = 100
-    __input_case__  = 'amb'
+    __input_case__  = 'ideal'
     __start_snap__  = sys.argv[1]
     __alloc_slots__ = 2_000
     __dense_cloud__ = 1.0e+2
