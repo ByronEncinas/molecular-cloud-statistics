@@ -54,18 +54,7 @@ diff_energy[0] = energy[0]
 
 #ism_spectrum = lambda x: C*(x**0.1/((Estar + x)**2.8))
 #ism_spectrum = lambda x: Jstar*(x/Estar)**a
-if model == 'L':
-    C = 2.43e+15 *4*np.pi
-    alpha, beta = 0.1, 2.8
-    Enot = 650e+6
-elif model == 'H':
-    C = 2.43e+15 *4*np.pi
-    alpha, beta = -0.8, 1.9
-    Enot = 650e+6
-#elif model == 'e':
-#    C = 2.1e+18#4*np.pi
-#    alpha, beta = -1.5, 1.7
-#    Enot = 710e+6
+C, alpha, beta, Enot = select_species(model)
 
 ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
 loss_function = lambda z: Lstar*(Estar/z)**d
@@ -862,6 +851,32 @@ if __name__ == '__main__':
 
         Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(radius_vector[::-1, :], magnetic_field[::-1], numb_density[::-1], "bwd")
 
+        max_arg = np.argmax(magnetic_field)
+
+        #Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg+1], Npmu[:max_arg,:], 'mir_fwd')
+        #Nmir_bwd = mirrored_column_density(radius_vector[max_arg:,:][::-1,:], magnetic_field[max_arg:][::-1], numb_density[max_arg:][::-1], Nmmu[max_arg:,:], 'mir_bwd')
+
+        Nmir_fwd = mirrored_column_density(radius_vector, magnetic_field, numb_density, Npmu, 'mir_fwd')
+        Nmir_bwd = mirrored_column_density(radius_vector[::-1,:], magnetic_field[::-1], numb_density[::-1], Nmmu, 'mir_bwd')
+
+        """ Ionization Rate for N = N(s) """
+
+        #zeta_mir_fwd,  zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd[:max_arg,:], dmu_fwd[:max_arg,:], 'mir_fwd')
+        #zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd = ionization_rate(Nmir_bwd, mu_local_bwd[max_arg:,:], dmu_bwd[max_arg:,:], 'mir_bwd')
+
+        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
+        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
+
+        Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
+        #zeta = np.concatenate((zeta_mir_fwd, zeta_mir_bwd[::-1]), axis=0)
+        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
+        
+        #print(zeta.shape, zeta_at_x.shape)
+        zeta_full += zeta.tolist()
+        nmir_full += Nmir.tolist()
+        print(trajectory.shape)
+        print(zeta.shape)
+
         if False:
 
             for mui in range(Npmu.shape[1]):
@@ -909,32 +924,6 @@ if __name__ == '__main__':
             plt.xscale('log')
             plt.savefig(f'./images/i_rate/Model{model}_backward_jacobian.png', dpi=300)  # Save as PNG with high resolution
             plt.close()
-
-        max_arg = np.argmax(magnetic_field)
-
-        #Nmir_fwd = mirrored_column_density(radius_vector[:max_arg,:], magnetic_field[:max_arg], numb_density[:max_arg+1], Npmu[:max_arg,:], 'mir_fwd')
-        #Nmir_bwd = mirrored_column_density(radius_vector[max_arg:,:][::-1,:], magnetic_field[max_arg:][::-1], numb_density[max_arg:][::-1], Nmmu[max_arg:,:], 'mir_bwd')
-
-        Nmir_fwd = mirrored_column_density(radius_vector, magnetic_field, numb_density, Npmu, 'mir_fwd')
-        Nmir_bwd = mirrored_column_density(radius_vector[::-1,:], magnetic_field[::-1], numb_density[::-1], Nmmu, 'mir_bwd')
-
-        """ Ionization Rate for N = N(s) """
-
-        #zeta_mir_fwd,  zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd[:max_arg,:], dmu_fwd[:max_arg,:], 'mir_fwd')
-        #zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd = ionization_rate(Nmir_bwd, mu_local_bwd[max_arg:,:], dmu_bwd[max_arg:,:], 'mir_bwd')
-
-        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
-        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
-
-        Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
-        #zeta = np.concatenate((zeta_mir_fwd, zeta_mir_bwd[::-1]), axis=0)
-        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
-        
-        #print(zeta.shape, zeta_at_x.shape)
-        zeta_full += zeta.tolist()
-        nmir_full += Nmir.tolist()
-        print(trajectory.shape)
-        print(zeta.shape)
 
         if False:
             fig, ax = plt.subplots()

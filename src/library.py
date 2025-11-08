@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from mpl_toolkits.mplot3d import Axes3D
 from scipy import spatial
-from scipy.spatial import distance
 from scipy.spatial import cKDTree
-
+from scipy import interpolate
 import matplotlib as mpl
 
 mpl.rcParams['text.usetex'] = False
@@ -31,42 +29,33 @@ def reduction_to_density(factor, numb):
             ten = np.quantile(sample_r, .1)
             size = len(sample_r)
         except:
-            raise ValueError("[Error] Statistics of empty sample")
-        return [mean, median, ten, size]
-        if len(sample_r) == 0:
-            mean = None
-            median = None
-            ten = None
-            size = 0
-        else:
-            mean = sum(sample_r)/len(sample_r)
-            median = np.quantile(sample_r, .5)
-            ten = np.quantile(sample_r, .1)
-            size = len(sample_r)
+            return [sample_r*0, np.nan, np.nan, np.nan, 0]
+        return [sample_r, mean, median, ten, size]
 
     total = factor.shape[0]
-    numb = numb[factor<1]
-    factor = factor[factor<1]    
+    #numb = numb[factor<1]
+    #factor = factor[factor<1]    
     x_n = np.logspace(np.min(np.log10(numb)), np.max(np.log10(numb)), total)
     mean_vec = np.zeros(total)
     median_vec = np.zeros(total)
     ten_vec = np.zeros(total)
     sample_size = np.zeros(total)
+    matrix  = []
     for i in range(0, total):
         s = match_ref(x_n[i], numb, factor)
-        mean_vec[i] = s[0]
-        median_vec[i] = s[1]
-        ten_vec[i] = s[2]
-        sample_size[i] = s[3]
+        matrix+=[[s[0]]]
+        mean_vec[i] = s[1]
+        median_vec[i] = s[2]
+        ten_vec[i] = s[3]
+        sample_size[i] = s[4]
     
-    return x_n, mean_vec, median_vec, ten_vec, sample_size
+    return x_n, matrix, mean_vec, median_vec, ten_vec, sample_size
 
 
 """ Constants and convertion factor """
 
-hydrogen_mass = 1.6735e-24 # gr
-
 # Unit Conversions
+gauss_to_micro_gauss = 1e+6
 km_to_parsec = 1 / 3.085677581e13  # 1 pc in km
 pc_to_cm = 3.086 * 1.0e+18  # cm per parsec
 AU_to_cm = 1.496 * 1.0e+13  # cm per AU
@@ -75,7 +64,7 @@ pc_myrs_to_km_s = 0.9785
 
 # Physical Constants
 mass_unit = 1.99e33  # g
-length_unit = 3.086e18  # cm
+length_unit = 3.086e18  # cm in a parsec
 velocity_unit = 1e5  # cm/s
 time_unit = length_unit / velocity_unit  # s
 seconds_in_myr = 1e6 * 365.25 * 24 * 3600  # seconds in a million years (Myr)
@@ -89,7 +78,7 @@ code_units_to_gr_cm3 = 6.771194847794873e-23  # conversion from code units to g/
 gauss_code_to_gauss_cgs = (4 * np.pi)**0.5   * (3.086e18)**(-1.5) * (1.99e33)**0.5 * 1e5 # cgs units
 
 # ISM Specific Constants
-mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM
+mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM (Wilms, 2000)
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 
 # cache-ing spatial.cKDTree(Pos[:]).query(x, k=1)
@@ -195,15 +184,62 @@ def Euler_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bd
 
     return x_final, abs_local_fields_1, local_densities, CellVol
 
-def list_files(directory, ext):
-    import os
-    # List all files in the specified directory
-    all_files = os.listdir(directory)
-    # Filter out only .npy files
-    files = [directory + f for f in all_files if f.endswith(f'{ext}')]
-    return files
+""" Ionization rate modules & constants """
 
-""" Ionization rate modules """
+size = 10_000
+Ei = 1.0e+3
+Ef = 1.0e+9
+n0 = 150 #cm−3 and 
+k  = 0.5 # –0.7
+d = 0.82
+a = 0.1 # spectral index either 0.1 from Low Model, or \in [0.5, 2.0] according to free streaming analytical solution.
+# mean energy lost per ionization event
+epsilon = 35.14620437477293
+# Luminosity per unit volume for cosmic rays (eV cm^2)
+Lstar = 1.4e-14
+# Flux constant (eV^-1 cm^-2 s^-1 sr^-1) C*(10e+6)**(0.1)/(Enot+6**2.8)
+Jstar = 2.43e+15*(10e+6)**(0.1)/(500e+6**2.8) # Proton in Low Regime (M. Padovani & A. Ivlev 2015) https://iopscience.iop.org/article/10.1088/0004-637X/812/2/135
+# Flux constant (eV^-1 cm^-2 s^-1)
+Enot = 500e+6
+Jstar = 2.4e+15*(1.0e+6)**(0.1)/(Enot**2.8)
+# Energy scale for cosmic rays (1 MeV = 1e+6 eV)
+Estar = 1.0e+6
+logE0, logEf = 6, 9
+energy = np.logspace(logE0, logEf, size)
+diff_energy = np.array([energy[k]-energy[k-1] for k in range(len(energy))])
+diff_energy[0] = energy[0]
+
+model = None
+
+def select_species(m):
+
+    if m == 'L':
+        C = 2.43e+15 *4*np.pi
+        alpha, beta = 0.1, 2.8
+        Enot = 650e+6
+    elif m == 'H':
+        C = 2.43e+15 *4*np.pi
+        alpha, beta = -0.8, 1.9
+        Enot = 650e+6
+    elif m == 'e':
+        C = 2.1e+18*4*np.pi
+        alpha, beta = -1.5, 1.7
+        Enot = 710e+6
+    else:
+        raise ValueError(f"[Error] Argument {m} not supported")
+    return C, alpha, beta, Enot
+
+C, alpha, beta, Enot = select_species('L')
+
+ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
+loss_function = lambda z: Lstar*(Estar/z)**d
+
+# only for protons
+cross_data = np.load('arepo_data/cross_pH2_rel_1e18.npz')
+loss_data  = np.load('arepo_data/Kedron_pLoss.npz')
+
+cross = interpolate.interp1d( cross_data["E"], cross_data["sigmap"])
+loss = interpolate.interp1d(loss_data["E"], loss_data["L_full"])
 
 def ionization_rate_fit(Neff):
     """  
@@ -238,6 +274,158 @@ def ionization_rate_fit(Neff):
     log_L = interpolate.interp1d(Neff, logzl)
     log_H = interpolate.interp1d(Neff, logzh)
     return log_L(Neff), log_H(Neff)
+
+def column_density(radius_vector, magnetic_field, numb_density, direction='', mu_ism = np.logspace(-2, 0, num=50)):
+    trajectory = np.cumsum(np.linalg.norm(radius_vector, axis=1)) #np.insert(, 0, 0.0)
+    dmui = np.insert(np.diff(mu_ism), 0, mu_ism[0])    
+    ds = np.insert(np.linalg.norm(np.diff(radius_vector, axis=0), axis=1), 0, 0.0)
+    Nmu  = np.zeros((len(magnetic_field), len(mu_ism)))
+    dmu = np.zeros((len(magnetic_field), len(mu_ism)))
+    mu_local = np.zeros((len(magnetic_field), len(mu_ism)))
+    B_ism     = magnetic_field[0]
+
+    for i, mui_ism in enumerate(mu_ism):
+
+        for j in range(len(magnetic_field)):
+
+            n_g = numb_density[j]
+            Bsprime = magnetic_field[j]
+            mu_local2 = 1 - (Bsprime/B_ism) * (1 - mui_ism**2)
+            
+            if (mu_local2 <= 0):
+                break
+            mu_local[j,i] = np.sqrt(mu_local2)
+            dmu[j,i] = dmui[i]*(mui_ism/mu_local[j,i])*(Bsprime/B_ism)
+            Nmu[j, i] = Nmu[j - 1, i] + n_g * ds[j] / mu_local[j, i] if j > 0 else n_g * ds[j] / mu_local[j, i]
+
+    return Nmu, mu_local, dmu, trajectory
+
+def mirrored_column_density(radius_vector, magnetic_field, numb_density, Nmu, direction='', mu_ism = np.logspace(-2, 0, num=50)):
+
+    ds    = np.insert(np.linalg.norm(np.diff(radius_vector, axis=0), axis=1), 0, 0.0)
+    Nmir  = np.zeros((len(magnetic_field), len(mu_ism)))
+    s_max = np.argmax(magnetic_field) 
+    if  'fwd' in direction:
+        s_max = np.argmax(magnetic_field) + 1
+
+    B_ism = magnetic_field[0]
+
+    for i, mui_ism in enumerate(mu_ism): # cosina alpha_i
+        for s in range(s_max):            # at s
+            N = Nmu[s, i]
+            for s_prime in range(s_max-s): # get mirrored at s_mirr; all subsequent points s < s_mirr up until s_max
+                # sprime is the integration variable.
+                if (magnetic_field[s_prime] > B_ism*(1-mui_ism**2)):
+                    break
+                mu_local = np.sqrt(1 - magnetic_field[s_prime]*(1-mui_ism**2)/B_ism )
+                s_mir = s + s_prime
+                dens  = numb_density[s:s_mir]
+                diffs = ds[s:s_mir] 
+                N += np.sum(dens*diffs/mu_local)
+            Nmir[s,i] = N
+
+    return Nmir
+
+def ionization_rate(Nmu, mu_local, dmu, direction = '',mu_ism = np.logspace(-2, 0, num=50)):
+    zeta_mui = np.zeros_like(Nmu)
+    zeta = np.zeros_like(Nmu[:,0])
+    jspectra = np.zeros((Nmu.shape[0], energy.shape[0]))
+
+    for l, mui in enumerate(mu_ism):
+
+        for j, Nj in enumerate(Nmu[:,l]):
+            mu_ = mu_local[j,l]
+            if mu_ <= 0:
+                break
+
+            #  Ei = ((E)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj)**(1 / (1 + d)) 
+            Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+
+            isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+            llei = loss_function(Ei)                       # log_10(L(E_i))
+            sigma_ion = cross(energy)
+            spectra   = 0.5*isms*llei/loss_function(energy)  
+            #jspectra[j,:] = spectra
+            #jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
+            #zeta_mui[j, l] = jl_dE / epsilon 
+            zeta_mui[j, l] = np.sum(spectra*sigma_ion*diff_energy)
+
+    zeta = np.sum(dmu * zeta_mui, axis = 1)
+
+    return zeta, zeta_mui, jspectra
+
+def local_spectra(Nmu, mu_local, mu_ism = np.logspace(-2, 0, num=50)):
+    
+    jspectra = np.zeros((Nmu.shape[0], energy.shape[0]))
+
+    for l, mui in enumerate(mu_ism):
+        for j, Nj in enumerate(Nmu[:,l]):
+            mu_ = mu_local[j,l]
+            if mu_ <= 0:
+                break
+
+            Ei = ((energy)**(1 + d) + (1 + d) * Lstar* Estar**(d)* Nj/mu_)**(1 / (1 + d))
+
+            isms = ism_spectrum(Ei)                        # log_10(j_i(E_i))
+            llei = loss_function(Ei)                       # log_10(L(E_i))
+            jspectra[j,:] = 0.5*isms*llei/loss_function(energy)  
+
+    return np.sum(jspectra, axis = 0)
+
+
+def x_ionization_rate(fields, densities, vectors, x_input):
+    lines = x_input.shape[1]
+
+    zeta_at_x = np.zeros(lines)
+    nmir_at_x = np.zeros(lines)
+
+    zeta_full = []
+    nmir_full = []
+
+    for line in range(lines):
+        density    = densities[:, line]
+        field =  fields[:, line]
+        vector  =  vectors[:, line, :]
+
+        # slice out zeroes        
+        mask = np.where(density > 0.0)[0]
+        start, end = mask[0], mask[-1]
+
+        density    = density[start:end]
+        field =  field[start:end]
+        vector  =  vector[start:end, :]
+        #trajectory = np.cumsum(np.linalg.norm(vector, axis=1)) #np.insert(, 0, 0.0)
+        
+        try:
+            xi_input  = x_input[line]
+            arg_input = np.where(xi_input == vector)
+            max_arg = np.argmax(field)
+        except:
+            raise IndexError("[Error] arg_input was removed during slicing")
+
+        """ Column Densities N_+(mu, s) & N_-(mu, s)"""
+
+        Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(vector, field, density, "fwd")
+        Nmmu, mu_local_bwd, dmu_bwd, t_bwd = column_density(vector[::-1, :], field[::-1], density[::-1], "bwd")
+
+        Nmir_fwd = mirrored_column_density(vector, field, density, Npmu, 'mir_fwd')
+        Nmir_bwd = mirrored_column_density(vector[::-1,:], field[::-1], density[::-1], Nmmu, 'mir_bwd')
+
+        """ Ionization Rate for N = N(s) """
+        
+        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
+        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
+
+        Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
+        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
+        
+        zeta_at_x[line] = zeta[arg_input]
+        nmir_at_x[line] = Nmir[arg_input]
+        
+        #zeta_full += zeta.tolist()
+        #nmir_full += Nmir.tolist()
+
+        return nmir_at_x, zeta_at_x
     
 """ Energies """
 
@@ -436,26 +624,6 @@ def find_insertion_point(array, val):
             return i  # Insert before index i
     return len(array)  # Insert at the end if p_r is greater than or equal to all elements
 
-def find_vector_in_array(radius_vector, x_init):
-    """
-    Finds the indices of the vector x_init in the multidimensional numpy array radius_vector.
-    
-    Parameters:
-    radius_vector (numpy.ndarray): A multidimensional array with vectors at its entries.
-    x_init (numpy.ndarray): The vector to find within radius_vector.
-    
-    Returns:
-    list: A list of tuples, each containing the indices where x_init is found in radius_vector.
-    """
-    x_init = np.array(x_init)
-    return np.argwhere(np.all(radius_vector == x_init, axis=-1))
-
-def magnitude(v1, v2=None):
-    if v2 is None:
-        return np.linalg.norm(v1)  # Magnitude of a single vector
-    else:
-        return np.linalg.norm(v1 - v2)  # Distance between two vectors
-
 def tda(X, distro):
     # persistence diagrams and barcodes to identify structures
     # mapper to transform dataset into a easily understandable graph
@@ -513,12 +681,6 @@ def dendogram_analysis(DensityField):
     ax.set_xlabel("Structure")
     ax.set_ylabel("Flux")
 
-""" Decorators 
-Obtained from: https://towardsdatascience.com/python-decorators-for-data-science-6913f717669a/
-
-I like this for runs that take time and are not in parallel
-"""
-
 def use_lock_and_save(path):
     from filelock import FileLock
     """
@@ -534,6 +696,12 @@ def use_lock_and_save(path):
 
         pass
         # Use this to create and update a dataframe
+
+""" Decorators 
+Obtained from: https://towardsdatascience.com/python-decorators-for-data-science-6913f717669a/
+
+I like this for runs that take time and are not in parallel
+"""
 
 def timing_decorator(func):
     import time

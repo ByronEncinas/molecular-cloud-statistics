@@ -12,3 +12,4 @@ clouds/
 # extension
 *.h5
 *.h5.lock
+*.csv
