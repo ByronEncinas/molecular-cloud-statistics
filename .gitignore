@@ -5,12 +5,10 @@ stats/amb/
 stats/
 arepo_data/ideal_mhd/
 arepo_data/ambipolar_diffusion/
-__pycache__/
+**/__pycache__/
 clouds/
 
 # extension
-*.h5
-*.h5.lock
-*.csv
-*.png
-*.pyc
+**/*.csv
+**/*.png
+**/*.pyc
