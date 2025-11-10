@@ -22,7 +22,7 @@ ALPHA   = 0.9
 SIZE    = 8
 FONTSIZE = 12
 GRID_ALPHA = 0.5
-INPUT = 'ideal'
+INPUT = 'amb'
 
 def dual_log_log(x, y, xlabel, ylabel, ylabels, output) -> None:
     """Plot two log-log scatter plots side by side with consistent styling."""
@@ -194,69 +194,131 @@ if os.path.exists(f'./series/data1_{INPUT}.pkl'):
     df.index = df.index.astype(int)
     df = df.sort_index()
 
-    x_input   = df["x_input"].to_numpy()
+    x_input   = df["x_input"].to_numpy()*pc_to_cm
     directions= df["directions"].to_numpy()
     fields    = df["B_s"].to_numpy()
     densities = df["n_s"].to_numpy()
-    vectors   = df["r_s"].to_numpy()
-
-    Neff  = np.logspace(19, 27, 10_000) 
-    # (Padovani et al 2018) LLR - Long lived radionuclei  
-    log_zeta_llr  = np.log10(1.4e-22)*np.ones_like(Neff) 
-
-    log_zeta_low, log_zeta_high = ionization_rate_fit(Neff)
-    n_mirr_at_x, zeta_at_x = ionization_rate(fields, densities, vectors, x_input)
-
-
+    vectors   = df["r_s"].to_numpy()*pc_to_cm
+    size = 10_000 #x_input.shape[0]
 
 
 if __name__ == '__main__':
+
+    """
+    LOCAL COSMIC RAY SPECTRA
+
+    j(E, \mu, s) = \frac{j_i(E_i, \mu_i, N(s))L(E_i)}{2L(E)}
+    
+    """
+    energy = np.logspace(3, 9, size)
+    C, alpha, beta, Enot = select_species('L')
+    ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))/(4*np.pi)
+    log_spec_ism_low  = np.log10(ism_spectrum(energy))
+    C, alpha, beta, Enot = select_species('H')
+    ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))/(4*np.pi)
+    log_spec_ism_high = np.log10(ism_spectrum(energy))
+    log_energy = np.log10(energy)
+
+    
     """
     IONIZATION RATE
 
     \zeta_i(s) = \int_{-1}^{1}d\mu \int_0^{\infty} j(E', \mu, s) \sigma_{ion}(E')dE'
     
     """
+    Neff  = np.logspace(19, 27, size) 
+
+    # (Padovani et al 2018) LLR - Long lived radionuclei  
+    log_zeta_llr  = np.log10(1.4e-22)*np.ones_like(Neff) 
+    log_zeta_std  = np.log10(1.0e-17)*np.ones_like(Neff) 
+    log_zeta_low, log_zeta_high = ionization_rate_fit(Neff)
+    loss_function = lambda z: Lstar*(Estar/z)**d 
+    n_mirr_l_at_x, zeta_l_at_x, loc_spec_l_at_x = x_ionization_rate(fields[0], densities[0], vectors[0], x_input[0], m='L')
+    n_mirr_h_at_x, zeta_h_at_x, loc_spec_h_at_x = x_ionization_rate(fields[0], densities[0], vectors[0], x_input[0], m='H')
+    
+
     output = 'ion_lh_'
+    
+    log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(Ncrs[-1])
+    log_ionization_los_l, log_ionization_los_h   = ionization_rate_fit(Nlos0[-1])
+
+    fig, axs = plt.subplots(1, 2, figsize=(5, 5),gridspec_kw={'wspace': 0, 'hspace': 0}, sharey=True)
+
+    _x = min(np.min(Nlos0[-1]), np.min(Ncrs[-1]))*15
+    _y = -16.4
+
+    axs[0].text(_x, _y, "$\mathcal{L}$",
+        fontsize=20,
+        color="black",
+        rotation=0,
+        ha="center",   # horizontal alignment: left, center, right
+        va="bottom") # vertical alignment: top, center, bottom
+    #axs[0].set_title("Model $\mathcal{L}$", fontsize=16)
+    axs[0].set_xlabel(r'''N [cm$^{-2}$]''', fontsize=16)
+    axs[0].set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
+    axs[0].set_xscale('log')
+    axs[0].scatter(Nlos0[-1], log_ionization_los_l, marker='x', color="#8E2BAF", s=15, alpha=0.6, label=r'$\zeta_{\rm los}$')
+    axs[0].scatter(Ncrs[-1], log_ionization_path_l-1, marker='|', color="#148A02", s=15, alpha=0.6, label=r'$\zeta_{\rm path}/10$')
+    axs[0].axhline(y=log_zeta_std[0], linestyle='--', color='black', alpha=0.6)
+    axs[0].axhline(y=log_zeta_llr[0], linestyle='--', color='black', alpha=0.6)
+
+    axs[0].grid(True, which='both', alpha=0.3)
+    axs[0].set_ylim(-22, -16)
+
+    _x = min(np.min(Nlos0[-1]), np.min(Ncrs[-1]))*15
+
+    axs[1].text(_x, _y, "$\mathcal{H}$",
+        fontsize=20,
+        color="black",
+        rotation=0,
+        ha="center",   # horizontal alignment: left, center, right
+        va="bottom") # vertical alignment: top, center, bottom
+    
+    axs[1].set_xlabel(r'''$N$ [cm$^{-2}$]''', fontsize=16)
+    axs[1].set_xscale('log')
+    axs[1].scatter(Nlos0[-1], log_ionization_los_h, marker='x', color="#8E2BAF", s=15, alpha=0.6, label=r'$\zeta_{\rm los}$')
+    axs[1].scatter(Ncrs[-1], log_ionization_path_h-1, marker='|', color="#148A02", s=15, alpha=0.6, label=r'$\zeta_{\rm path}/10$')
+    axs[1].axhline(y=log_zeta_std[0], linestyle='--', color='black', alpha=0.6)
+    axs[1].axhline(y=log_zeta_llr[0], linestyle='--', color='black', alpha=0.6)
+    axs[1].grid(True, which='both', alpha=0.3)
+    axs[1].set_ylim(-22, -16)
+    axs[1].tick_params(labelleft=False)
+    axs[1].legend(fontsize=14, loc='lower left')
+    #fig.tight_layout()
+    plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
+    plt.close(fig)
+
+    output = 'ion_ratio_lh_'
 
     log_ionization_path_l, log_ionization_path_h = ionization_rate_fit(Ncrs[-1])
     log_ionization_los_l, log_ionization_los_h   = ionization_rate_fit(Nlos0[-1])
 
-    fig, axs = plt.subplots(2, 2, figsize=(16, 5),gridspec_kw={'wspace': 0, 'hspace': 0}, sharey=True)
+    ratio_los_path_l = log_ionization_los_l - log_ionization_path_l
+    ratio_los_path_h = log_ionization_los_h - log_ionization_path_h
 
-    axs[0,0].set_title("Model $\mathcal{L}$", fontsize=16)
-    axs[0,0].set_xlabel(r'''$n_g$ (cm$^{-3}$)''', fontsize=16)
-    axs[0,0].set_ylabel(r'$log_{10}(\zeta /\rm{s}^{-1})$', fontsize=16)
-    axs[0,0].scatter(Nlos0[-1], log_ionization_los_l, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta^{\mathcal{L}}_{\rm los}$')
-    axs[0,0].set_xscale('log')
-    axs[0,0].legend(fontsize=16, loc='lower left')
-    axs[1,0].scatter(Ncrs[-1], log_ionization_path_l, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta^{\mathcal{L}}_{\rm path}$')
-    axs[1,0].set_xscale('log')
-    axs[1,0].grid(True, which='both', alpha=0.3)
-    axs[1,0].legend(fontsize=16, loc='lower left')
-    axs[1,0].set_ylim(-20, -16)
-    axs[0,0].set_ylim(-20, -16)
+    fig, axs = plt.subplots()
 
-    axs[0,1].set_title("Model $\mathcal{H}$", fontsize=16)
-    axs[0,1].set_xlabel(r'''Column Density [cm$^{-2}$]''', fontsize=16)
-    axs[0,1].set_xscale('log')
-    axs[0,1].scatter(Nlos0[-1], log_ionization_los_h, marker='o', color="#8E2BAF", s=5, alpha=0.3, label=r'$\zeta^{\mathcal{H}}_{\rm los}$')
-    axs[0,1].legend(fontsize=16)
-    axs[1,1].set_xscale('log')
-    axs[1,1].scatter(Ncrs[-1], log_ionization_path_h, marker='v', color="#148A02", s=5, alpha=0.3, label=r'$\zeta^{\mathcal{H}}_{\rm path}$')
-    axs[1,1].grid(True, which='both', alpha=0.3)
-    axs[1,1].legend(fontsize=16)
-    axs[1,1].set_ylim(-20, -16)
-    axs[0,1].set_ylim(-20, -16)
+    _x = min(np.min(Nlos0[-1]), np.min(Ncrs[-1]))*15
+    _y = -16.4
+
+    axs.text(_x, _y, "$\mathcal{L}$",
+        fontsize=20,
+        color="black",
+        rotation=0,
+        ha="center",   # horizontal alignment: left, center, right
+        va="bottom") # vertical alignment: top, center, bottom
     
-    axs[1,1].tick_params(labelleft=False)
-
-    fig.suptitle(r"Ionization Rate (s$^{-1}$) vs. Column Density [cm$^{-2}$]", fontsize=18)
-    fig.tight_layout()
+    axs.set_xlabel(r'''$N$ [cm$^{-2}$]''', fontsize=16)
+    axs.set_ylabel(r'$\zeta(N_{los})/\zeta(N_{crs})$', fontsize=16)
+    axs.set_xscale('log')
+    axs.scatter(Nlos0[-1], ratio_los_path_l, marker='x', color="#8E2BAF", s=15, alpha=0.6, label=r'Model $\mathcal{L}$')
+    axs.scatter(Ncrs[-1], ratio_los_path_h, marker='x', color="#148A02", s=15, alpha=0.6, label=r'Model $\mathcal{H}$')
+    axs.grid(True, which='both', alpha=0.3)
+    #fig.tight_layout()
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
     
-    exit()
+
     """
     REDUCTION FACTOR
 
@@ -292,7 +354,7 @@ if __name__ == '__main__':
         
         ax1.fill_between(t, f_ptile_down, f_ptile_up,
                         color=COLORS[0], alpha=0.3, label=f'{ptile}–{100-ptile} percentile', zorder=1)
-
+        """
         ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
             fontsize=6,
             color="black",
@@ -308,7 +370,7 @@ if __name__ == '__main__':
             rotation=0,
             ha="left",   # horizontal alignment: left, center, right
             va="bottom") # vertical alignment: top, center, bottom
-
+        """
     ax1.set_ylim(-0.1,1.1)
 
     ax2.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
@@ -328,7 +390,7 @@ if __name__ == '__main__':
     axins.set_ylim(y1, y2)
     axins.grid(True, which='both', alpha=0.5)
 
-    fig.tight_layout()
+    #fig.tight_layout()
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
 
@@ -357,7 +419,7 @@ if __name__ == '__main__':
         
         ax1.fill_between(t, f_ptile_down, f_ptile_up,
                         color=COLORS[0], alpha=0.3, label=f'{ptile}–{100-ptile} percentile', zorder=1)
-
+        """
         ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
             fontsize=6,
             color="black",
@@ -373,7 +435,7 @@ if __name__ == '__main__':
             rotation=0,
             ha="left",   # horizontal alignment: left, center, right
             va="bottom") # vertical alignment: top, center, bottom
-
+        """
     ax1.set_ylim(-0.1,1.1)
     ax2.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
     ax2.grid(True, which='both', alpha=GRID_ALPHA)
@@ -390,7 +452,7 @@ if __name__ == '__main__':
     axins.set_ylim(y1, y2)
     axins.grid(True, which='both', alpha=0.5)
 
-    fig.tight_layout()
+    #fig.tight_layout()
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
 
@@ -462,9 +524,9 @@ if __name__ == '__main__':
     
     """
     # Column densities
-    print(Nlos0.shape,Nlos1.shape,Ncrs.shape)
-    print(len(Nlos0[0]),len(Nlos0[1]), len(Nlos0[2]))
-    print(len(Nlos1[0]),len(Nlos1[1]), len(Nlos1[2]))
+    #print(Nlos0.shape,Nlos1.shape,Ncrs.shape)
+    #print(len(Nlos0[0]),len(Nlos0[1]), len(Nlos0[2]))
+    #print(len(Nlos1[0]),len(Nlos1[1]), len(Nlos1[2]))
     #
     ratio0 = np.array([np.mean(nlos0/ncrs) for (nlos0,ncrs) in zip(Nlos0,Ncrs)]) 
     ratio1 = np.array([np.median(nlos1/ncrs) for (nlos1,ncrs) in zip(Nlos1,Ncrs)]) 
@@ -491,7 +553,7 @@ if __name__ == '__main__':
         
         ax1.fill_between(t, f_ptile_down, f_ptile_up,
                         color=COLORS[0], alpha=0.3, label=f'{ptile}–{100-ptile} percentile', zorder=1)
-
+        """
         ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
             fontsize=6,
             color="black",
@@ -507,14 +569,14 @@ if __name__ == '__main__':
             rotation=0,
             ha="left",   # horizontal alignment: left, center, right
             va="bottom") # vertical alignment: top, center, bottom
-
+        """
     fig.tight_layout()
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
 
     xlabel = r"$N_{crs}$ [cm$^{-2}$]"
     ylabel = r"$\frac{\mathcal{N}_{local}}{\mathcal{N_{ISM}}}$" 
-    labels = [r"$n_{th} = 10^2$ [cm$^-3$]", r"$n_{th} = 10$ [cm$^-3$]"]
+    labels = [r"$n_{th} = 10^2$ [cm$^{-3}$]", r"$n_{th} = 10$ [cm$^{-3}$]"]
     y_list = [factu[-1][factu[-1]<1], factl[-1][factl[-1]<1]]
     x      = Ncrs[-1][factu[-1]<1]
     output = f"fu_crs"

@@ -229,11 +229,6 @@ def select_species(m):
         raise ValueError(f"[Error] Argument {m} not supported")
     return C, alpha, beta, Enot
 
-C, alpha, beta, Enot = select_species('L')
-
-ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
-loss_function = lambda z: Lstar*(Estar/z)**d
-
 # only for protons
 cross_data = np.load('arepo_data/cross_pH2_rel_1e18.npz')
 loss_data  = np.load('arepo_data/Kedron_pLoss.npz')
@@ -326,7 +321,11 @@ def mirrored_column_density(radius_vector, magnetic_field, numb_density, Nmu, di
 
     return Nmir
 
-def ionization_rate(Nmu, mu_local, dmu, direction = '',mu_ism = np.logspace(-2, 0, num=50)):
+def ionization_rate(Nmu, mu_local, dmu, direction = '',mu_ism = np.logspace(-2, 0, num=50), m='L'):
+
+    C, alpha, beta, Enot = select_species(m)
+    ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
+    loss_function = lambda z: Lstar*(Estar/z)**d
     zeta_mui = np.zeros_like(Nmu)
     zeta = np.zeros_like(Nmu[:,0])
     jspectra = np.zeros((Nmu.shape[0], energy.shape[0]))
@@ -345,7 +344,8 @@ def ionization_rate(Nmu, mu_local, dmu, direction = '',mu_ism = np.logspace(-2, 
             llei = loss_function(Ei)                       # log_10(L(E_i))
             sigma_ion = cross(energy)
             spectra   = 0.5*isms*llei/loss_function(energy)  
-            #jspectra[j,:] = spectra
+            
+            jspectra[j,:] = spectra
             #jl_dE = np.sum(isms*llei*diff_energy)  # j_i(E_i)L(E_i) = 10^{log_10(j_i(E_i)) + log_10(L(E_i))}
             #zeta_mui[j, l] = jl_dE / epsilon 
             zeta_mui[j, l] = np.sum(spectra*sigma_ion*diff_energy)
@@ -354,8 +354,10 @@ def ionization_rate(Nmu, mu_local, dmu, direction = '',mu_ism = np.logspace(-2, 
 
     return zeta, zeta_mui, jspectra
 
-def local_spectra(Nmu, mu_local, mu_ism = np.logspace(-2, 0, num=50)):
-    
+def local_spectra(Nmu, mu_local, mu_ism = np.logspace(-2, 0, num=50), m='L'):
+    C, alpha, beta, Enot = select_species(m)
+    ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
+    loss_function = lambda z: Lstar*(Estar/z)**d 
     jspectra = np.zeros((Nmu.shape[0], energy.shape[0]))
 
     for l, mui in enumerate(mu_ism):
@@ -372,19 +374,21 @@ def local_spectra(Nmu, mu_local, mu_ism = np.logspace(-2, 0, num=50)):
 
     return np.sum(jspectra, axis = 0)
 
+def x_ionization_rate(fields, densities, vectors, x_input, m='L'):
 
-def x_ionization_rate(fields, densities, vectors, x_input):
-    lines = x_input.shape[1]
+    C, alpha, beta, Enot = select_species(m)
+    ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))
+    loss_function = lambda z: Lstar*(Estar/z)**d
 
+    lines = x_input.shape[0]
     zeta_at_x = np.zeros(lines)
     nmir_at_x = np.zeros(lines)
 
-    zeta_full = []
-    nmir_full = []
+    local_spectra_at_x = np.zeros((lines, size))
 
     for line in range(lines):
         density    = densities[:, line]
-        field =  fields[:, line]
+        field =  fields[:, line]*1e6 # microgauss
         vector  =  vectors[:, line, :]
 
         # slice out zeroes        
@@ -392,17 +396,15 @@ def x_ionization_rate(fields, densities, vectors, x_input):
         start, end = mask[0], mask[-1]
 
         density    = density[start:end]
-        field =  field[start:end]
+        field =  field[start:end] #np.ones_like(field[start:end]) 
         vector  =  vector[start:end, :]
-        #trajectory = np.cumsum(np.linalg.norm(vector, axis=1)) #np.insert(, 0, 0.0)
         
         try:
             xi_input  = x_input[line]
-            arg_input = np.where(xi_input == vector)
-            max_arg = np.argmax(field)
+            arg_input = np.where(xi_input[0] == vector[:,0])[0][0]
         except:
             raise IndexError("[Error] arg_input was removed during slicing")
-
+        
         """ Column Densities N_+(mu, s) & N_-(mu, s)"""
 
         Npmu, mu_local_fwd, dmu_fwd, t_fwd = column_density(vector, field, density, "fwd")
@@ -413,19 +415,17 @@ def x_ionization_rate(fields, densities, vectors, x_input):
 
         """ Ionization Rate for N = N(s) """
         
-        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd')
-        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd   = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd')
+        zeta_mir_fwd, zeta_mui_mir_fwd, spectra_fwd  = ionization_rate(Nmir_fwd, mu_local_fwd, dmu_fwd, 'mir_fwd', m=m)
+        zeta_mir_bwd, zeta_mui_mir_bwd, spectra_bwd  = ionization_rate(Nmir_bwd, mu_local_bwd, dmu_bwd, 'mir_bwd', m=m)
 
-        Nmir = np.sum(np.concatenate((Nmir_fwd, Nmir_bwd[::-1]), axis=0), axis=1)
-        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])
-        
+        Nmir = np.sum(Nmir_fwd + Nmir_bwd[::-1], axis=1) # Adding the corresponding 
+        zeta = (zeta_mir_fwd+ zeta_mir_bwd[::-1])          
+
         zeta_at_x[line] = zeta[arg_input]
         nmir_at_x[line] = Nmir[arg_input]
-        
-        #zeta_full += zeta.tolist()
-        #nmir_full += Nmir.tolist()
+        local_spectra_at_x[line, :] = spectra_fwd[arg_input,:] + spectra_bwd[::-1,:][arg_input,:]
 
-        return nmir_at_x, zeta_at_x
+        return nmir_at_x, zeta_at_x, local_spectra_at_x
     
 """ Energies """
 

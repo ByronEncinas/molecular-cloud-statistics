@@ -1,4 +1,4 @@
-import csv, glob, os, sys, time, h5py
+import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -11,10 +11,44 @@ from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
 
 from src.library import *
-from stats import *
+
+
+# for timing
+start_time = time.time()
+
+print(f"\n[{sys.argv[0]}]: started running...\n")
+
+def get_globals_memory() -> None:
+    import sys
+
+    total = 0
+    for name, obj in globals().items():
+        if name.startswith("__") and name.endswith("__"):
+            continue  # skip built-in entries
+        try:
+            total += sys.getsizeof(obj)
+        except TypeError:
+            pass  # some objects might not report size
+
+    # Convert bytes → gigabytes
+    gb = total / (1024 ** 3)
+    print(f"Memory used by globals: {gb:.6f} gigabytes")
 
 @timing_decorator
-def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=threshold):
+def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
+
+    def xyz_gen(size):
+        U1 = np.random.uniform(low=0.0, high=1.0, size=size)
+        U2 = np.random.uniform(low=0.0, high=1.0, size=size)
+        U3 = np.random.uniform(low=0.0, high=1.0, size=size)
+        r = rloc*np.cbrt(U1)
+        theta = np.arccos(2*U2-1)
+        phi = 2*np.pi*U3
+        x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
+
+        rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
+        rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
+        return rho_cartesian, rho_spherical
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
@@ -26,12 +60,13 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=threshold):
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
-        print(len(valid_vectors))
         if len(valid_vectors) == 0:
             _rloc_ /=2
             Warning(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
         
         if _rloc_ < 1.0e-5:
+            print("Current valid vectors: ",len(valid_vectors))
+
             raise LookupError(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
     
     
@@ -47,6 +82,7 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=threshold):
 
 @timing_decorator
 def crs_path(*args, **kwargs):
+
     x_init = kwargs.get('x_init', None)
     n_crit = kwargs.get('n_crit', 1.0e+2)
 
@@ -57,14 +93,14 @@ def crs_path(*args, **kwargs):
     """
     m = x_init.shape[0]
 
-    line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields   = np.zeros((N+1,m))
-    densities = np.zeros((N+1,m))
+    line      = np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    bfields   = np.zeros((__alloc_slots__+1,m))
+    densities = np.zeros((__alloc_slots__+1,m))
     pst_mask = np.zeros((m,)).astype(int) # one value for each
 
-    line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    bfields_rev = np.zeros((N+1,m))
-    densities_rev = np.zeros((N+1,m))
+    line_rev=np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    bfields_rev = np.zeros((__alloc_slots__+1,m))
+    densities_rev = np.zeros((__alloc_slots__+1,m))
     pst_mask_rev = np.zeros((m,)).astype(int) # one value for each
 
     line[0,:,:]     = x_init
@@ -98,12 +134,12 @@ def crs_path(*args, **kwargs):
     un_masked2_rev = np.logical_not(mask2_rev)
 
     #while np.any(mask2) or np.any(mask2_rev): 
-    while np.any(mask2) and (k + 1 < N) or np.any(mask2_rev) and (k_rev + 1 < N):
+    while np.any(mask2) and (k + 1 < __alloc_slots__) or np.any(mask2_rev) and (k_rev + 1 < __alloc_slots__):
 
         mask2_rev = dens_rev > n_crit
         un_masked2_rev = np.logical_not(mask2_rev)
 
-        if np.any(mask2_rev) and (k_rev + 1 < N):
+        if np.any(mask2_rev) and (k_rev + 1 < __alloc_slots__):
         
             x_rev_aux = x_rev[mask2_rev]
 
@@ -118,7 +154,7 @@ def crs_path(*args, **kwargs):
             dens_rev[un_masked2_rev] = 0
             pst_mask_rev[un_masked2_rev] = bool(0)
             
-            #print(" alive lines? ",  np.any(mask2_rev), "k_rev + 1 < N: ", k_rev + 1 < N)
+            #print(" alive lines? ",  np.any(mask2_rev), "k_rev + 1 < __alloc_slots__: ", k_rev + 1 < __alloc_slots__)
 
             line_rev[k_rev+1,mask2_rev,:] = x_rev_aux
             bfields_rev[k_rev+1,mask2_rev] = bfield_aux_rev
@@ -129,7 +165,7 @@ def crs_path(*args, **kwargs):
         mask2 = dens > n_crit # above threshold
         un_masked2 = np.logical_not(mask2)
         
-        if np.any(mask2) and (k + 1 < N):
+        if np.any(mask2) and (k + 1 < __alloc_slots__):
 
             x_aux = x[mask2]
             x_aux, bfield_aux, dens_aux, vol = Euler_step(x_aux, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
@@ -141,7 +177,7 @@ def crs_path(*args, **kwargs):
             x[un_masked2]              = 0
             dens[un_masked2]           = 0
             pst_mask[un_masked2]       = bool(0)
-            #print("k + 1 < N: ", k + 1 < N," alive lines? ",  np.any(mask2))
+            #print("k + 1 < __alloc_slots__: ", k + 1 < __alloc_slots__," alive lines? ",  np.any(mask2))
             line[k + 1, mask2, :]      = x_aux
             bfields[k + 1, mask2]      = bfield_aux
             densities[k + 1, mask2]    = dens_aux
@@ -150,7 +186,7 @@ def crs_path(*args, **kwargs):
         
         #print(k, k_rev)
 
-    print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < N))), np.logical_not((np.any(mask2) and (k + 1 < N))))
+    print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < __alloc_slots__))), np.logical_not((np.any(mask2) and (k + 1 < __alloc_slots__))))
     #threshold = threshold.astype(int)
 
     survivors_mask = np.logical_not(np.logical_and(pst_mask, pst_mask_rev))
@@ -162,15 +198,15 @@ def crs_path(*args, **kwargs):
     nz_i    = k + 1
     nz_irev = k_rev + 1
     
-    print(f"get_lines => threshold index for {threshold}cm-3: ", nz_i, nz_irev)
-    print(f"get_lines => original shapes ({2*N+1} to {nz_i + nz_irev - 1})")
-    print(f"get_lines => p_r = {N+1} to p_r = {nz_irev} for array with shapes ...")
+    print(f"get_lines => threshold index for {__threshold__}cm-3: ", nz_i, nz_irev)
+    print(f"get_lines => original shapes ({2*__alloc_slots__+1} to {nz_i + nz_irev - 1})")
+    print(f"get_lines => p_r = {__alloc_slots__+1} to p_r = {nz_irev} for array with shapes ...")
 
     radius_vectors = np.append(line_rev[:nz_irev,:,:][::-1, :, :], line[1:nz_i,:,:], axis=0)
     magnetic_fields = np.append(bfields_rev[:nz_irev,:][::-1, :], bfields[1:nz_i,:], axis=0)
     numb_densities = np.append(densities_rev[:nz_irev,:][::-1, :], densities[1:nz_i,:], axis=0)
 
-    #N = magnetic_fields.shape[0]
+    #__alloc_slots__ = magnetic_fields.shape[0]
 
     print("Radius vector shape:", radius_vectors.shape)
 
@@ -185,10 +221,8 @@ def crs_path(*args, **kwargs):
 
 @timing_decorator
 def line_of_sight(*args, **kwargs):
-    # Unpack positional arguments
     #Bfield, Density, Mass, Bfield_grad, Density_grad = args[:5]
 
-    # Optional positional/keyword arguments
     x_init = kwargs.get('x_init', None)
     directions = kwargs.get('directions', fibonacci_sphere(20))
     n_crit = kwargs.get('n_crit', 1.0e+2)
@@ -218,10 +252,10 @@ def line_of_sight(*args, **kwargs):
     for the 'mask', nevertheless, for a large array 'x_init' it may not be as different and it will definitely scale efficiently in parallel
     """
 
-    line      = np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    line_rev=np.zeros((N+1,m,3)) # from N+1 elements to the double, since it propagates forward and backward
-    densities = np.zeros((N+1,m))
-    densities_rev = np.zeros((N+1,m))
+    line      = np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    line_rev=np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    densities = np.zeros((__alloc_slots__+1,m))
+    densities_rev = np.zeros((__alloc_slots__+1,m))
     threshold = np.zeros((m,))
     threshold_rev = np.zeros((m,))
 
@@ -244,14 +278,14 @@ def line_of_sight(*args, **kwargs):
     mask_rev = dens_rev > n_crit
     un_masked_rev = np.logical_not(mask_rev)
    
-    while np.any(mask) and (k + 1 < N) or np.any(mask_rev) and (k_rev + 1 < N):
+    while np.any(mask) and (k + 1 < __alloc_slots__) or np.any(mask_rev) and (k_rev + 1 < __alloc_slots__):
 
         mask = dens > n_crit              # still alive?
         un_masked = np.logical_not(mask)  # any deaths?
         mask_rev = dens_rev > n_crit     
         un_masked_rev = np.logical_not(mask_rev)
 
-        if np.any(mask) and (k + 1 < N): # any_alive? and below_allocation?
+        if np.any(mask) and (k + 1 < __alloc_slots__): # any_alive? and below_allocation?
             # continue if still lines alive and below allocation
 
             _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
@@ -271,7 +305,7 @@ def line_of_sight(*args, **kwargs):
 
             k += 1
 
-        if np.any(mask_rev) and (k_rev + 1 < N):
+        if np.any(mask_rev) and (k_rev + 1 < __alloc_slots__):
             # continue if still lines alive and below allocation
 
             _, bfield_rev, dens_rev, vol_rev = Heun_step(x_rev, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
@@ -305,7 +339,7 @@ def line_of_sight(*args, **kwargs):
     median_columns= np.zeros(m0)
     i = 0
     
-    print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
+    #print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
 
     for x in range(0, l0*m0, l0): 
 
@@ -444,19 +478,6 @@ def use_lock_and_save(path):
         pass
         # Use this to create and update a dataframe
 
-def xyz_gen(size):
-    U1 = np.random.uniform(low=0.0, high=1.0, size=size)
-    U2 = np.random.uniform(low=0.0, high=1.0, size=size)
-    U3 = np.random.uniform(low=0.0, high=1.0, size=size)
-    r = rloc*np.cbrt(U1)
-    theta = np.arccos(2*U2-1)
-    phi = 2*np.pi*U3
-    x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-
-    rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
-    rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
-    return rho_cartesian, rho_spherical
-
 def larson_width_line_relation(**kwargs):
     velocities = kwargs.get('Velocities', None)
     data = kwargs.get('data', None)
@@ -552,45 +573,46 @@ def evolution_descriptors():
     plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
-def declare_globals_and_constants():
+def declare_globals_and_constants(args):
 
     # global variables that can be modified from anywhere in the code
-    global __rloc__, __sample_size__, __input_case__, __start_snap__, __alloc_slots__, __dense_cloud__,__threshold__, N
+    global __rloc__, __sample_size__, __input_case__, __start_snap__
+    global __dense_cloud__,__threshold__, __alloc_slots__
     global Pos, VoronoiPos, Bfield, Mass, Density, Bfield_grad, Density_grad, Volume
     global flag, FloatType, FloatType2, IntType
     # immutable objects, use type hinting to debug if error
-    N               = 2_500
+    #__alloc_slots__               = 1_000
+    __alloc_slots__ = 2_500
     __rloc__        = 0.1
-    __sample_size__ = 100
-    __input_case__  = 'ideal'
-    __start_snap__  = sys.argv[1]
-    __alloc_slots__ = 2_000
-    __dense_cloud__ = 1.0e+2
+    __sample_size__ = 2000
+    __dense_cloud__ = 1.0e+4
     __threshold__   = 1.0e+2
+    __start_snap__  = args[0]
+    __input_case__  = args[1]
+
 
     # rename
     FloatType                = np.float64
     FloatType2                = np.float128
     IntType                  = np.int32
 
-    # for timing
-    start_time = time.time()
-
     # output directory
     os.makedirs("series", exist_ok=True)
 
     # flag to import data
     flag = True
-    
-    # if cluster with capacity per node greater than my pc, then increase __sample_size__
-    if os.cpu_count() > 8:
-        __sample_size__ = 3_000
+
+    import getpass
+
+    # in PC always below 500
+    if getpass.getuser() == 'leni':
+        # in cluster always above
+        __sample_size__ = 100
 
     return None
 
 if __name__=='__main__':
-    declare_globals_and_constants()   
-
+    declare_globals_and_constants(sys.argv[1:])
     # coordinates, cell center density, time and snapshot of evolving cloud
     clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
     survivors_fraction = np.zeros(file_hdf5.shape[0])
@@ -606,7 +628,7 @@ if __name__=='__main__':
         Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
         Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
         VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-        #Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
+        Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
         Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
         Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
         Bfield_grad = np.zeros((len(Pos), 9))
@@ -626,35 +648,41 @@ if __name__=='__main__':
 
         from tabulate import tabulate
         table_data = [
-            ["__snaps_interval__", filename.split('/')[-1]],
+            ["__curr_snap__", filename.split('/')[-1]],
             ["__cores_avail__", os.cpu_count()],
-            ["__alloc_slots__", 2*N],
+            ["__alloc_slots__", 2*__alloc_slots__],
             ["__rloc__", __rloc__],
+            ["__threshold__", __threshold__],
+            ["__dense_cloud__", __dense_cloud__],
             ["__sample_size__", __sample_size__],
             ["__Boxsize__", __Boxsize__]
             ]
-        
+
         print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
         
         tree = cKDTree(Pos)
 
         try:
             #x_input = np.vstack([uniform_in_3d(__sample_size__, __rloc__, n_crit=__dense_cloud__), np.array([0.0,0.0,0.0])])
-            #print(__sample_size__, __rloc__, __dense_cloud__) # uniform_in_3d_tree_dependent
             x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
         except:
             raise ValueError("[Error] Faulty generation of 'x_input'")
 
         directions=fibonacci_sphere(20)
+        # dodecahedron (12 faces), and icosahedron (20 faces)
+
         __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
         radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
+
+        print("__alloc_slots__: ", __alloc_slots__)
+        print("__used_slots__ : ",__0.shape, radius_vectors.shape)
 
         assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
         data.close()
 
         r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
+        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*0.1) # not needed
 
         survivors = np.logical_and(survivors1, survivors2)
 
@@ -710,27 +738,24 @@ if __name__=='__main__':
 
         if 'Pos' in globals():
             print("\nPos is global")
-            
-        del tree
 
-        if each == 0:
-            continue
-        else:
-            import src.library
-            src.library._cached_tree = None
-            src.library._cached_pos = None
+        get_globals_memory()            
+        del tree, __0, __1, _1, _2, _3
+        gc.collect() 
+        get_globals_memory()
+
+        import src.library
+        src.library._cached_tree = None
+        src.library._cached_pos = None
 
     # For more information regarding the interpretation of skewness and kurtosis 
     # https://www.statology.org/how-to-report-skewness-kurtosis/
 
-    # Loop through each plot and generate/save independently
-
-    # to save dataframes into values other than strings it must be pickleized
     df = pd.DataFrame.from_dict(df_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
     df.to_pickle(f'./series/data_{__input_case__}.pkl')
     df1 = pd.DataFrame.from_dict(df_fields, orient='index').reset_index().rename(columns={'index': 'snapshot'})
     df1.to_pickle(f'./series/data1_{__input_case__}.pkl')
 
-    print(f"Saved data[1]_{__input_case__}.pkl with full NumPy arrays intact.")
+    print(f"Saved data[1]_{__input_case__}.pkl with Numpy arrays intact.")
 
     print(df.describe())
