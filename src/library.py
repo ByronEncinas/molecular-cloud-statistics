@@ -51,6 +51,21 @@ def reduction_to_density(factor, numb):
     
     return x_n, matrix, mean_vec, median_vec, ten_vec, sample_size
 
+def get_globals_memory() -> None:
+    import sys
+
+    total = 0
+    for name, obj in globals().items():
+        if name.startswith("__") and name.endswith("__"):
+            continue  # skip built-in entries
+        try:
+            total += sys.getsizeof(obj)
+        except TypeError:
+            pass  # some objects might not report size
+
+    # Convert bytes → gigabytes
+    gb = total / (1024 ** 3)
+    print(f"Memory used by globals: {gb:.6f} gigabytes")
 
 """ Constants and convertion factor """
 
@@ -428,6 +443,108 @@ def x_ionization_rate(fields, densities, vectors, x_input, m='L'):
         return nmir_at_x, zeta_at_x, local_spectra_at_x
     
 """ Energies """
+
+def eval_reduction(field, numb, follow_index, threshold):
+
+    R10      = []
+    Numb100  = []
+    B100     = []
+
+    _, m = field.shape
+
+    flag = False
+    filter_mask = np.ones(m).astype(bool)
+    dead = 0
+    for i in range(m):
+
+        mask10 = np.where(numb[:, i] > threshold)[0]
+        if mask10.size > 0:
+            start, end = mask10[0], mask10[-1]
+            if start <= follow_index <= end:
+                try:
+                    numb10   = numb[start:end+1, i]
+                    bfield10 = field[start:end+1, i]
+                    p_r = follow_index - start
+                    B_r = bfield10[p_r]
+                    n_r = numb10[p_r]
+                except IndexError:
+                    raise ValueError(f"\nTrying to slice beyond bounds for column {i}. "
+                                    f"start={start}, end={end}, shape={numb.shape}")
+            else:
+                print(f"\n[Info] follow_index {follow_index} outside threshold interval for column {i}.")
+                if follow_index >= numb.shape[0]:
+                    raise ValueError(f"follow_index {follow_index} is out of bounds for shape {numb.shape}")
+                numb10   = np.array([numb[follow_index, i]])
+                bfield10 = np.array([field[follow_index, i]])
+                p_r = 0
+                B_r = bfield10[p_r]
+                n_r = numb10[p_r]
+        else:
+            print(f"\n[Info] No densities > {threshold} cm-3 found for column {i}. Using follow_index fallback.")
+            if follow_index >= numb.shape[0]:
+                raise ValueError(f"\nfollow_index {follow_index} is out of bounds for shape {numb.shape}")
+            numb10   = np.array([numb[follow_index, i]])
+            bfield10 = np.array([field[follow_index, i]])
+            p_r = 0
+            B_r = bfield10[p_r]
+            n_r = numb10[p_r]
+
+        #print("p_r: ", p_r)
+        if not (0 <= p_r < bfield10.shape[0]):
+            raise IndexError(f"\np_r={p_r} is out of bounds for bfield10 of length {len(bfield10)}")
+
+        # pockets with density threshold of 10cm-3
+        pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=flag)
+        index_pocket, field_pocket = pocket[0], pocket[1]
+        flag = False
+        p_i = np.searchsorted(index_pocket, p_r)
+        from collections import Counter
+        most_common_value, count = Counter(bfield10.ravel()) .most_common(1)[0]
+    
+        if count > 20:
+            R = 1.
+            #print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
+            R10.append(R)
+            Numb100.append(n_r)
+            B100.append(B_r)   
+            flag = True
+            filter_mask[i] = False
+            dead +=1
+            continue     
+
+        try:
+            closest_values = index_pocket[max(0, p_i - 1): min(len(index_pocket), p_i + 1)]
+            B_l = min([bfield10[closest_values[0]], bfield10[closest_values[1]]])
+            B_h = max([bfield10[closest_values[0]], bfield10[closest_values[1]]])
+            # YES! 
+            success = True  
+        except:
+            # NO :c
+            R = 1.
+            R10.append(R)
+            Numb100.append(n_r)
+            B100.append(B_r)
+            success = False 
+            continue
+
+        if success:
+            # Ok, our point is between local maxima, is inside a pocket?
+            if B_r / B_l < 1:
+                # double YES!
+                R = 1. - np.sqrt(1 - B_r / B_l)
+                R10.append(R)
+                Numb100.append(n_r)
+                B100.append(B_r)
+            else:
+                # NO!
+                R = 1.
+                R10.append(R)
+                Numb100.append(n_r)
+                B100.append(B_r)
+
+    filter_mask = filter_mask.astype(bool)
+
+    return np.array(R10), np.array(Numb100), np.array(B100), filter_mask
 
 def fibonacci_sphere(samples=20):
     phi = np.pi * (3. - np.sqrt(5.))  # Golden angle
