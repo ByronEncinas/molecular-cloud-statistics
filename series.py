@@ -81,6 +81,24 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
     return np.array(deepcopy(valid_vectors))
 
 @timing_decorator
+def uniform_in_2d_tree_dependent(tree, no, n = 10, rloc=1.0, n_crit=1.0e+2):
+
+    n = 10
+    X, Y = np.meshgrid(np.linspace(-1, 1, n), np.linspace(-1, 1, n))
+    Z = np.zeros_like(X)
+    mk = (X*X + Y*Y + Z*Z) < rloc*rloc
+    
+    # I define a disk 
+    from gists.__vor__ import traslation_rotation
+    points = np.stack([X.ravel(), Y.ravel(), Z.ravel()], axis=1)
+    _x = np.array([0.0, 0.0, 0.0]) # because we are centered on the cloud
+    _b = np.array([1.0, 1.0, 1.0])  
+    pointsp = traslation_rotation(_x, _b, points)
+
+    return None
+
+
+@timing_decorator
 def crs_path(*args, **kwargs):
 
     x_init = kwargs.get('x_init', None)
@@ -462,22 +480,6 @@ def describe(data, band=False, percent=False):
         return p_25, p_10, p_5
     return mean_, median_, skew_, kurt_
 
-def use_lock_and_save(path):
-    from filelock import FileLock
-    """
-    Time ──────────────────────────────▶
-
-    Script 1:  ──[Acquire Lock]─────[Create/Append HDF5]─────[Release Lock]───
-
-    Script 2:             ──[Wait for Lock]─────────────[Append HDF5]─────[Release Lock]───
-    """
-    lock = FileLock(path + ".lock")
-
-    with lock:  # acquire lock (waits if another process is holding it)
-
-        pass
-        # Use this to create and update a dataframe
-
 def larson_width_line_relation(**kwargs):
     velocities = kwargs.get('Velocities', None)
     data = kwargs.get('data', None)
@@ -583,13 +585,19 @@ def declare_globals_and_constants(args):
     # immutable objects, use type hinting to debug if error
     #__alloc_slots__               = 1_000
     __alloc_slots__ = 2_500
-    __rloc__        = 0.1
+    __rloc__        = 1.0e-1
     __sample_size__ = 2000
-    __dense_cloud__ = 1.0e+4
-    __threshold__   = 1.0e+2
-    __start_snap__  = args[0]
+    __dense_cloud__ = 1.0e+2 # or 1.0e+4 or 1.0e+1
+    __threshold__   = 3.0e+2
     __input_case__  = args[1]
 
+    # amb:   t > 3.0 Myrs snap > 225    
+    # ideal: t > 3.0 Myrs snap > 270
+    __start_time__  = 3.0 # Myrs
+    if __input_case__ =='ideal':
+        __start_snap__  = '270'
+    if __input_case__ =='amb':
+        __start_snap__  = '225'
 
     # rename
     FloatType                = np.float64
@@ -607,7 +615,8 @@ def declare_globals_and_constants(args):
     # in PC always below 500
     if getpass.getuser() == 'leni':
         # in cluster always above
-        __sample_size__ = 100
+        __start_snap__  = args[0]
+        __sample_size__ = 200
 
     return None
 
