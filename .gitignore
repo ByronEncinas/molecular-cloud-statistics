@@ -7,8 +7,13 @@ arepo_data/ideal_mhd/
 arepo_data/ambipolar_diffusion/
 **/__pycache__/
 clouds/
+jakarvenv/
 
 # extension
 **/*.csv
 **/*.png
 **/*.pyc
+**/*.sh
+
+# spec files
+libffi.so.6
