@@ -587,7 +587,7 @@ def declare_globals_and_constants(args):
     __alloc_slots__ = 2_500
     __rloc__        = 1.0e-1
     __sample_size__ = 2000
-    __dense_cloud__ = 1.0e+2 # or 1.0e+4
+    __dense_cloud__ = 1.0e+4 # or 1.0e+4
     __threshold__   = 1.0e+2
     __input_case__  = args[0]
 
