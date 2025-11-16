@@ -626,42 +626,6 @@ def pocket_finder(bfield, numb, p_r, plot=False):
         except IndexError:
             below100 = None
 
-        # Create a mosaic layout with two subplots: one for 'numb', one for 'bfield'
-        fig, axs_dict = plt.subplot_mosaic([['numb', 'bfield']], figsize=(12, 5))
-        axs_numb = axs_dict['numb']
-        axs_bfield = axs_dict['bfield']
-
-        def plot_field(axs, data, label):
-
-            axs.plot(data, label=label)
-            if below100 is not None:
-                axs.vlines(below100, data[below100]*(1 - 0.1), data[below100]*(1 + 0.1),
-                        color='black', label='th 100cm⁻³ (left)')
-            if above100 is not None:
-                axs.vlines(above100, data[above100]*(1 - 0.1), data[above100]*(1 + 0.1),
-                        color='black', label='th 100cm⁻³ (right)')
-            if peaks is not None:
-                axs.plot(indexes, data[indexes], "x", color="green", label="all peaks")
-                axs.plot(indexes, data[indexes], ":", color="green")
-
-            if idx is not None and upline is not None:
-                axs.plot(idx, np.max(data), "x", color="black", label="index_global_max")
-
-            axs.axhline(np.min(data), linestyle="--", color="gray", label="baseline")
-            axs.set_yscale('log')
-            axs.set_xlabel("Index")
-            axs.set_ylabel(label)
-            axs.set_title(f"{label} Shape")
-            axs.legend()
-            axs.grid(True)
-
-        # Plot both subplots
-        #plot_field(axs_numb, numb, "Density")
-        #plot_field(axs_bfield, bfield, "Magnetic Field")
-
-        #plt.tight_layout()
-        #plt.savefig('./images/columns/mosaic.png')
-        #plt.close(fig)
 
     return (indexes, peaks), (index_global_max, upline)
 

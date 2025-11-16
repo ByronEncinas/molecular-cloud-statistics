@@ -1,0 +1,2 @@
+*.png merge=theirs
+*.pkl merge=theirs

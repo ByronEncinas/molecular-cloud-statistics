@@ -11,21 +11,12 @@ start_time = time.time()
 FloatType = np.float64
 IntType = np.int32
 
-N               = 2_500
-
-if len(sys.argv)>4:
-    rloc          = float(sys.argv[1])
-    max_cycles    = int(sys.argv[2]) 
-    case          = str(sys.argv[3]) 
-    num_file      = str(sys.argv[4]) 
-else: #  python3 stats.py 0.1 2000 ideal 480
-    rloc            = 0.1
-    max_cycles      = 500
-    case            = 'ideal'
-    num_file        = '430'
+global dense_cloud, threshold
+global N, rloc, max_cycles, case, num_file
 
 dense_cloud = 1.0e+2
 threshold = 1.0e+2
+
 
 def reduction_density(reduction_data, density_data, bound = ''):
 
@@ -289,7 +280,7 @@ def eval_reduction(field, numb, follow_index, threshold):
             Numb100.append(n_r)
             B100.append(B_r)   
             flag = True
-            print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
+            #print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
             filter_mask[i] = False
             if False:
                 plt.plot(bfield10)
@@ -330,12 +321,12 @@ def eval_reduction(field, numb, follow_index, threshold):
 
      
     filter_mask = filter_mask.astype(bool)
-    print(dead)
 
     return np.array(R10), np.array(Numb100), np.array(B100), filter_mask
 
 @timing_decorator
 def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
+    print("________________________:", N)
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -433,29 +424,27 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
 
             k += 1
 
-    print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < N))), np.logical_not((np.any(mask2) and (k + 1 < N))))
+    #print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < N))), np.logical_not((np.any(mask2) and (k + 1 < N))))
     #threshold = threshold.astype(int)
 
     survivors_mask = np.logical_not(np.logical_and(pst_mask, pst_mask_rev))
 
     percentage_of_survivors = np.sum(survivors_mask)*100/survivors_mask.shape[0]
 
-    print("Percentage of Survivors: ", percentage_of_survivors, " %")
+    #print("Percentage of Survivors: ", percentage_of_survivors, " %")
     
     nz_i    = k + 1
     nz_irev = k_rev + 1
     
-    print(f"get_lines => threshold index for {threshold}cm-3: ", nz_i, nz_irev)
-    print(f"get_lines => original shapes ({2*N+1} to {nz_i + nz_irev - 1})")
-    print(f"get_lines => p_r = {N+1} to p_r = {nz_irev} for array with shapes ...")
+    #print(f"get_lines => threshold index for {threshold}cm-3: ", nz_i, nz_irev)
+    #print(f"get_lines => original shapes ({2*N+1} to {nz_i + nz_irev - 1})")
+    #print(f"get_lines => p_r = {N+1} to p_r = {nz_irev} for array with shapes ...")
 
     radius_vectors = np.append(line_rev[:nz_irev,:,:][::-1, :, :], line[1:nz_i,:,:], axis=0)
     magnetic_fields = np.append(bfields_rev[:nz_irev,:][::-1, :], bfields[1:nz_i,:], axis=0)
     numb_densities = np.append(densities_rev[:nz_irev,:][::-1, :], densities[1:nz_i,:], axis=0)
 
     #N = magnetic_fields.shape[0]
-
-    print("Radius vector shape:", radius_vectors.shape)
 
     m = magnetic_fields.shape[1]
 
@@ -468,6 +457,7 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
 
 @timing_decorator
 def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold):
+    print("________________________:", N)
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
@@ -578,11 +568,7 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
     mean_columns = np.zeros(m0)
     median_columns= np.zeros(m0)
     i = 0
-    
-    print("\n", l0, m0, l0*m0)
-    print(numb_densities.shape)
-    print(radius_vectors.shape)
-    print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
+
 
     for x in range(0, l0*m0, l0): 
 
@@ -640,8 +626,6 @@ def line_of_sight(x_init=None, directions=fibonacci_sphere(), n_crit = threshold
         plt.savefig(f'./stats/c_vs_s.png',dpi=300)
         plt.close(fig1)
 
-    print(mean_columns.shape)
-    print(median_columns.shape)
     return radius_vectors, numb_densities, mean_columns, median_columns
 
 def density_profile(x_init=np.array([0,0,0]), directions=fibonacci_sphere(), n_crit = threshold):
@@ -768,7 +752,6 @@ def density_profile(x_init=np.array([0,0,0]), directions=fibonacci_sphere(), n_c
 
 @timing_decorator
 def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
-    print("points gen...")
     #np.random.seed(0)
     def xyz_gen(size):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
@@ -801,7 +784,6 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
         valid_vectors.extend(valid_points)
         del aux_vector, distances, inside_sphere, valid_mask, valid_points
     rho_vector = np.array(deepcopy(valid_vectors))
-    print("points generated")
 
     if False:                   
         plt.scatter(rho_vector[:, 0], rho_vector[:,1], color = 'skyblue')
@@ -816,9 +798,25 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
     return rho_vector
 
 
+
 # python3 stats.py 1000 10 10 ideal 430 TEST seed > R430TST.txt 2> R430TST_error.txt &
 
 if __name__ == '__main__':
+
+
+    N               = 2_500
+
+    if len(sys.argv)>4:
+        rloc          = float(sys.argv[1])
+        max_cycles    = int(sys.argv[2]) 
+        case          = str(sys.argv[3]) 
+        num_file      = str(sys.argv[4]) 
+    else: #  python3 stats.py 0.1 2000 ideal 480
+        rloc            = 0.1
+        max_cycles      = 500
+        case            = 'ideal'
+        num_file        = '430'
+
 
     subdirectory = 'ideal_mhd' if case == 'ideal' else 'ambipolar_diffusion'
     
@@ -985,26 +983,27 @@ if __name__ == '__main__':
     #MagneticFieldDivergenceAlt = np.asarray(data['PartType0']['MagneticFieldDivergenceAlternative'], dtype=FloatType)
     Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-    #Velocity = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
+    Velocity = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
     Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
     Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)
     Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
     Bfield_grad = np.zeros((len(Pos), 9))
     Density_grad = np.zeros((len(Density), 3))
     Volume   = Mass/Density
-    # -------------------------
-    #Center = VoronoiPos[np.argmax(Density), :]
-    # -------------------------
     VoronoiPos-=Center
     Pos-=Center
-    """
-    for dim in range(3):  # Loop over x, y, z
-        pos_from_center = Pos[:, dim]
-        boundary_mask = pos_from_center > Boxsize / 2
-        Pos[boundary_mask, dim] -= Boxsize
-        VoronoiPos[boundary_mask, dim] -= Boxsize
 
-    """
+    from gists.__vor__ import __color_vor__, __vor__
+
+    #BfieldMagnitude = np.linalg.norm(Bfield, axis=1)*gauss_code_to_gauss_cgs*1e+6 # micro-gauss
+    #Speed = np.linalg.norm(Velocity, axis=1)
+    #print(VoronoiPos.shape[0] == Density.shape[0])
+    #__color_vor__(VoronoiPos, Speed, 'V')
+    #__color_vor__(VoronoiPos, Density, 'D')
+    #__color_vor__(VoronoiPos, BfieldMagnitude, 'B')
+
+    #__vor__(VoronoiPos)
+
     for dim in range(3):  # Loop over x, y, z
         pos_from_center = Pos[:, dim]
         too_high = pos_from_center > Boxsize / 2
@@ -1110,14 +1109,9 @@ if __name__ == '__main__':
 
     # free space
     del data, Mass, Density_grad, Bfield_grad
-
-    print((time.time()-start_time)//60, " Minutes")
-
     # size of arrays
     m = magnetic_fields.shape[1]
     N = magnetic_fields.shape[0]
-
-    print(magnetic_fields.shape)
 
     # reduction factor
     subunity = r_u < 1
@@ -1195,11 +1189,6 @@ if __name__ == '__main__':
         high_ratio = ratio >= 1.0e+1
         low_ratio  = ratio <  1.0e+1
 
-        print(distance.shape)
-        print(ratio.shape)
-        print(high_ratio.shape)
-        print(low_ratio.shape)
-
         fig, ax = plt.subplots()
 
         #ax.scatter(s, ratio, marker='x', color="black", s=5, alpha=0.3)
@@ -1265,13 +1254,13 @@ if __name__ == '__main__':
 
         X = Pos[csd, 0] * pc_to_cm / AU_to_cm 
         Y = Pos[csd, 1] * pc_to_cm / AU_to_cm
-        print(X.shape, Y.shape)
+        #print(X.shape, Y.shape)
         vec = Pos[csd,:]
 
         dist, cells, rel_pos = find_points_and_relative_positions(Pos[csd,:], Pos, VoronoiPos)
         local_fields         = get_magnetic_field_at_points(Pos[csd,:], Bfield, rel_pos)
         
-        print(local_fields.shape)
+        #print(local_fields.shape)
 
         __step__ = local_fields.shape[0] # if I want 
 
@@ -1281,7 +1270,7 @@ if __name__ == '__main__':
         #Y = Y
         D = c_Density
         
-        print(U.shape, V.shape, D.shape)
+        #print(U.shape, V.shape, D.shape)
         # Normalize vector length and color by magnitude
         __mag__ = np.linalg.norm(np.array([U, V]), axis=0)
 
@@ -1710,4 +1699,7 @@ if __name__ == '__main__':
     c.drawImage(image_file, 72, y_image, width=img_width, height=img_height)
 
     c.save()
+
     print(f"Report saved to {pdf_file}")
+    
+    print((time.time()-start_time)//60, " Minutes")
