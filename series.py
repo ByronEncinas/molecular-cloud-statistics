@@ -97,7 +97,6 @@ def uniform_in_2d_tree_dependent(tree, no, n = 10, rloc=1.0, n_crit=1.0e+2):
 
     return None
 
-
 @timing_decorator
 def crs_path(*args, **kwargs):
 
@@ -435,12 +434,13 @@ def match_files_to_data(__input_case__):
         
         for row in csv_reader:
             #print(row[0],row[1], np.log10(float(row[8])))
-            if (int(row[0]) < int(__start_snap__)):
-                break
             clst.append([np.float64(row[2]),np.float64(row[3]),np.float64(row[4])])
             dlst.append(np.float64(row[8]))
             tlst.append(np.float64(row[1]))
             slst.append(int(row[0]))
+            if (int(row[0]) < int(__start_snap__)):
+                break
+
         
     assert len(slst) != 0, "Error accessing cloud data"
 
@@ -587,9 +587,9 @@ def declare_globals_and_constants(args):
     __alloc_slots__ = 2_500
     __rloc__        = 1.0e-1
     __sample_size__ = 2000
-    __dense_cloud__ = 1.0e+2 # or 1.0e+4 or 1.0e+1
-    __threshold__   = 3.0e+2
-    __input_case__  = args[1]
+    __dense_cloud__ = 1.0e+2 # or 1.0e+4
+    __threshold__   = 1.0e+2
+    __input_case__  = args[0]
 
     # amb:   t > 3.0 Myrs snap > 225    
     # ideal: t > 3.0 Myrs snap > 270
@@ -598,7 +598,6 @@ def declare_globals_and_constants(args):
         __start_snap__  = '270'
     if __input_case__ =='amb':
         __start_snap__  = '225'
-
     # rename
     FloatType                = np.float64
     FloatType2                = np.float128
@@ -615,8 +614,7 @@ def declare_globals_and_constants(args):
     # in PC always below 500
     if getpass.getuser() == 'leni':
         # in cluster always above
-        __start_snap__  = args[0]
-        __sample_size__ = 200
+        __sample_size__ = 100
 
     return None
 
@@ -731,7 +729,7 @@ if __name__=='__main__':
         }
 
         df_stats[str(snap)]  = stats_dict
-
+        """
         field_dict = {
             "time": _time,
             #"x_index": follow_index,
@@ -743,7 +741,7 @@ if __name__=='__main__':
         }
 
         df_fields[str(snap)]  = field_dict
-        
+        """
 
         if 'Pos' in globals():
             print("\nPos is global")
@@ -761,10 +759,12 @@ if __name__=='__main__':
     # https://www.statology.org/how-to-report-skewness-kurtosis/
 
     df = pd.DataFrame.from_dict(df_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-    df.to_pickle(f'./series/data_{__input_case__}.pkl')
-    df1 = pd.DataFrame.from_dict(df_fields, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-    df1.to_pickle(f'./series/data1_{__input_case__}.pkl')
+    df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
 
-    print(f"Saved data[1]_{__input_case__}.pkl with Numpy arrays intact.")
 
+    if df_fields == {}:
+        df1 = pd.DataFrame.from_dict(df_fields, orient='index').reset_index().rename(columns={'index': 'snapshot'})
+        df1.to_pickle(f'./series/data1_{__input_case__}.pkl')
+        print(f"Saved data[1]_{__input_case__}.pkl with Numpy arrays intact.")
+    print(f"Saved data_{__input_case__}.pkl with Numpy arrays intact.")        
     print(df.describe())
