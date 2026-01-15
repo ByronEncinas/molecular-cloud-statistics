@@ -1,0 +1,6 @@
+__rloc__        = 1.0e-1
+__dense_cloud__ = 1.0e+6
+__threshold__   = 1.0e+2
+__input_case__  = 'ideal'
+__alloc_slots__ = 2500
+__sample_size__ = 2500

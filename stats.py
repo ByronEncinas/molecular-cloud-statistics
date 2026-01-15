@@ -15,7 +15,7 @@ global dense_cloud, threshold
 global N, rloc, max_cycles, case, num_file
 
 dense_cloud = 1.0e+2
-threshold = 1.0e+2
+threshold = 1.0e+1
 
 
 def reduction_density(reduction_data, density_data, bound = ''):
@@ -202,7 +202,7 @@ def pocket_finder(bfield, numb, p_r, plot=False):
 
     return (indexes, peaks), (index_global_max, upline)
 
-def eval_reduction(field, numb, follow_index, threshold):
+def eval_reduction(field, numb, follow_index, threshold, vectors=None):
 
     R10      = []
     Numb100  = []
@@ -226,6 +226,7 @@ def eval_reduction(field, numb, follow_index, threshold):
 
             if start <= follow_index <= end:
                 try:
+                    vector   = vectors[start:end+1, i, :]
                     numb10   = numb[start:end+1, i]
                     bfield10 = field[start:end+1, i]
                     p_r = follow_index - start
@@ -282,10 +283,33 @@ def eval_reduction(field, numb, follow_index, threshold):
             flag = True
             #print(f"Most common value: {most_common_value} (appears {count} times): R = ", R)
             filter_mask[i] = False
-            if False:
-                plt.plot(bfield10)
-                plt.savefig(f'./see{i}.png')
-                plt.close()
+            fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+            
+            lw =  np.where(bfield10 == most_common_value)[0]
+            l =  (bfield10 == most_common_value)
+            s  = np.cumsum(np.linalg.norm(np.gradient(vector[:, :], axis=0), axis=1))
+
+            axs[0].set_xlabel(r'distance [cm]')
+            axs[0].set_ylabel(r'\|B\| [$\mu$G]')
+            axs[0].set_yscale('log')
+            axs[0].plot(s*pc_to_cm, bfield10)
+            axs[0].scatter(s[l]*pc_to_cm, bfield10[l], color='g')
+            axs[0].text(0.5, 1.02, f"mcv: {most_common_value} ({count}x)",
+                        ha='center', va='bottom', transform=axs[0].transAxes)
+            
+            ax3d = fig.add_subplot(1, 2, 2, projection='3d')
+            ax3d.set_xlabel(r'X [Pc]')
+            ax3d.set_ylabel(r'X [Pc]')
+            ax3d.scatter(vector[l,0], vector[l,1], vector[l,2], c='g', s=2)
+            ax3d.plot(vector[:,0], vector[:,1], vector[:,2])
+            w = 0.0005
+            cx, cy, cz = np.mean(vector[l,:], axis=0)
+            ax3d.set_xlim(cx-w, cx+w)
+            ax3d.set_ylim(cy-w, cy+w)
+            ax3d.set_zlim(cz-w, cz+w)
+            plt.tight_layout()
+            plt.savefig(f'./see_{i}.png')
+            plt.close()
             dead +=1
             continue     
 
@@ -321,11 +345,11 @@ def eval_reduction(field, numb, follow_index, threshold):
 
      
     filter_mask = filter_mask.astype(bool)
-
+    print(dead)
     return np.array(R10), np.array(Numb100), np.array(B100), filter_mask
 
 @timing_decorator
-def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
+def crs_path(x_init=np.array([0,0,0]),ncrit=threshold, __k__=1.0):
     print("________________________:", N)
     """
     Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
@@ -383,7 +407,7 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
         
             x_rev_aux = x_rev[mask2_rev]
 
-            x_rev_aux, bfield_aux_rev, dens_aux_rev, vol_rev = Euler_step(x_rev_aux, -1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            x_rev_aux, bfield_aux_rev, dens_aux_rev, vol_rev = Heun_step(x_rev_aux, -1.0*__k__, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
             dens_aux_rev = dens_aux_rev * gr_cm3_to_nuclei_cm3
             
             x_rev[mask2_rev] = x_rev_aux
@@ -408,7 +432,7 @@ def crs_path(x_init=np.array([0,0,0]),ncrit=threshold):
         if np.any(mask2) and (k + 1 < N):
 
             x_aux = x[mask2]
-            x_aux, bfield_aux, dens_aux, vol = Euler_step(x_aux, 1.0, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
+            x_aux, bfield_aux, dens_aux, vol = Heun_step(x_aux,1.0* __k__, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume)
             dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
             
             x[mask2]                   = x_aux
@@ -797,7 +821,75 @@ def uniform_in_3d(no, rloc=1.0, ncrit=threshold): # modify
 
     return rho_vector
 
+def __k_values__():
+    
+    _ = 0
 
+    x_half, B_half, n_half, index_half, path_column, survivors1 = crs_path(x_input, threshold, __k__=0.5)
+    x_unit, B_unit, n_unit, index_unit, path_column, survivors1 = crs_path(x_input, threshold, __k__=1.0)
+    x_twice, B_twice, n_twice, index_twice, path_column, survivors1 = crs_path(x_input, threshold, __k__=2.0)
+
+    __h = n_half[:,_] > 0
+    __u = n_unit[:,_] > 0
+    __t = n_twice[:,_] > 0
+    
+    s_half = np.cumsum(np.linalg.norm(np.diff(x_half[__h,_,:], axis=0), axis=1))*pc_to_cm
+    s_unit = np.cumsum(np.linalg.norm(np.diff(x_unit[__u,_,:], axis=0), axis=1))*pc_to_cm
+    s_twice= np.cumsum(np.linalg.norm(np.diff(x_twice[__t,_,:], axis=0), axis=1))*pc_to_cm
+
+    B_half, B_unit, B_twice = B_half[__h, _]*to_gauss_cgs*to_micro_gauss, B_unit[__u, _]*to_gauss_cgs*to_micro_gauss, B_twice[__t, _]*to_gauss_cgs*to_micro_gauss
+
+    fig = plt.figure(figsize=(15, 5))
+    ax_dict = fig.subplot_mosaic(
+        """
+        ABC
+        """,
+        gridspec_kw={"wspace": 0.3}
+    )
+
+    ax_B = ax_dict["A"]
+    ax_n = ax_dict["B"]
+    ax_s = ax_dict["C"]
+
+    ax_B.scatter(x_half[__h,_, 0], B_half, s=10, c='red', label='k=0.5')
+    ax_B.scatter(x_unit[__u,_,0], B_unit, s=10, c='blue', label='k=1.0')
+    ax_B.scatter(x_twice[__t,_,0], B_twice, s=10, c='green', label='k=2.0')
+    ax_B.set_title("B field strength")
+    ax_B.set_xlabel(r"$x - x_{\mathrm{cloud}}$ (cm)")
+    ax_B.set_ylabel(r"Field strength ($\mu$G)")
+    ax_B.legend()
+
+    ax_n.scatter(x_half[__h,_,0], n_half[__h,_], s=10, c='red', label='k=0.5')
+    ax_n.scatter(x_unit[__u,_,0], n_unit[__u,_], s=10, c='blue', label='k=1.0')
+    ax_n.scatter(x_twice[__t,_,0], n_twice[__t,_], s=10, c='green', label='k=2.0')
+    ax_n.set_yscale("log")
+    ax_n.set_title("Number density")
+    ax_n.set_xlabel(r"$x - x_{\mathrm{cloud}}$ (cm)")
+    ax_n.set_ylabel(r"$n_g(s)$ cm$^{-3}$")
+    ax_n.legend()
+
+    ax_s.plot(s_half, label='k=0.5', color='red')
+    ax_s.plot(s_unit, label='k=1.0', color='blue')
+    ax_s.plot(s_twice, label='k=2.0', color='green')
+    ax_s.set_yscale("log")
+    ax_s.set_title("Distance over path")
+    ax_s.set_xlabel("Steps")
+    ax_s.set_ylabel("s (cm)")
+    ax_s.legend()
+
+    plt.savefig('./k_values.png')
+    plt.close(fig)
+
+def __vor_func__(Bfield, Velocity, VoronoiPos, Density):
+    from gists.__vor__ import __color_vor__, __vor__
+
+    BfieldMagnitude = np.linalg.norm(Bfield, axis=1)*to_gauss_cgs*to_micro_gauss # micro-gauss
+    Speed = np.linalg.norm(Velocity, axis=1)
+    __color_vor__(VoronoiPos, Speed, 'V')
+    __color_vor__(VoronoiPos, Density, 'D')
+    __color_vor__(VoronoiPos, BfieldMagnitude, 'B')
+    __vor__(VoronoiPos)
+    return None
 
 # python3 stats.py 1000 10 10 ideal 430 TEST seed > R430TST.txt 2> R430TST_error.txt &
 
@@ -813,7 +905,7 @@ if __name__ == '__main__':
         num_file      = str(sys.argv[4]) 
     else: #  python3 stats.py 0.1 2000 ideal 480
         rloc            = 0.1
-        max_cycles      = 500
+        max_cycles      = 200
         case            = 'ideal'
         num_file        = '430'
 
@@ -993,16 +1085,6 @@ if __name__ == '__main__':
     VoronoiPos-=Center
     Pos-=Center
 
-    from gists.__vor__ import __color_vor__, __vor__
-
-    #BfieldMagnitude = np.linalg.norm(Bfield, axis=1)*gauss_code_to_gauss_cgs*1e+6 # micro-gauss
-    #Speed = np.linalg.norm(Velocity, axis=1)
-    #print(VoronoiPos.shape[0] == Density.shape[0])
-    #__color_vor__(VoronoiPos, Speed, 'V')
-    #__color_vor__(VoronoiPos, Density, 'D')
-    #__color_vor__(VoronoiPos, BfieldMagnitude, 'B')
-
-    #__vor__(VoronoiPos)
 
     for dim in range(3):  # Loop over x, y, z
         pos_from_center = Pos[:, dim]
@@ -1028,19 +1110,20 @@ if __name__ == '__main__':
     directions=fibonacci_sphere(20)
 
     #density_profile(x_input, directions=fibonacci_sphere(100), n_crit = threshold)
+    radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_input, threshold, __k__=0.5)
 
-    radius_vectors_los, numb_densities_los, mean_column, median_column                     = line_of_sight(x_input, directions, threshold)
-    radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_input, threshold)
-
-    #data.close()
+    print(radius_vectors.shape)
 
     if np.any(numb_densities > threshold):
-        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold)
-        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold) # not needed
+        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold, vectors=radius_vectors)
+        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, threshold/10.) # not needed
         print("DEBUG numb_densities type:", type(numb_densities))
     else:
         print(f"[error] No densities above {threshold} cm⁻³")
         raise ValueError
+
+    radius_vectors_los, numb_densities_los, mean_column, median_column                     = line_of_sight(x_input, directions, threshold)
+    data.close()
 
     print(np.sum(survivors1), survivors1.shape)
     print(np.sum(survivors2), survivors2.shape) 
@@ -1641,65 +1724,6 @@ if __name__ == '__main__':
             print("Couldnt print B field structure")
 
 
-    #h5_path = os.path.join(children_folder, f"DataBundle.h5")
-
-    #from filelock import FileLock
-    """
-    Time ──────────────────────────────────────────▶
-
-    Script 1:  ──[Acquire Lock]───[Create/Append HDF5]───[Release Lock]───
-
-    Script 2:  ──────────[Wait for Lock]───────────────────────────[Append HDF5]───[Release Lock]───
-    """
-    #lock = FileLock(h5_path + ".lock")
-
-    #with lock:  # acquire lock (waits if another process is holding it)
-
-    #    pass
-    
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-
     simulation_name = "Magnetic Pockets"
     runtime =(time.time()-start_time)//60
-
-
-    pdf_file = "stats/single_stats.pdf"
-    c = canvas.Canvas(pdf_file, pagesize=letter)
-    width, height = letter
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(72, height - 72, "Simulation Report")
-
-    c.setFont("Helvetica", 12)
-    lines = [
-        f"Name:              {simulation_name}",
-        f"Runtime:           {runtime:.2f} Minutes",
-        f"Allocated Storage:  {2*(N+1)}",
-        f"No. of Lines:       {max_cycles}",
-        f"Assumptions:        {case}",
-        f"Cloud Density:      {dense_cloud}",
-        f"Threshold Density:  {threshold}",
-        f"Filtered Lines:     {np.sum(np.logical_not(survivors))}",
-        f"Final Lines:        {np.sum(survivors)}",
-        f"Fraction Non-CNVRG Lines:  {np.sum(np.logical_not(survivors))/np.sum(survivors)}",
-    ]
-
-    y = height - 120
-    for line in lines:
-        c.drawString(72, y, line)
-        y -= 20
-
-    # Add PNG image
-    image_file = "images/FieldTopology.png"  # replace with your PNG path
-    img_width = 400  # width in points
-    img_height = 300  # height in points
-    y_image = y - img_height - 20  # position below the last line of text
-
-    c.drawImage(image_file, 72, y_image, width=img_width, height=img_height)
-
-    c.save()
-
-    print(f"Report saved to {pdf_file}")
-    
-    print((time.time()-start_time)//60, " Minutes")
+    print("Runtime: ", runtime)

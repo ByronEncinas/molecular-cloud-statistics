@@ -12,6 +12,22 @@ from scipy.spatial import cKDTree
 
 from src.library import *
 
+input_file = sys.argv[1]
+config = {}
+with open(input_file, 'r') as f:
+    exec(f.read(), {}, config)
+
+import getpass
+
+# in PC always below 500
+if getpass.getuser() == 'leni':
+    # in cluster always above
+    config['__sample_size__'] = 500
+
+
+globals().update(config) # This injects every key in 'config' as a variable in your script
+
+#print(config) # Now you can use them directly:
 
 # for timing
 start_time = time.time()
@@ -364,7 +380,7 @@ def line_of_sight(*args, **kwargs):
         median_columns[i] = np.median(column_densities[x:x+l0])
         i += 1
 
-    if True: # for a single point in space with l0 directions
+    if False: # for a single point in space with l0 directions
         fig0, ax0 = plt.subplots()
         h = 0
         ax0.set_xlabel(r'''$s$ [cm]''', fontsize=16)
@@ -575,21 +591,13 @@ def evolution_descriptors():
     plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
-def declare_globals_and_constants(args):
+def declare_globals_and_constants():
 
     # global variables that can be modified from anywhere in the code
-    global __rloc__, __sample_size__, __input_case__, __start_snap__
-    global __dense_cloud__,__threshold__, __alloc_slots__
+    #global __rloc__, __sample_size__, __input_case__, __start_snap__
+    #global __dense_cloud__,__threshold__, __alloc_slots__
     global Pos, VoronoiPos, Bfield, Mass, Density, Bfield_grad, Density_grad, Volume
-    global flag, FloatType, FloatType2, IntType
-    # immutable objects, use type hinting to debug if error
-    #__alloc_slots__               = 1_000
-    __alloc_slots__ = 2_500
-    __rloc__        = 1.0e-1
-    __sample_size__ = 2000
-    __dense_cloud__ = 1.0e+4 # or 1.0e+4
-    __threshold__   = 1.0e+2
-    __input_case__  = args[0]
+    global flag, FloatType, FloatType2, IntType, __start_snap__
 
     # amb:   t > 3.0 Myrs snap > 225    
     # ideal: t > 3.0 Myrs snap > 270
@@ -598,6 +606,7 @@ def declare_globals_and_constants(args):
         __start_snap__  = '270'
     if __input_case__ =='amb':
         __start_snap__  = '225'
+
     # rename
     FloatType                = np.float64
     FloatType2                = np.float128
@@ -609,17 +618,10 @@ def declare_globals_and_constants(args):
     # flag to import data
     flag = True
 
-    import getpass
-
-    # in PC always below 500
-    if getpass.getuser() == 'leni':
-        # in cluster always above
-        __sample_size__ = 100
-
     return None
 
 if __name__=='__main__':
-    declare_globals_and_constants(sys.argv[1:])
+    declare_globals_and_constants()
     # coordinates, cell center density, time and snapshot of evolving cloud
     clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
     survivors_fraction = np.zeros(file_hdf5.shape[0])
@@ -662,7 +664,6 @@ if __name__=='__main__':
             ["__threshold__", __threshold__],
             ["__dense_cloud__", __dense_cloud__],
             ["__sample_size__", __sample_size__],
-            ["__Boxsize__", __Boxsize__]
             ]
 
         print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
@@ -677,19 +678,21 @@ if __name__=='__main__':
 
         directions=fibonacci_sphere(20)
         # dodecahedron (12 faces), and icosahedron (20 faces)
+        if __threshold__ == 1.0e+2:
+            __minor_threshold__ = 1.0e+1
 
-        __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
-        radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
+            __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__minor_threshold__)
+            radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__minor_threshold__)
 
-        print("__alloc_slots__: ", __alloc_slots__)
-        print("__used_slots__ : ",__0.shape, radius_vectors.shape)
+            print("__alloc_slots__: ", __alloc_slots__)
+            print("__used_slots__ : ",__0.shape, radius_vectors.shape)
 
-        assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
+            assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
-        data.close()
+            data.close()
 
-        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*0.1) # not needed
+            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __minor_threshold__) # not needed
 
         survivors = np.logical_and(survivors1, survivors2)
 
@@ -762,9 +765,10 @@ if __name__=='__main__':
     df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
 
 
-    if df_fields == {}:
+    if df_fields != {}:
         df1 = pd.DataFrame.from_dict(df_fields, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-        df1.to_pickle(f'./series/data1_{__input_case__}.pkl')
-        print(f"Saved data[1]_{__input_case__}.pkl with Numpy arrays intact.")
-    print(f"Saved data_{__input_case__}.pkl with Numpy arrays intact.")        
+        df1.to_pickle(f'./series/data1_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
+        print(f"Saved data1_{__input_case__}.pkl with Numpy arrays intact.")        
+    print(f"Saved data[1]_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl with Numpy arrays intact.")
+    
     print(df.describe())

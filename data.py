@@ -14,7 +14,7 @@ import matplotlib as mpl
 from src.library import *
 from scipy.stats import skew
 from scipy.stats import kurtosis
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import os
 
 mpl.rcParams['text.usetex'] = True
@@ -26,89 +26,6 @@ SIZE    = 8
 FONTSIZE = 12
 GRID_ALPHA = 0.5
 INPUT = 'ideal'
-
-def dual_log_log(x, y, xlabel, ylabel, ylabels, output) -> None:
-    """Plot two log-log scatter plots side by side with consistent styling."""
-    y0, y1 = y
-    ylabel0, ylabel1 = ylabels
-
-    fig, (ax_l, ax_h) = plt.subplots(
-        1, 2, figsize=(10, 5),
-        gridspec_kw={'wspace': 0},
-        sharey=True
-    )
-    flag = True
-
-    for ax, ydata, label in zip([ax_l, ax_h], [y0, y1], [ylabel0, ylabel1]):
-        ax.set_xlabel(xlabel, fontsize=FONTSIZE)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.grid(True, which='both', alpha=GRID_ALPHA)
-        # Plot multiple markers for the same series if needed
-        for marker, color in zip(MARKERS, COLORS):
-            if flag:
-                ax.scatter(x, ydata, marker=MARKERS[0], color=color, s=SIZE, alpha=ALPHA, label=label)
-                flag=False
-        flag=True
-        ax.legend(fontsize=FONTSIZE-2)
-
-    ax_l.set_ylabel(ylabel, fontsize=FONTSIZE)
-    ax_h.tick_params(labelleft=False)  # Remove y-labels on right plot
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
-    plt.close(fig)
-
-def log_log(x, y, xlabel, ylabel, output) -> None:
-    """Plot single log-log scatter plot with consistent styling."""
-    y0 = y[0] if isinstance(y, (list, tuple)) else y
-
-    fig, ax = plt.subplots()
-
-    ax.set_xlabel(xlabel, fontsize=FONTSIZE)
-    ax.set_ylabel(ylabel, fontsize=FONTSIZE)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.grid(True, which='both', alpha=GRID_ALPHA)
-
-    for marker, color in zip(MARKERS, COLORS):
-        ax.scatter(x, y0, marker=marker, color=color, s=SIZE, alpha=ALPHA, label=ylabel)
-    ax.legend(fontsize=FONTSIZE-2)
-
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
-    plt.close(fig)
-
-def mono_log_log(x, y_list, xlabel, ylabel, labels, output) -> None:
-    """
-    Plot multiple log-log scatter series on a single plot.
-
-    Parameters:
-    - x: array-like, shared x-axis values
-    - y_list: list of arrays, each array is a different y series
-    - xlabel: str, x-axis label
-    - ylabel: str, y-axis label
-    - labels: list of str, labels for each y series
-    - output: str, filename to save the figure
-    """
-    fig, ax = plt.subplots()
-
-    ax.set_xlabel(xlabel, fontsize=FONTSIZE)
-    ax.set_ylabel(ylabel, fontsize=FONTSIZE)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.grid(True, which='both', alpha=GRID_ALPHA)
-
-    # Repeat markers and colors if more series than defined
-    markers = MARKERS * ((len(y_list) // len(MARKERS)) + 1)
-    colors  = COLORS  * ((len(y_list) // len(COLORS)) + 1)
-
-    for ydata, label, marker, color in zip(y_list, labels, markers, colors):
-        ax.scatter(x, ydata, marker=marker, color=color, s=SIZE, alpha=ALPHA, label=label)
-
-    ax.legend(fontsize=FONTSIZE-2)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
-    plt.close(fig)
 
 def field_lines_r_vol(b, r, r0, lr):
     from gists.__vor__ import traslation_rotation
@@ -321,54 +238,105 @@ def field_lines_norm(b, r, r0):
         print(e)
         print("Couldnt print B field structure")
 
+def cr_density_on_diff_cloud_densities():
 
-if os.path.exists(f'./series/data_{INPUT}.pkl'):
     # Load the pickled DataFrames
-    df = pd.read_pickle(f'./series/data_{INPUT}.pkl')
-    df.index.name = 'snapshot'
-    df.index = df.index.astype(int)
-    df = df.sort_index()
+    df2 = pd.read_pickle(f'./series/data_dc2.0_{INPUT}.pkl')
+    df2.index.name = 'snapshot'
+    df2.index = df2.index.astype(int)
+    df2 = df2.sort_index()
+
+    df4 = pd.read_pickle(f'./series/data_dc4.0_{INPUT}.pkl')
+    df4.index.name = 'snapshot'
+    df4.index = df4.index.astype(int)
+    df4 = df4.sort_index()
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_colwidth', None)
 
     # import n-arrays 
-    t     = df["time"].to_numpy()
-    x     = df["x_input"].to_numpy()
-    n     = df["n_rs"].to_numpy()
-    B     = df["B_rs"].to_numpy()
-    Nlos0 = df["n_los0"].to_numpy()  # mean
-    Nlos1 = df["n_los1"].to_numpy()  # median
-    Ncrs  = df["n_path"].to_numpy()
-    surf  = df["surv_fraction"].to_numpy()
-    factu = df["r_u"].to_numpy()
-    factl = df["r_l"].to_numpy()
+    t2     = df2["time"].to_numpy()
+    factu2 = df2["r_u"].to_numpy()
+    n2     = df2["n_rs"].to_numpy()
+    #x2     = df2["x_input"].to_numpy()
+    #B2     = df2["B_rs"].to_numpy()
+    #N2los0 = df2["n_los0"].to_numpy()  # mean
+    #N2los1 = df2["n_los1"].to_numpy()  # median
+    #N2crs  = df2["n_path"].to_numpy()
+    #surf2  = df2["surv_fraction"].to_numpy()
+    #factl2 = df2["r_l"].to_numpy()
 
-if os.path.exists(f'./series/data1_{INPUT}.pkl'):
-    df = pd.read_pickle(f'./series/data1_{INPUT}.pkl')
-    df.index.name = 'snapshot'
-    df.index = df.index.astype(int)
-    df = df.sort_index()
+    t4     = df4["time"].to_numpy()
+    factu4 = df4["r_u"].to_numpy()
+    n4     = df4["n_rs"].to_numpy()
+    #x4     = df4["x_input"].to_numpy()
+    #B4     = df4["B_rs"].to_numpy()
+    #N4los0 = df4["n_los0"].to_numpy()  # mean
+    #N4los1 = df4["n_los1"].to_numpy()  # median
+    #N4crs  = df4["n_path"].to_numpy()
+    #surf4  = df4["surv_fraction"].to_numpy()
+    #factl4 = df4["r_l"].to_numpy()
 
-    x_input   = df["x_input"].to_numpy()[0]#*pc_to_cm
-    directions= df["directions"].to_numpy()[0]
-    fields    = df["B_s"].to_numpy()[0]
-    densities = df["n_s"].to_numpy()[0]
-    vectors   = df["r_s"].to_numpy()[0]#*pc_to_cm
-    #size = 10_000 #x_input.shape[0]
-    print(f"./series/data1_{INPUT}.pkl")
+    n_plots = 1
 
-    args = np.where(factu[-1] < 1.)[0]
-    field_lines_r_vol(fields, vectors, x_input, args)
-    field_lines_norm(fields, vectors, x_input)
-    
-    exit()
-    """
-    LOCAL COSMIC RAY SPECTRA
+    fig, ax = plt.subplots(
+        1, 2, figsize=(14, 6),
+        gridspec_kw={'wspace': 0},
+        sharey=True
+    )
 
-    j(E, \mu, s) = \frac{j_i(E_i, \mu_i, N(s))L(E_i)}{2L(E)}
-    
-    """
+    #fig, ax = plt.subplots(1, 2, figsize=(15, 5), sharey=True)
+    output = 'r_n_2_4_'
+
+    cmap = plt.get_cmap("viridis")
+    t_min, t_max = 2.9, max(np.max(t4), np.max(t2))
+    print(t2.shape, t4.shape)
+    print(min(t2), max(t2))
+    print(min(t4), max(t4))
+
+
+    # ---- LEFT PANEL ----
+    ax[0].set_xlabel(r"$n_g$ [cm$^{-3}$]", fontsize=16)
+    ax[0].set_title(r"$n_{cloud} > 10^4$ cm$^{-3}$", fontsize=16)
+    ax[0].set_ylabel(r"$n_{local}/ n_{ism}$", fontsize=16)
+    ax[0].grid(True, which='both', alpha=0.3)
+    ax[0].set_xscale('log')
+    ax[0].set_ylim(-0.1, 1.1)
+    ax[0].tick_params(axis='both', labelsize=14)
+
+    for i, (t_val, n_val ,rt_val) in enumerate(zip(t4[::n_plots], n4[::n_plots], factu4[::n_plots])):
+        _ = rt_val < 1.
+        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val[_], n_val[_])
+        color = cmap((t_val - t_min) / (t_max - t_min))
+        ax[0].plot(n_ref, mean_vec, '-', lw=2.0, color=color, alpha=0.6)
+
+
+    ax[1].set_xlabel(r"$n_g$ [cm$^{-3}$]", fontsize=16)
+    ax[1].set_title(r"$n_{cloud} > 10^2$ cm$^{-3}$", fontsize=16)
+    ax[1].grid(True, which='both', alpha=0.3)
+    ax[1].set_xscale('log')
+    ax[1].set_ylim(-0.1, 1.1)
+    ax[1].tick_params(axis='both', labelsize=14)
+
+    for i, (t_val, n_val ,rt_val) in enumerate(zip(t2[::n_plots], n2[::n_plots], factu2[::n_plots])):
+        _ = rt_val < 1.
+        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val[_], n_val[_])
+        color = cmap((t_val - t_min) / (t_max - t_min))
+        ax[1].plot(n_ref, mean_vec, '-', lw=2.0, color=color, alpha=0.6)
+
+    norm = mpl.colors.Normalize(vmin=t_min, vmax=t_max)
+    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+
+    cbar = fig.colorbar(sm, ax=ax.ravel().tolist())
+    cbar.set_label('Time [Myrs]', fontsize=16)
+    cbar.ax.tick_params(labelsize =14)
+
+    plt.savefig('./' + output + f'{INPUT}.png', dpi=300)
+    plt.close(fig)
+    return None
+
+def local_cr_spectra(size):
     energy = np.logspace(3, 9, size)
     C, alpha, beta, Enot = select_species('L')
     ism_spectrum = lambda x: C*(x**alpha/((Enot + x)**beta))/(4*np.pi)
@@ -476,10 +444,63 @@ if os.path.exists(f'./series/data1_{INPUT}.pkl'):
     #fig.tight_layout()
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
+
+#if (os.path.exists(f'./series/data_dc2.0_{INPUT}.pkl') and (os.path.exists(f'./series/data_dc4.0_{INPUT}.pkl'))):
+    #cr_density_on_diff_cloud_densities()
+
+#file = f'./series/data_{INPUT}.pkl'
+#file = f'./series/data1_{INPUT}.pkl'
+file = f'./series/data_dc2.0_{INPUT}.pkl'
+
+if os.path.exists(file):
+    # Load the pickled DataFrames
+    df = pd.read_pickle(file)
+    df.index.name = 'snapshot'
+    df.index = df.index.astype(int)
+    df = df.sort_index()
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_colwidth', None)
+    # import n-arrays 
+    t     = df["time"].to_numpy()
+    x     = df["x_input"].to_numpy()
+    n     = df["n_rs"].to_numpy()
+    B     = df["B_rs"].to_numpy()
+    Nlos0 = df["n_los0"].to_numpy()  # mean
+    Nlos1 = df["n_los1"].to_numpy()  # median
+    Ncrs  = df["n_path"].to_numpy()
+    surf  = df["surv_fraction"].to_numpy()
+    factu = df["r_u"].to_numpy()
+    factl = df["r_l"].to_numpy()
+
+if False: #os.path.exists(f'./series/data1_{INPUT}.pkl'):
+    df = pd.read_pickle(f'./series/data1_{INPUT}.pkl')
+    print(f'./series/data1_{INPUT}.pkl')
+    df.index.name = 'snapshot'
+    df.index = df.index.astype(int)
+    df = df.sort_index()
+
+    x_input   = df["x_input"].to_numpy()[-1]#*pc_to_cm
+    directions= df["directions"].to_numpy()[-1]
+    fields    = df["B_s"].to_numpy()[-1]
+    densities = df["n_s"].to_numpy()[-1]
+    vectors   = df["r_s"].to_numpy()[-1]#*pc_to_cm
+    size = 1000 #x_input.shape[0]
+    print(f"./series/data1_{INPUT}.pkl")
+
+    args = np.where(factu[-1] < 1.)[0]
+    #field_lines_r_vol(fields, vectors, x_input, args)
+    #field_lines_norm(fields, vectors, x_input)
     
+    """
+    LOCAL COSMIC RAY SPECTRA
+
+    j(E, \mu, s) = \frac{j_i(E_i, \mu_i, N(s))L(E_i)}{2L(E)}
+    
+    """
+    #local_cr_spectra(size)
+   
 if __name__ == '__main__':
-
-
 
     """
     REDUCTION FACTOR
@@ -489,7 +510,6 @@ if __name__ == '__main__':
     """
 
     # Plot factu and factl evolution in time and maybe a window to the last values
-
     f_mean   = np.array([np.mean(ul[ul<1]) for ul in factu])
     f_median = np.array([np.median(ul[ul<1]) for ul in factu])
     f_std    = np.array([np.std(ul[ul<1]) for ul in factu])
@@ -502,12 +522,13 @@ if __name__ == '__main__':
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
     ax1.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
-    ax1.set_ylabel(r"$\mathcal{N}_{local}/\mathcal{N}_{ism}$ [Adim]", fontsize=FONTSIZE)
+    ax1.set_ylabel(r"$n_{local}/n_{ism}$ [Adim]", fontsize=FONTSIZE)
     ax1.grid(True, which='both', alpha=GRID_ALPHA)
     ax1.plot(t, f_mean, '-', color='black', alpha=ALPHA, label=r'Mean')
     ax1.plot(t, f_median, '--', color='black', alpha=ALPHA, label=r'Median')
     ax1.plot(t, f_less, '.-', color='orange', alpha=ALPHA, label=r'$f_{R<1}$')
     ax1.legend(fontsize=FONTSIZE-2)
+
     percentiles = [1, 5, 10, 20, 25]
 
     for ptile in percentiles[::-1]:  # plot largest band first for proper layering
@@ -516,37 +537,51 @@ if __name__ == '__main__':
         
         ax1.fill_between(t, f_ptile_down, f_ptile_up,
                         color=COLORS[0], alpha=0.3, label=f'{ptile}–{100-ptile} percentile', zorder=1)
+        try:
+            ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
+                fontsize=6,
+                color="black",
+                alpha=1.0,
+                rotation=0,
+                ha="left",   # horizontal alignment: left, center, right
+                va="bottom") # vertical alignment: top, center, bottom
 
-        ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
-            fontsize=6,
-            color="black",
-            alpha=1.0,
-            rotation=0,
-            ha="left",   # horizontal alignment: left, center, right
-            va="bottom") # vertical alignment: top, center, bottom
-
-        ax1.text(t[4], f_ptile_down[4], f"P{ptile}",
-            fontsize=6,
-            color="black",
-            alpha=1.0,
-            rotation=0,
-            ha="left",   # horizontal alignment: left, center, right
-            va="bottom") # vertical alignment: top, center, bottom
-
+            ax1.text(t[4], f_ptile_down[4], f"P{ptile}",
+                fontsize=6,
+                color="black",
+                alpha=1.0,
+                rotation=0,
+                ha="left",   # horizontal alignment: left, center, right
+                va="bottom") # vertical alignment: top, center, bottom
+        except:
+            print("[Exists Error] t[4] non existent")
+        
     ax1.set_ylim(-0.1,1.1)
-
-    ax2.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
+    """
+    if INPUT =='ideal':
+        t = t*1_000 # from Myrs to kyrs
+        ax1.set_xlim(t[8]*0.9,t[-1]*1.2)
+        ax2.set_xlim(t[8]*0.9,t[-1]*1.2)
+    else:
+        t = t*1_000 # from Myrs to 0.1 kyrs
+        #ax1.set_xlim(t[9],t[-1]+2.0e-6)
+        ax2.set_xlim(t[9],t[-1]+2.0e-6)       
+    """
+    ax2.set_xlabel(r"Time [kyrs]", fontsize=FONTSIZE)
     ax2.grid(True, which='both', alpha=GRID_ALPHA)
     ax2.plot(t, f_skew, '-', color='black', alpha=ALPHA, label=r'$\gamma$ : Skewness')
     ax2.plot(t, f_kurt, '--', color='black', alpha=ALPHA, label=r'$\kappa$: Kurtosis')
     ax2.legend(fontsize=FONTSIZE-2)
 
-    # Create inset axes (zoom window)
     axins = inset_axes(ax2, width="40%", height="40%", loc='upper right')  # adjust size and location
     axins.plot(t, f_skew, '-', color='black', alpha=ALPHA)
     axins.plot(t, f_kurt, '--', color='black', alpha=ALPHA)
 
-    x1, x2 = 4.5515, 4.5523
+    if INPUT =='ideal':
+        x1, x2 = 4.5515, 4.5521
+    else:
+        x1, x2 = 4.2904, 4.2905
+
     y1, y2 = min(np.min(f_skew), np.min(f_kurt))*1.5, max(np.max(f_skew), np.max(f_kurt))*1.5
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
@@ -568,7 +603,7 @@ if __name__ == '__main__':
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
     ax1.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
-    ax1.set_ylabel(r"$\mathcal{N}_{local}/\mathcal{N}_{ism}$ [Adim]", fontsize=FONTSIZE)
+    ax1.set_ylabel(r"$n_{local}/n_{ism}$ [Adim]", fontsize=FONTSIZE)
     ax1.grid(True, which='both', alpha=GRID_ALPHA)
     ax1.plot(t, f_mean, '-', color='black', alpha=ALPHA, label=r'Mean')
     ax1.plot(t, f_median, '--', color='black', alpha=ALPHA, label=r'Median')
@@ -582,22 +617,24 @@ if __name__ == '__main__':
         
         ax1.fill_between(t, f_ptile_down, f_ptile_up,
                         color=COLORS[0], alpha=0.3, label=f'{ptile}–{100-ptile} percentile', zorder=1)
+        try:
+            ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
+                fontsize=6,
+                color="black",
+                alpha=1.0,
+                rotation=0,
+                ha="left",   # horizontal alignment: left, center, right
+                va="bottom") # vertical alignment: top, center, bottom
 
-        ax1.text(t[4], f_ptile_up[4], f"P{100-ptile}",
-            fontsize=6,
-            color="black",
-            alpha=1.0,
-            rotation=0,
-            ha="left",   # horizontal alignment: left, center, right
-            va="bottom") # vertical alignment: top, center, bottom
-
-        ax1.text(t[4], f_ptile_down[4], f"P{ptile}",
-            fontsize=6,
-            color="black",
-            alpha=1.0,
-            rotation=0,
-            ha="left",   # horizontal alignment: left, center, right
-            va="bottom") # vertical alignment: top, center, bottom
+            ax1.text(t[4], f_ptile_down[4], f"P{ptile}",
+                fontsize=6,
+                color="black",
+                alpha=1.0,
+                rotation=0,
+                ha="left",   # horizontal alignment: left, center, right
+                va="bottom") # vertical alignment: top, center, bottom
+        except:
+            print("[Exists Error] t[4] non existent")
 
     ax1.set_ylim(-0.1,1.1)
     ax2.set_xlabel(r"Time [Myrs]", fontsize=FONTSIZE)
@@ -635,25 +672,28 @@ if __name__ == '__main__':
     # plot and save Reduction factor over n_g using log10(n_g(p)/n_{ref}) < 1/8
 
     output = 'r_n_'
-    n_plots = 20
+    n_plots = 1
 
     fig, ax = plt.subplots()
 
     ax.set_xlabel(r"$n_g$ [cm$^{-3}$]", fontsize=FONTSIZE)
-    ax.set_ylabel(r"$1 - \mathcal{N}_{local}/ \mathcal{N}_{ism}$ [Adim]", fontsize=FONTSIZE)
+    ax.set_ylabel(r"$1 - n_{local}/ n_{ism}$ [Adim]", fontsize=FONTSIZE)
     ax.grid(True, which='both', alpha=GRID_ALPHA)
     ax.set_xscale('log')
     ax.set_ylim(-0.1, 1.1)
 
     cmap = plt.get_cmap("viridis")
-    t_min, t_max = min(t[:n_plots]), max(t[:n_plots])
+    t_min, t_max = min(t[::n_plots]), max(t[::n_plots])
 
     # Plot lines with colors
-    for i, (t_val, rt_val) in enumerate(zip(t[:n_plots], factu[:n_plots])):
-        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val, n[i])
+    for i, (t_val, rt_val) in enumerate(zip(t[::n_plots], factu[::n_plots])):
+        _l_ = rt_val < 1
+        rt_val = rt_val[_l_]
+        n_val = n[i][_l_]
+        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val, n_val)
         normalized_t = (t_val - t_min) / (t_max - t_min)        
         color = cmap(normalized_t)
-        ax.plot(n_ref, 1 - mean_vec, '-', lw=2.0, color=color, alpha=0.6)
+        ax.plot(n_ref, 1 - mean_vec, '-', lw=2.0, color=color, alpha=1.0)
 
     norm = mpl.colors.Normalize(vmin=t_min, vmax=t_max)
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -668,20 +708,24 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
 
     ax.set_xlabel(r"$n_g$ [cm$^{-3}$]", fontsize=FONTSIZE)
-    ax.set_ylabel(r"$\mathcal{N}_{local}/ \mathcal{N}_{ism}$ [Adim]", fontsize=FONTSIZE)
+    ax.set_ylabel(r"$n_{local}/ n_{ism}$ [Adim]", fontsize=FONTSIZE)
     ax.grid(True, which='both', alpha=GRID_ALPHA)
     ax.set_xscale('log')
     ax.set_ylim(-0.1, 1.1)
 
     cmap = plt.get_cmap("viridis")
-    t_min, t_max = min(t[:n_plots]), max(t[:n_plots])
+    t_min, t_max = min(t[::n_plots]), max(t[::n_plots])
 
     # Plot lines with colors
-    for i, (t_val, rt_val) in enumerate(zip(t[:n_plots], factu[:n_plots])):
-        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val, n[i])
+    for i, (t_val, rt_val) in enumerate(zip(t[::n_plots], factu[::n_plots])):
+
+        _l_ = rt_val < 1
+        rt_val = rt_val[_l_]
+        n_val = n[i][_l_]
+        n_ref, r_matrix, mean_vec, median_vec, ten_vec, sample_size = reduction_to_density(rt_val, n_val)
         normalized_t = (t_val - t_min) / (t_max - t_min)        
         color = cmap(normalized_t)
-        ax.plot(n_ref, mean_vec, '-', lw=2.0, color=color, alpha=0.6)
+        ax.plot(n_ref, mean_vec, '-', lw=2, color=color, alpha=0.6)
 
     norm = mpl.colors.Normalize(vmin=t_min, vmax=t_max)
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -699,11 +743,6 @@ if __name__ == '__main__':
     \int_0^s \frac{n_g(s')ds'}{\hat{\mu}}
     
     """
-    # Column densities
-    #print(Nlos0.shape,Nlos1.shape,Ncrs.shape)
-    #print(len(Nlos0[0]),len(Nlos0[1]), len(Nlos0[2]))
-    #print(len(Nlos1[0]),len(Nlos1[1]), len(Nlos1[2]))
-    #
     ratio0 = np.array([np.mean(nlos0/ncrs) for (nlos0,ncrs) in zip(Nlos0,Ncrs)]) 
     ratio1 = np.array([np.median(nlos1/ncrs) for (nlos1,ncrs) in zip(Nlos1,Ncrs)]) 
     ratio2 = np.array([np.std(nlos0/ncrs) for (nlos0,ncrs) in zip(Nlos0,Ncrs)]) 
@@ -750,32 +789,3 @@ if __name__ == '__main__':
     plt.savefig('series/' + output + f'{INPUT}.png', dpi=300)
     plt.close(fig)
 
-    xlabel = r"$N_{crs}$ [cm$^{-2}$]"
-    ylabel = r"$\frac{\mathcal{N}_{local}}{\mathcal{N_{ISM}}}$" 
-    labels = [r"$n_{th} = 10^2$ [cm$^{-3}$]", r"$n_{th} = 10$ [cm$^{-3}$]"]
-    y_list = [factu[-1][factu[-1]<1], factl[-1][factl[-1]<1]]
-    x      = Ncrs[-1][factu[-1]<1]
-    output = f"fu_crs"
-
-    log_lin(xlabel=xlabel, labels=labels, ylabel=ylabel, output=output)
-
-    # plot and save n^mean_los / n_path and n^median_los / n_path
-    # plot and save n^mean_los / n_path and n^median_los / n_path
-
-    y_list = [Nlos0[-1], Nlos1[-1]]
-    xlabel =  "$N_{crs}$ [cm$^{-2}$]"
-    ylabel =  "Column Density [cm$^{-2}$]"
-    labels = [r"$ \langle N_{los} \rangle $ [cm$^{-2}$]", r"$N_{los}^{50th}$ [cm$^{-2}$]"]
-
-    dual_log_log(Ncrs[-1], y_list, xlabel=xlabel, ylabels=labels, ylabel=ylabel, output="multi")
-    mono_log_log(Ncrs[-1], y_list ,xlabel=xlabel, labels=labels, ylabel=ylabel, output="mono")
-
-
-    """
-    LOCAL COSMIC RAY SPECTRA
-
-    j(E, \mu, s) = \frac{j_i(E_i, \mu_i, N(s))L(E_i)}{2L(E)}
-    
-    """
-
-    
