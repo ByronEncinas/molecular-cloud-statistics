@@ -1,5 +1,6 @@
 import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
+from mpi4py import MPI
 
 import numpy as np
 import pandas as pd
@@ -628,7 +629,17 @@ if __name__=='__main__':
     
     df_stats = dict()
     df_fields= dict()
-    for each, filename in enumerate(file_hdf5):
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    #for i in range(rank, 100, size):
+    #    hacer_calculo(i)
+
+    #for each, filename in enumerate(file_hdf5):
+    for each in range(rank, len(file_hdf5), size):
+        filename = file_hdf5[each]
 
         snap = int(filename.split('.')[0][-3:])
         data = h5py.File(filename, 'r')
@@ -750,6 +761,7 @@ if __name__=='__main__':
             print("\nPos is global")
 
         get_globals_memory()            
+
         del tree, __0, __1, _1, _2, _3
         gc.collect() 
         get_globals_memory()
