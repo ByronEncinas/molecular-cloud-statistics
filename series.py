@@ -1,6 +1,6 @@
 import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
-
+from tabulate import tabulate
 
 import numpy as np
 import pandas as pd
@@ -231,6 +231,7 @@ def crs_path(*args, **kwargs):
     percentage_of_survivors = np.sum(survivors_mask)*100/survivors_mask.shape[0]
 
     print("Percentage of Survivors: ", percentage_of_survivors, " %")
+    print("k = ", k, " k_rev = ", k_rev)
     
     nz_i    = k + 1
     nz_irev = k_rev + 1
@@ -632,20 +633,18 @@ if __name__=='__main__':
     
     df_stats = dict()
     df_fields= dict()
-    #from mpi4py import MPI
-    #comm = MPI.COMM_WORLD
-    #rank = comm.Get_rank()
-    #size = comm.Get_size()
 
-    #for i in range(rank, 100, size):
-    #    hacer_calculo(i)
     assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
 
-    for each, (filename, center, _time) in enumerate(zip(file_hdf5, clst, tlst)):
-        #for each in range(rank, len(file_hdf5), size):
-        #filename = file_hdf5[each]
-        #center = clst[each,:]
-        print(each, filename, "\nx0 =", center, "\nt=", _time)
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    for each in range(rank, len(file_hdf5), size):
+        filename = file_hdf5[each]
+        center   = clst[each, :]
+        _time    = tlst[each]
 
         snap = int(filename.split('.')[0][-3:])
         data = h5py.File(filename, 'r')
@@ -672,13 +671,12 @@ if __name__=='__main__':
             Pos[too_high, dim] -= __Boxsize__
             Pos[too_low,  dim] += __Boxsize__
 
-        from tabulate import tabulate
         table_data = [
             ["__curr_snap__", filename.split('/')[-1]],
             ["__cores_avail__", os.cpu_count()],
-            ["__rloc__", __rloc__],
-            ["__threshold__", __threshold__],
-            ["__dense_cloud__", __dense_cloud__],
+            ["__rloc__", f"{__rloc__}" + " pc"],
+            ["__threshold__", f"{__threshold__}"+ " cm^-3"],
+            ["__dense_cloud__", f"{__dense_cloud__}"+ " cm^-3"],
             ["__alloc_slots__", __alloc_slots__],
             ["__sample_size__", __sample_size__]
             ]
@@ -701,7 +699,7 @@ if __name__=='__main__':
         radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
 
         print("__alloc_slots__: ", __alloc_slots__)
-        print("__used_slots__ : ",__0.shape, radius_vectors.shape)
+        print("__used_slots__ : ",__0.shape)
 
         assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
@@ -770,9 +768,29 @@ if __name__=='__main__':
         del tree, __0, __1, _1, _2, _3
         gc.collect() 
         get_globals_memory()
+    # -- end of loop --
 
+    all_df_stats        = comm.gather(df_stats, root=0)
+    all_surv_fractions  = comm.gather(
+                            {each: survivors_fraction[each] 
+                            for each in range(rank, len(file_hdf5), size)},
+                            root=0)
+
+    if rank == 0:
+        merged_stats = {}
+        for d in all_df_stats:
+            merged_stats.update(d)
+
+        for partial in all_surv_fractions:
+            for idx, val in partial.items():
+                survivors_fraction[idx] = val
+
+        df = pd.DataFrame.from_dict(merged_stats, orient='index')\
+            .reset_index().rename(columns={'index': 'snapshot'})
+        df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
     # For more information regarding the interpretation of skewness and kurtosis 
     # https://www.statology.org/how-to-report-skewness-kurtosis/
+    """
 
     df = pd.DataFrame.from_dict(df_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
     df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
@@ -783,7 +801,9 @@ if __name__=='__main__':
         df1.to_pickle(f'./series/data1_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
         print(f"Saved data1_{__input_case__}.pkl with Numpy arrays intact.")        
     print(f"Saved data[1]_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl with Numpy arrays intact.")
-    
+
+
+    """
     print(df.describe())
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)
@@ -791,3 +811,4 @@ if __name__=='__main__':
     seconds = int(elapsed_time % 60)
 
     print(f"Elapsed time: {hours}h {minutes}m {seconds}s")
+    
