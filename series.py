@@ -1,6 +1,6 @@
 import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
-from mpi4py import MPI
+
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,8 @@ from scipy.spatial import cKDTree
 
 from src.library import *
 
+start_time = time.time()
+
 input_file = sys.argv[1]
 config = {}
 with open(input_file, 'r') as f:
@@ -23,7 +25,9 @@ import getpass
 # in PC always below 500
 if getpass.getuser() == 'leni':
     # in cluster always above
-    config['__sample_size__'] = 500
+    pass
+    #config['__sample_size__'] = 500
+    #config['__alloc_slots__'] = 1500
 
 
 globals().update(config) # This injects every key in 'config' as a variable in your script
@@ -31,7 +35,7 @@ globals().update(config) # This injects every key in 'config' as a variable in y
 #print(config) # Now you can use them directly:
 
 # for timing
-start_time = time.time()
+
 
 print(f"\n[{sys.argv[0]}]: started running...\n")
 
@@ -218,7 +222,6 @@ def crs_path(*args, **kwargs):
 
             k += 1
         
-        #print(k, k_rev)
 
     print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < __alloc_slots__))), np.logical_not((np.any(mask2) and (k + 1 < __alloc_slots__))))
     #threshold = threshold.astype(int)
@@ -629,17 +632,20 @@ if __name__=='__main__':
     
     df_stats = dict()
     df_fields= dict()
-
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    #from mpi4py import MPI
+    #comm = MPI.COMM_WORLD
+    #rank = comm.Get_rank()
+    #size = comm.Get_size()
 
     #for i in range(rank, 100, size):
     #    hacer_calculo(i)
+    assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
 
-    #for each, filename in enumerate(file_hdf5):
-    for each in range(rank, len(file_hdf5), size):
-        filename = file_hdf5[each]
+    for each, (filename, center, _time) in enumerate(zip(file_hdf5, clst, tlst)):
+        #for each in range(rank, len(file_hdf5), size):
+        #filename = file_hdf5[each]
+        #center = clst[each,:]
+        print(each, filename, "\nx0 =", center, "\nt=", _time)
 
         snap = int(filename.split('.')[0][-3:])
         data = h5py.File(filename, 'r')
@@ -654,10 +660,10 @@ if __name__=='__main__':
         Bfield_grad = np.zeros((len(Pos), 9))
         Density_grad = np.zeros((len(Density), 3))
         Volume   = Mass/Density
-        center = clst[each,:]
+
         VoronoiPos-=center
         Pos       -=center    
-        _time = tlst[each]
+
 
         for dim in range(3):
             pos_from_center = Pos[:, dim]
@@ -670,15 +676,15 @@ if __name__=='__main__':
         table_data = [
             ["__curr_snap__", filename.split('/')[-1]],
             ["__cores_avail__", os.cpu_count()],
-            ["__alloc_slots__", 2*__alloc_slots__],
             ["__rloc__", __rloc__],
             ["__threshold__", __threshold__],
             ["__dense_cloud__", __dense_cloud__],
-            ["__sample_size__", __sample_size__],
+            ["__alloc_slots__", __alloc_slots__],
+            ["__sample_size__", __sample_size__]
             ]
 
         print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
-        
+
         tree = cKDTree(Pos)
 
         try:
@@ -689,21 +695,20 @@ if __name__=='__main__':
 
         directions=fibonacci_sphere(20)
         # dodecahedron (12 faces), and icosahedron (20 faces)
-        if __threshold__ == 1.0e+2:
-            __minor_threshold__ = 1.0e+1
 
-            __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__minor_threshold__)
-            radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__minor_threshold__)
+        __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
+        
+        radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
 
-            print("__alloc_slots__: ", __alloc_slots__)
-            print("__used_slots__ : ",__0.shape, radius_vectors.shape)
+        print("__alloc_slots__: ", __alloc_slots__)
+        print("__used_slots__ : ",__0.shape, radius_vectors.shape)
 
-            assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
+        assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
-            data.close()
+        data.close()
 
-            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __minor_threshold__) # not needed
+        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
+        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
 
         survivors = np.logical_and(survivors1, survivors2)
 
@@ -766,10 +771,6 @@ if __name__=='__main__':
         gc.collect() 
         get_globals_memory()
 
-        import src.library
-        src.library._cached_tree = None
-        src.library._cached_pos = None
-
     # For more information regarding the interpretation of skewness and kurtosis 
     # https://www.statology.org/how-to-report-skewness-kurtosis/
 
@@ -784,3 +785,9 @@ if __name__=='__main__':
     print(f"Saved data[1]_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl with Numpy arrays intact.")
     
     print(df.describe())
+    elapsed_time =time.time() - start_time
+    hours = int(elapsed_time // 3600)
+    minutes = int((elapsed_time % 3600) // 60)
+    seconds = int(elapsed_time % 60)
+
+    print(f"Elapsed time: {hours}h {minutes}m {seconds}s")
