@@ -5,6 +5,7 @@ Structure of the code
     magnetic_pockets/
     └── molecular-cloud-statistics/
         ├── README.md
+        ├── REMINDER.md
         ├── requirements.txt
         ├── data.py
         ├── stats.py

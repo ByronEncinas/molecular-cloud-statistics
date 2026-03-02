@@ -35,4 +35,13 @@
     __dense_cloud__ = 1.0e+2
     __threshold__   = 1.0e+1
 
+- Elapsed time: 0h 9m 9s
+    __cores_avail__ = 8 
+    __input_case__  = 'ideal'
+    __alloc_slots__ = 2500
+    __sample_size__ = 200
+    __rloc__        = 1.0e-1
+    __dense_cloud__ = 1.0e+2
+    __threshold__   = 1.0e+1
+    
 ## Times (UT Cluster)
