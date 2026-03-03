@@ -640,11 +640,6 @@ if __name__=='__main__':
 
     assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
 
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-
     local_error = 0  # 0 = success, 1 = failed
 
     for each in range(rank, len(file_hdf5), size):
