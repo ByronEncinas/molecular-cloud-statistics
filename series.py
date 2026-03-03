@@ -25,14 +25,7 @@ if getpass.getuser() == 'leni':
     #config['__alloc_slots__'] = 1500
     pass
 
-
-
 globals().update(config) # This injects every key in 'config' as a variable in your script
-
-#print(config) # Now you can use them directly:
-
-# for timing
-
 
 print(f"\n[{sys.argv[0]}]: started running...\n")
 
@@ -623,8 +616,22 @@ def declare_globals_and_constants():
     return None
 
 if __name__=='__main__':
+    from mpi4py import MPI          # Move to TOP of __main__
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    if rank == 0:
+        clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
+    else:
+        clst = dlst = tlst = slst = file_hdf5 = None
+
+    # broadcast to other ranks
+    clst, dlst, tlst, slst, file_hdf5 = comm.bcast(
+        (clst, dlst, tlst, slst, file_hdf5), root=0
+    )
     declare_globals_and_constants() 
-    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__) # coordinates, cell center density, time and snapshot of evolving cloud
     
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
@@ -638,131 +645,147 @@ if __name__=='__main__':
     rank = comm.Get_rank()
     size = comm.Get_size()
 
+    local_error = 0  # 0 = success, 1 = failed
+
     for each in range(rank, len(file_hdf5), size):
-        filename = file_hdf5[each]
-        center   = clst[each, :]
-        _time    = tlst[each]
-
-        snap = int(filename.split('.')[0][-3:])
-        data = h5py.File(filename, 'r')
-        __Boxsize__ = data['Header'].attrs['BoxSize']
-
-        Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
-        Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
-        VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-        Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
-        Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
-        Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
-        Bfield_grad = np.zeros((len(Pos), 9))
-        Density_grad = np.zeros((len(Density), 3))
-        Volume   = Mass/Density
-
-        VoronoiPos-=center
-        Pos       -=center    
-
-
-        for dim in range(3):
-            pos_from_center = Pos[:, dim]
-            too_high = pos_from_center > __Boxsize__ / 2
-            too_low  = pos_from_center < -__Boxsize__ / 2
-            Pos[too_high, dim] -= __Boxsize__
-            Pos[too_low,  dim] += __Boxsize__
-
-        table_data = [
-            ["__curr_snap__", filename.split('/')[-1]],
-            ["__cores_avail__", os.cpu_count()],
-            ["__rloc__", f"{__rloc__}" + " pc"],
-            ["__threshold__", f"{__threshold__}"+ " cm^-3"],
-            ["__dense_cloud__", f"{__dense_cloud__}"+ " cm^-3"],
-            ["__alloc_slots__", __alloc_slots__],
-            ["__sample_size__", __sample_size__]
-            ]
-
-        print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
-
-        tree = cKDTree(Pos)
-
         try:
-            x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
-        except:
-            raise ValueError("[Error] Faulty generation of 'x_input'")
+            filename = file_hdf5[each]
+            center   = clst[each, :]
+            _time    = tlst[each]
 
-        directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
+            snap = int(filename.split('.')[0][-3:])
+            data = h5py.File(filename, 'r')
+            __Boxsize__ = data['Header'].attrs['BoxSize']
 
-        __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
-        
-        radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
+            Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
+            Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
+            VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
+            Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
+            Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+            Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
+            Bfield_grad = np.zeros((len(Pos), 9))
+            Density_grad = np.zeros((len(Density), 3))
+            Volume   = Mass/Density
 
-        print("__alloc_slots__: ", __alloc_slots__)
-        print("__used_slots__ : ",__0.shape)
+            VoronoiPos-=center
+            Pos       -=center    
 
-        assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
-        data.close()
+            for dim in range(3):
+                pos_from_center = Pos[:, dim]
+                too_high = pos_from_center > __Boxsize__ / 2
+                too_low  = pos_from_center < -__Boxsize__ / 2
+                Pos[too_high, dim] -= __Boxsize__
+                Pos[too_low,  dim] += __Boxsize__
 
-        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-        r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
+            table_data = [
+                ["__curr_snap__", filename.split('/')[-1]],
+                ["__cores_avail__", os.cpu_count()],
+                ["__rloc__", f"{__rloc__}" + " pc"],
+                ["__threshold__", f"{__threshold__}"+ " cm^-3"],
+                ["__dense_cloud__", f"{__dense_cloud__}"+ " cm^-3"],
+                ["__alloc_slots__", __alloc_slots__],
+                ["__sample_size__", __sample_size__]
+                ]
 
-        survivors = np.logical_and(survivors1, survivors2)
+            print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
 
-        print(np.sum(survivors)/survivors.shape[0], " Survivor fraction")  
+            tree = cKDTree(Pos)
 
-        survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
-        u_input         = x_input[np.logical_not(survivors),:] # pc
-        x_input         = x_input[survivors,:]                 # pc
-        radius_vectors  = radius_vectors[:, survivors, :]      # pc
-        numb_densities  = numb_densities[:, survivors]         # cm-3
-        magnetic_fields = magnetic_fields[:, survivors]*gauss_code_to_gauss_cgs # Gauss CGS
-        mean_column     = mean_column[survivors]               # cm-2
-        median_column   = median_column[survivors]             # cm-2
-        path_column     = path_column[survivors]               # cm-2
-        n_rs            = n_rs[survivors]                      # cm-3
-        B_rs            = B_rs[survivors]*gauss_code_to_gauss_cgs # Gauss CGS
-        r_u             = r_u[survivors]                       # Adim
-        r_l             = r_l[survivors]                       # Adim
-        
+            try:
+                x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
+            except:
+                raise ValueError("[Error] Faulty generation of 'x_input'")
 
-        #distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
+            directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
 
-        mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
-        mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
+            __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
+            
+            radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
 
-        stats_dict = {
-            "time": _time, 
-            "x_input": x_input,
-            "n_rs": n_rs,
-            "B_rs": n_rs,
-            "n_path": path_column,
-            "n_los0": mean_column,
-            "n_los1": median_column,
-            "surv_fraction": survivors_fraction[each],
-            "r_u": r_u,
-            "r_l": r_l
-        }
+            print("__alloc_slots__: ", __alloc_slots__)
+            print("__used_slots__ : ",__0.shape)
 
-        df_stats[str(snap)]  = stats_dict
-        """
-        field_dict = {
-            "time": _time,
-            #"x_index": follow_index,
-            "directions": directions,
-            "x_input": x_input,
-            "B_s": magnetic_fields,
-            "r_s": radius_vectors,
-            "n_s": numb_densities
-        }
+            assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
-        df_fields[str(snap)]  = field_dict
-        """
+            data.close()
 
-        if 'Pos' in globals():
-            print("\nPos is global")
+            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
 
-        get_globals_memory()            
+            survivors = np.logical_and(survivors1, survivors2)
 
-        del tree, __0, __1, _1, _2, _3
-        gc.collect() 
-        get_globals_memory()
+            print(np.sum(survivors)/survivors.shape[0], " Survivor fraction")  
+
+            survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
+            u_input         = x_input[np.logical_not(survivors),:] # pc
+            x_input         = x_input[survivors,:]                 # pc
+            radius_vectors  = radius_vectors[:, survivors, :]      # pc
+            numb_densities  = numb_densities[:, survivors]         # cm-3
+            magnetic_fields = magnetic_fields[:, survivors]*gauss_code_to_gauss_cgs # Gauss CGS
+            mean_column     = mean_column[survivors]               # cm-2
+            median_column   = median_column[survivors]             # cm-2
+            path_column     = path_column[survivors]               # cm-2
+            n_rs            = n_rs[survivors]                      # cm-3
+            B_rs            = B_rs[survivors]*gauss_code_to_gauss_cgs # Gauss CGS
+            r_u             = r_u[survivors]                       # Adim
+            r_l             = r_l[survivors]                       # Adim
+            
+
+            #distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
+
+            mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
+            mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
+
+            stats_dict = {
+                "time": _time, 
+                "x_input": x_input,
+                "n_rs": n_rs,
+                "B_rs": n_rs,
+                "n_path": path_column,
+                "n_los0": mean_column,
+                "n_los1": median_column,
+                "surv_fraction": survivors_fraction[each],
+                "r_u": r_u,
+                "r_l": r_l
+            }
+
+            df_stats[str(snap)]  = stats_dict
+            """
+            field_dict = {
+                "time": _time,
+                #"x_index": follow_index,
+                "directions": directions,
+                "x_input": x_input,
+                "B_s": magnetic_fields,
+                "r_s": radius_vectors,
+                "n_s": numb_densities
+            }
+
+            df_fields[str(snap)]  = field_dict
+            """
+
+            if 'Pos' in globals():
+                print("\nPos is global")
+
+            get_globals_memory()            
+
+            del tree, __0, __1, _1, _2, _3
+            gc.collect() 
+            get_globals_memory()
+            # ... your existing loop body ...
+            pass
+        except Exception as e:
+            print(f"[Rank {rank}] ERROR on file {file_hdf5[each]}: {e}", flush=True)
+            local_error = 1
+            break  # don't try more files if one failed
+
+    all_errors = comm.allreduce(local_error, op=MPI.SUM)
+    if all_errors > 0:
+        if rank == 0:
+            print(f"[Rank 0] {all_errors} rank(s) failed. Skipping merge.", flush=True)
+        MPI.Finalize()
+        sys.exit(1)
 
     import pickle
 
