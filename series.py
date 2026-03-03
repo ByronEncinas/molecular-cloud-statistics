@@ -618,21 +618,24 @@ def declare_globals_and_constants():
 
 if __name__=='__main__':
     declare_globals_and_constants()
+    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
+
     from mpi4py import MPI          # Move to TOP of __main__
 
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    if rank == 0:
-        clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
-    else:
-        clst = dlst = tlst = slst = file_hdf5 = None
-
+    #if rank == 0:
+    #    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)    
+    #else:
+    #    clst = dlst = tlst = slst = file_hdf5 = None
+    #
     # broadcast to other ranks
-    clst, dlst, tlst, slst, file_hdf5 = comm.bcast(
-        (clst, dlst, tlst, slst, file_hdf5), root=0
-    )
+    #clst, dlst, tlst, slst, file_hdf5 = comm.bcast(
+    #    (clst, dlst, tlst, slst, file_hdf5), root=0
+    #)
+    
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
     df_stats = dict()
