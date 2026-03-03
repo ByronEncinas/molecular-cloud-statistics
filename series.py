@@ -1,16 +1,12 @@
 import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
 from tabulate import tabulate
-
 import numpy as np
 import pandas as pd
-
 from copy import deepcopy
-
 from scipy.stats import skew
 from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
-
 from src.library import *
 
 start_time = time.time()
@@ -25,9 +21,10 @@ import getpass
 # in PC always below 500
 if getpass.getuser() == 'leni':
     # in cluster always above
-    pass
     #config['__sample_size__'] = 500
     #config['__alloc_slots__'] = 1500
+    pass
+
 
 
 globals().update(config) # This injects every key in 'config' as a variable in your script
@@ -703,7 +700,7 @@ if __name__=='__main__':
 
         data.close()
 
-        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
+        r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
         r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
 
         survivors = np.logical_and(survivors1, survivors2)
@@ -731,10 +728,10 @@ if __name__=='__main__':
         mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
 
         stats_dict = {
-            "time": _time,
+            "time": _time, 
             "x_input": x_input,
             "n_rs": n_rs,
-            "B_rs": B_rs,
+            "B_rs": n_rs,
             "n_path": path_column,
             "n_los0": mean_column,
             "n_los1": median_column,
@@ -766,7 +763,7 @@ if __name__=='__main__':
         del tree, __0, __1, _1, _2, _3
         gc.collect() 
         get_globals_memory()
-    # -- end of loop --
+
     import pickle
 
     surv_partial = {each: survivors_fraction[each] 

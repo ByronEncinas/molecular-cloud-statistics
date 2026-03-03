@@ -461,6 +461,7 @@ if os.path.exists(file):
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_colwidth', None)
+    print(df.describe())
     # import n-arrays 
     t     = df["time"].to_numpy()
     x     = df["x_input"].to_numpy()
@@ -469,9 +470,19 @@ if os.path.exists(file):
     Nlos0 = df["n_los0"].to_numpy()  # mean
     Nlos1 = df["n_los1"].to_numpy()  # median
     Ncrs  = df["n_path"].to_numpy()
-    surf  = df["surv_fraction"].to_numpy()
     factu = df["r_u"].to_numpy()
     factl = df["r_l"].to_numpy()
+    surf  = df["surv_fraction"].to_numpy()
+    print(t.shape, t[0],t[-1]) # ) # 
+    print(x.shape, x[0].shape, x[-1].shape) # should be (24, m)
+    print(n.shape, n[0].shape, n[-1].shape) # should be (24, m)
+    print(B.shape, B[0].shape, B[-1].shape) # should be (24, m)
+    print(Nlos0.shape, Nlos0[0].shape, Nlos0[-1].shape) # should be (24, m)
+    print(Nlos1.shape, Nlos1[0].shape, Nlos1[-1].shape) # should be (24, m)
+    print(Ncrs.shape, Ncrs[0].shape, Ncrs[-1].shape) # should be (24, m)
+    print(surf.shape, surf[0], surf[-1]) # should be (24, m)
+    print(factu.shape,factu[0].shape, factu[-1].shape) # should be (24, m)
+    print(factl.shape,factl[0].shape,factl[-1].shape) # should be (24, m)
 
 if False: #os.path.exists(f'./series/data1_{INPUT}.pkl'):
     df = pd.read_pickle(f'./series/data1_{INPUT}.pkl')

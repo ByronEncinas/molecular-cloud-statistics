@@ -1,5 +1,11 @@
 # Simulation Configuration for Cosmic Ray in Plasma Environments
 
+To run on parallel with mpi
+```
+user@server ~/home$ mpirun -n 2 python3 series.py file.input
+user@server ~/home$ srun -n 2 python3 series.py file.input
+```
+
 Structure of the code
 
     magnetic_pockets/
