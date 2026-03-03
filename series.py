@@ -626,9 +626,9 @@ def declare_globals_and_constants():
     return None
 
 if __name__=='__main__':
-    declare_globals_and_constants()
-    # coordinates, cell center density, time and snapshot of evolving cloud
-    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
+    declare_globals_and_constants() 
+    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__) # coordinates, cell center density, time and snapshot of evolving cloud
+    
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
     df_stats = dict()
@@ -686,13 +686,11 @@ if __name__=='__main__':
         tree = cKDTree(Pos)
 
         try:
-            #x_input = np.vstack([uniform_in_3d(__sample_size__, __rloc__, n_crit=__dense_cloud__), np.array([0.0,0.0,0.0])])
             x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
         except:
             raise ValueError("[Error] Faulty generation of 'x_input'")
 
-        directions=fibonacci_sphere(20)
-        # dodecahedron (12 faces), and icosahedron (20 faces)
+        directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
 
         __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
         
@@ -769,25 +767,61 @@ if __name__=='__main__':
         gc.collect() 
         get_globals_memory()
     # -- end of loop --
+    import pickle
 
-    all_df_stats        = comm.gather(df_stats, root=0)
-    all_surv_fractions  = comm.gather(
-                            {each: survivors_fraction[each] 
-                            for each in range(rank, len(file_hdf5), size)},
-                            root=0)
+    surv_partial = {each: survivors_fraction[each] 
+                    for each in range(rank, len(file_hdf5), size)}
 
+    with open(f'./series/tmp_stats_rank{rank}.pkl', 'wb') as f:
+        pickle.dump(df_stats, f)
+
+    with open(f'./series/tmp_surv_rank{rank}.pkl', 'wb') as f:
+        pickle.dump(surv_partial, f)
+
+    comm.Barrier()
     if rank == 0:
-        merged_stats = {}
-        for d in all_df_stats:
-            merged_stats.update(d)
+        import asyncio
+        import glob
 
-        for partial in all_surv_fractions:
-            for idx, val in partial.items():
-                survivors_fraction[idx] = val
+        async def merge_and_save():
+            loop = asyncio.get_event_loop()
 
-        df = pd.DataFrame.from_dict(merged_stats, orient='index')\
-            .reset_index().rename(columns={'index': 'snapshot'})
-        df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
+            stat_files = sorted(glob.glob('./series/tmp_stats_rank*.pkl'))
+            surv_files = sorted(glob.glob('./series/tmp_surv_rank*.pkl'))
+
+            # Read all rank files concurrently
+            def load_pickle(path):
+                with open(path, 'rb') as f:
+                    return pickle.load(f)
+
+            stat_tasks = [loop.run_in_executor(None, load_pickle, f) for f in stat_files]
+            surv_tasks = [loop.run_in_executor(None, load_pickle, f) for f in surv_files]
+
+            all_stats = await asyncio.gather(*stat_tasks)
+            all_survs = await asyncio.gather(*surv_tasks)
+
+            # Merge stats
+            merged_stats = {}
+            for d in all_stats:
+                merged_stats.update(d)
+
+            # Merge survivors_fraction
+            for partial in all_survs:
+                for idx, val in partial.items():
+                    survivors_fraction[idx] = val
+
+            # Save final output
+            df = pd.DataFrame.from_dict(merged_stats, orient='index')\
+                .reset_index().rename(columns={'index': 'snapshot'})
+            df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
+
+            # Clean up temp files
+            for f in stat_files + surv_files:
+                os.remove(f)
+
+            print(f"Merged {len(stat_files)} rank files successfully.")
+
+        asyncio.run(merge_and_save())
     # For more information regarding the interpretation of skewness and kurtosis 
     # https://www.statology.org/how-to-report-skewness-kurtosis/
     """
@@ -804,7 +838,6 @@ if __name__=='__main__':
 
 
     """
-    print(df.describe())
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)
     minutes = int((elapsed_time % 3600) // 60)
