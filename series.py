@@ -599,6 +599,7 @@ def declare_globals_and_constants():
     __start_time__  = 3.0 # Myrs
     if __input_case__ =='ideal':
         __start_snap__  = '270'
+
     if __input_case__ =='amb':
         __start_snap__  = '225'
 
@@ -616,6 +617,7 @@ def declare_globals_and_constants():
     return None
 
 if __name__=='__main__':
+    declare_globals_and_constants()
     from mpi4py import MPI          # Move to TOP of __main__
 
     comm = MPI.COMM_WORLD
@@ -631,8 +633,6 @@ if __name__=='__main__':
     clst, dlst, tlst, slst, file_hdf5 = comm.bcast(
         (clst, dlst, tlst, slst, file_hdf5), root=0
     )
-    declare_globals_and_constants() 
-    
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
     df_stats = dict()
