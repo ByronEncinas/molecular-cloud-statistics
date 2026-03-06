@@ -71,17 +71,16 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
+        if np.logical_not(np.any(valid_mask)):
+            raise LookupError
         if len(valid_vectors) == 0:
             _rloc_ /=2
             Warning(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
-        
         if _rloc_ < 1.0e-6:
-
             #        Sun ---|----------1 AU (Earth)----------->
             #               ^
             #               4.848 × 10⁻⁶ pc
             print("Current valid vectors: ",len(valid_vectors))
-
             raise LookupError(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
     
     return np.array(deepcopy(valid_vectors))
