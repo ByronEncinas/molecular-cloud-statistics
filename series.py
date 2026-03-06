@@ -1,4 +1,4 @@
-import csv, glob, os, sys, time, h5py, gc
+import csv, glob, os, sys, time, h5py, gc, ctypes
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 import numpy as np
@@ -8,26 +8,9 @@ from scipy.stats import skew
 from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
 from src.library import *
+from mpi4py import MPI          # Move to TOP of __main__
 
 start_time = time.time()
-
-input_file = sys.argv[1]
-config = {}
-with open(input_file, 'r') as f:
-    exec(f.read(), {}, config)
-
-import getpass
-
-# in PC always below 500
-if getpass.getuser() == 'leni':
-    # in cluster always above
-    #config['__sample_size__'] = 500
-    #config['__alloc_slots__'] = 1500
-    pass
-
-globals().update(config) # This injects every key in 'config' as a variable in your script
-
-print(f"\n[{sys.argv[0]}]: started running...\n")
 
 def get_globals_memory() -> None:
     import sys
@@ -43,7 +26,7 @@ def get_globals_memory() -> None:
 
     # Convert bytes → gigabytes
     gb = total / (1024 ** 3)
-    print(f"Memory used by globals: {gb:.6f} gigabytes")
+    print(f"Memory used by globals: {gb:.6f} gigabytes", flush=True)
 
 @timing_decorator
 def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
@@ -80,27 +63,10 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
             #        Sun ---|----------1 AU (Earth)----------->
             #               ^
             #               4.848 × 10⁻⁶ pc
-            print("Current valid vectors: ",len(valid_vectors))
+            print("Current valid vectors: ",len(valid_vectors), flush=True)
             raise LookupError(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
     
     return np.array(deepcopy(valid_vectors))
-
-@timing_decorator
-def uniform_in_2d_tree_dependent(tree, no, n = 10, rloc=1.0, n_crit=1.0e+2):
-
-    n = 10
-    X, Y = np.meshgrid(np.linspace(-1, 1, n), np.linspace(-1, 1, n))
-    Z = np.zeros_like(X)
-    mk = (X*X + Y*Y + Z*Z) < rloc*rloc
-    
-    # I define a disk 
-    from gists.__vor__ import traslation_rotation
-    points = np.stack([X.ravel(), Y.ravel(), Z.ravel()], axis=1)
-    _x = np.array([0.0, 0.0, 0.0]) # because we are centered on the cloud
-    _b = np.array([1.0, 1.0, 1.0])  
-    pointsp = traslation_rotation(_x, _b, points)
-
-    return None
 
 @timing_decorator
 def crs_path(*args, **kwargs):
@@ -243,7 +209,6 @@ def crs_path(*args, **kwargs):
 
 @timing_decorator
 def line_of_sight(*args, **kwargs):
-    #Bfield, Density, Mass, Bfield_grad, Density_grad = args[:5]
 
     x_init = kwargs.get('x_init', None)
     directions = kwargs.get('directions', fibonacci_sphere(20))
@@ -485,108 +450,12 @@ def describe(data, band=False, percent=False):
         return p_25, p_10, p_5
     return mean_, median_, skew_, kurt_
 
-def larson_width_line_relation(**kwargs):
-    velocities = kwargs.get('Velocities', None)
-    data = kwargs.get('data', None)
-    
-    if data:
-        #data = np.array([
-        #    (0.1590312239231974, 0.49723685684431057),
-        #    (0.04564133526179595, 0.3094255487061252),
-        #    (0.08250841915338421, 0.3874978892146356)
-        #])
-
-        L, sigma_v = data[:, 0], data[:, 1]
-
-        logL = np.log10(L)
-        logsig = np.log10(sigma_v)
-        coeffs = np.polyfit(logL, logsig, 1)
-        alpha = coeffs[0]
-        A = 10 ** coeffs[1]
-        
-        print(f"Power-law fit: sigma_v = {A:.4f} * L^{alpha:.4f}")
-
-        # --- Plot ---
-        plt.figure(figsize=(5,4))
-        plt.loglog(L, sigma_v, 'o', color='royalblue', label='Data')
-        plt.loglog(L, A * L**alpha, '--', color='darkorange',
-                   label=fr'Fit: $\sigma_v = {A:.2f}L^{{{alpha:.2f}}}$')
-        plt.xlabel('L (pc)')
-        plt.ylabel(r'$\sigma_v$ (km/s)')
-        plt.title('Larson Width–Size Relation')
-        plt.grid(True, which='both', ls='--', alpha=0.6)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig('./larson_width_size.png')
-        return 0
-
-    """
-    Velocities must be provided in km/s
-    L will be returned in 
-    """
-    c = (Pos[:, 0]*Pos[:, 0] + Pos[:, 1]*Pos[:, 1] + Pos[:, 2]*Pos[:, 2] < __rloc__*__rloc__)
-    d = Density * gr_cm3_to_nuclei_cm3 > __dense_cloud__
-    cd = np.logical_and(c,d)
-    vel_mags = np.linalg.norm(velocities[cd], axis=1)  # magnitude of velocities within cloud
-    sigma_vel = np.std(vel_mags)
-    p = 0.38
-    sigma_scale = 1.0 # km/s
-    L_scale = 1.0 # pc
-    L = L_scale*(sigma_vel/sigma_scale)**(1/p)
-
-    # remember that L represents a diameters or width of the cloud
-    return L, sigma_vel # width of cloud, velocity dispersion
-
-def evolution_descriptors():
-    df_factor = pd.read_pickle('./series/r_stats.pkl')
-    df_column = pd.read_pickle('./series/c_stats.pkl')
-
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
-
-    df_factor.plot(x='time', y='mean_r_u', ax=ax0, label=f'mean')
-    df_factor.plot(x='time', y='median_r_u', ax=ax0, label=f'median')
-    ax0.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax0.set_ylabel('$R$ Factor', fontsize=16)
-    ax0.legend(fontsize=16)
-    ax0.grid(True)
-
-    df_factor.plot(x='time', y='skew_r_u', ax=ax1, label=f'skew')
-    df_factor.plot(x='time', y='kurt_r_u', ax=ax1, label=f'kurt')
-    ax1.set_xlabel('$t - t_{G-ON}$ [Myr]', fontsize=16)
-    ax1.legend(fontsize=16)
-    ax1.grid(True)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # leave space for legend
-    plt.savefig(f'./series/descriptors_{__input_case__}.png', dpi=300, bbox_inches='tight')
-    plt.close(fig)
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-
-    ax.boxplot(
-        df_column['n_path'].tolist(),       # convert Series of arrays -> list of arrays
-        positions=df_column['snapshot'],    # x-axis positions
-        widths=2,                           # adjust width
-        patch_artist=True,                  # color the boxes
-        medianprops=dict(color='red')       # median line color
-    )
-
-    ax.set_xlabel("Time")
-    ax.set_ylabel("ratio0")
-    ax.set_yscale("log")
-    ax.set_title("Evolution of ratio0 over Time")
-
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
-    plt.savefig(f'./series/ratio0_{__input_case__}.png', dpi=150, bbox_inches='tight')
-    plt.close(fig)
-
 def declare_globals_and_constants():
 
     # global variables that can be modified from anywhere in the code
-    #global __rloc__, __sample_size__, __input_case__, __start_snap__
-    #global __dense_cloud__,__threshold__, __alloc_slots__
-    global Pos, VoronoiPos, Bfield, Mass, Density, Bfield_grad, Density_grad, Volume
-    global flag, FloatType, FloatType2, IntType, __start_snap__
+    global __rloc__, __sample_size__, __input_case__, __start_snap__
+    global __dense_cloud__,__threshold__, __alloc_slots__
+    global FloatType, FloatType2, IntType
 
     # amb:   t > 3.0 Myrs snap > 225    
     # ideal: t > 3.0 Myrs snap > 270
@@ -598,47 +467,48 @@ def declare_globals_and_constants():
         __start_snap__  = '225'
 
     # rename
-    FloatType                = np.float64
-    FloatType2                = np.float128
-    IntType                  = np.int32
+    FloatType          = np.float64
+    FloatType2         = np.float128
+    IntType            = np.int32
 
-    # output directory
     os.makedirs("series", exist_ok=True)
-
-    # flag to import data
-    flag = True
 
     return None
 
-if __name__=='__main__':
-    declare_globals_and_constants()
-    _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
-    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
+input_file = sys.argv[1]
+config = {}
+with open(input_file, 'r') as f:
+    exec(f.read(), {}, config)
 
-    from mpi4py import MPI          # Move to TOP of __main__
+globals().update(config) # This injects every key as a variable in your script
+
+print(f"\n[{sys.argv[0]}]: started running...\n", flush=True)
+
+if __name__=='__main__':
+    # declares global variables
+    declare_globals_and_constants()
 
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    #if rank == 0:
-    #    clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)    
-    #else:
-    #    clst = dlst = tlst = slst = file_hdf5 = None
-    #
-    # broadcast to other ranks
-    #clst, dlst, tlst, slst, file_hdf5 = comm.bcast(
-    #    (clst, dlst, tlst, slst, file_hdf5), root=0
-    #)
+    if rank == 0:
+        clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
+        _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
+    else:
+        clst = dlst = tlst = slst = file_hdf5 = None
+        _id_ = None
+
+    clst, dlst, tlst, slst, file_hdf5, _id_ = comm.bcast(
+        (clst, dlst, tlst, slst, file_hdf5, _id_), root=0
+    )
     
+    assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
+
     survivors_fraction = np.zeros(file_hdf5.shape[0])
     
     df_stats = dict()
     df_fields= dict()
-
-    assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
-
-    local_error = 0  # 0 = success, 1 = failed
 
     for each in range(rank, len(file_hdf5), size):
         try:
@@ -653,12 +523,10 @@ if __name__=='__main__':
             Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
             Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
             VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-            Velocities = np.asarray(data['PartType0']['Velocities'], dtype=FloatType)
             Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
-            Mass = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
-            Bfield_grad = np.zeros((len(Pos), 9))
+            #Bfield_grad = np.zeros((len(Pos), 9))
             Density_grad = np.zeros((len(Density), 3))
-            Volume   = Mass/Density
+            Volume   = np.asarray(data['PartType0']['Masses'], dtype=FloatType)/Density
 
             VoronoiPos-=center
             Pos       -=center    
@@ -680,25 +548,25 @@ if __name__=='__main__':
                 ["__sample_size__", __sample_size__]
                 ]
 
-            print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n')
+            print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n', flush=True)
 
             tree = cKDTree(Pos)
 
             try:
                 x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
-            except:
-                print("[Error] Faulty generation of 'x_input'")
-                print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3")
+            except (ValueError, RuntimeError) as e:
+                print(f"[Error] Faulty generation of 'x_input': {e}", flush=True)
+                print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3", flush=True)
                 continue
-
+                
             directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
 
             __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
             
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
 
-            print("__alloc_slots__: ", __alloc_slots__)
-            print("__used_slots__ : ",__0.shape)
+            print("__alloc_slots__: ", __alloc_slots__, flush=True)
+            print("__used_slots__ : ",__0.shape, flush=True)
 
             assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
@@ -708,11 +576,11 @@ if __name__=='__main__':
                 r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
                 r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
             else:
-                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # make redundant
                 r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # make redundant
             survivors = np.logical_and(survivors1, survivors2)
 
-            print(np.sum(survivors)/survivors.shape[0], " Survivor fraction")  
+            print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
 
             survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
             u_input         = x_input[np.logical_not(survivors),:] # pc
@@ -729,8 +597,6 @@ if __name__=='__main__':
             r_l             = r_l[survivors]                       # Adim
             
 
-            #distance = np.linalg.norm(x_input, axis=1)*pc_to_cm
-
             mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
             mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
 
@@ -738,7 +604,7 @@ if __name__=='__main__':
                 "time": _time, 
                 "x_input": x_input,
                 "n_rs": n_rs,
-                "B_rs": n_rs,
+                "B_rs": B_rs,
                 "n_path": path_column,
                 "n_los0": mean_column,
                 "n_los1": median_column,
@@ -763,26 +629,20 @@ if __name__=='__main__':
             """
 
             if 'Pos' in globals():
-                print("\nPos is global")
+                print("\nPos is global", flush=True)
 
             get_globals_memory()            
-
+            # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
+            del radius_vectors, numb_densities, magnetic_fields
+            del mean_column, median_column, path_column
+            del n_rs, B_rs, r_u, r_l, x_input, u_input, survivors, survivors1, survivors2
             del tree, __0, __1, _1, _2, _3
-            gc.collect() 
-            get_globals_memory()
-            # ... your existing loop body ...
-            pass
-        except Exception as e:
-            print(f"[Rank {rank}] ERROR on file {file_hdf5[each]}: {e}", flush=True)
-            local_error = 1
-            break  # don't try more files if one failed
 
-    all_errors = comm.allreduce(local_error, op=MPI.SUM)
-    if all_errors > 0:
-        if rank == 0:
-            print(f"[Rank 0] {all_errors} rank(s) failed. Skipping merge.", flush=True)
-        MPI.Finalize()
-        sys.exit(1)
+            gc.collect()
+            get_globals_memory()
+            
+        except Exception as e:
+            print(f"[Rank {rank}] ERROR on file {each}: {e}", flush=True)
 
     import pickle
 
@@ -836,25 +696,10 @@ if __name__=='__main__':
             for f in stat_files + surv_files:
                 os.remove(f)
 
-            print(f"Merged {len(stat_files)} rank files successfully.")
+            print(f"Merged {len(stat_files)} rank files successfully.", flush=True)
 
         asyncio.run(merge_and_save())
-    # For more information regarding the interpretation of skewness and kurtosis 
-    # https://www.statology.org/how-to-report-skewness-kurtosis/
-    """
 
-    df = pd.DataFrame.from_dict(df_stats, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-    df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
-
-
-    if df_fields != {}:
-        df1 = pd.DataFrame.from_dict(df_fields, orient='index').reset_index().rename(columns={'index': 'snapshot'})
-        df1.to_pickle(f'./series/data1_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
-        print(f"Saved data1_{__input_case__}.pkl with Numpy arrays intact.")        
-    print(f"Saved data[1]_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl with Numpy arrays intact.")
-
-
-    """
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)
     minutes = int((elapsed_time % 3600) // 60)
