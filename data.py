@@ -25,7 +25,7 @@ ALPHA   = 0.9
 SIZE    = 8
 FONTSIZE = 12
 GRID_ALPHA = 0.5
-INPUT = 'ideal'
+INPUT = '4a1'
 
 def field_lines_r_vol(b, r, r0, lr):
     from gists.__vor__ import traslation_rotation
@@ -450,7 +450,7 @@ def local_cr_spectra(size):
 
 #file = f'./series/data_{INPUT}.pkl'
 #file = f'./series/data1_{INPUT}.pkl'
-file = f'./series/data_dc2.0_{INPUT}.pkl'
+file = f'./series/data_{INPUT}.pkl'
 
 if os.path.exists(file):
     # Load the pickled DataFrames
@@ -462,17 +462,21 @@ if os.path.exists(file):
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_colwidth', None)
     print(df.describe())
+
     # import n-arrays 
     t     = df["time"].to_numpy()
-    x     = df["x_input"].to_numpy()
-    n     = df["n_rs"].to_numpy()
-    B     = df["B_rs"].to_numpy()
-    Nlos0 = df["n_los0"].to_numpy()  # mean
-    Nlos1 = df["n_los1"].to_numpy()  # median
-    Ncrs  = df["n_path"].to_numpy()
-    factu = df["r_u"].to_numpy()
-    factl = df["r_l"].to_numpy()
-    surf  = df["surv_fraction"].to_numpy()
+    _ = np.argsort(t)
+    t     = df["time"].to_numpy()[_]
+    x     = df["x_input"].to_numpy()[_]
+    n     = df["n_rs"].to_numpy()[_]
+    B     = df["B_rs"].to_numpy()[_]
+    Nlos0 = df["n_los0"].to_numpy() [_] # mean
+    Nlos1 = df["n_los1"].to_numpy() [_] # median
+    Ncrs  = df["n_path"].to_numpy()[_]
+    factu = df["r_u"].to_numpy()[_]
+    factl = df["r_l"].to_numpy()[_]
+    surf  = df["surv_fraction"].to_numpy()[_]
+
     print(t.shape, t[0],t[-1]) # ) # 
     print(x.shape, x[0].shape, x[-1].shape) # should be (24, m)
     print(n.shape, n[0].shape, n[-1].shape) # should be (24, m)
@@ -483,6 +487,25 @@ if os.path.exists(file):
     print(surf.shape, surf[0], surf[-1]) # should be (24, m)
     print(factu.shape,factu[0].shape, factu[-1].shape) # should be (24, m)
     print(factl.shape,factl[0].shape,factl[-1].shape) # should be (24, m)
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6))
+
+    axes[0].plot(t, 'o-', color='steelblue', label='t (original)')
+    axes[0].set_title('t  —  original order')
+    axes[0].set_xlabel('index')
+    axes[0].set_ylabel('value')
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend()
+
+    axes[1].plot(t[_], 'o-', color='tomato', label='t[argsort(t)]  —  sorted')
+    axes[1].set_title('t[_]  —  sorted order')
+    axes[1].set_xlabel('index')
+    axes[1].set_ylabel('value')
+    axes[1].grid(True, alpha=0.3)
+    axes[1].legend()
+
+    plt.tight_layout()
+    plt.show()
 
 if False: #os.path.exists(f'./series/data1_{INPUT}.pkl'):
     df = pd.read_pickle(f'./series/data1_{INPUT}.pkl')
@@ -521,6 +544,7 @@ if __name__ == '__main__':
     """
 
     # Plot factu and factl evolution in time and maybe a window to the last values
+    print(factu)
     f_mean   = np.array([np.mean(ul[ul<1]) for ul in factu])
     f_median = np.array([np.median(ul[ul<1]) for ul in factu])
     f_std    = np.array([np.std(ul[ul<1]) for ul in factu])
