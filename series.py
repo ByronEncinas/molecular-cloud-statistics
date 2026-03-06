@@ -612,6 +612,7 @@ def declare_globals_and_constants():
 
 if __name__=='__main__':
     declare_globals_and_constants()
+    _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
     clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
 
     from mpi4py import MPI          # Move to TOP of __main__
@@ -641,8 +642,6 @@ if __name__=='__main__':
 
     for each in range(rank, len(file_hdf5), size):
         try:
-
-            _id_ = input_file.split('.')[0][0] + input_file.split('.')[0][-1]
             filename = file_hdf5[each]
             center   = clst[each, :]
             _time    = tlst[each]
