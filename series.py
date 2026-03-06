@@ -484,6 +484,7 @@ globals().update(config) # This injects every key as a variable in your script
 
 print(f"\n[{sys.argv[0]}]: started running...\n", flush=True)
 
+
 if __name__=='__main__':
     # declares global variables
     declare_globals_and_constants()
@@ -511,138 +512,137 @@ if __name__=='__main__':
     df_fields= dict()
 
     for each in range(rank, len(file_hdf5), size):
+        filename = file_hdf5[each]
+        center   = clst[each, :]
+        _time    = tlst[each]
+        print(filename, flush = True)
+
+        snap = int(filename.split('.')[0][-3:])
+        data = h5py.File(filename, 'r')
+        __Boxsize__ = data['Header'].attrs['BoxSize']
+
+        Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
+        Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
+        VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
+        Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+        #Bfield_grad = np.zeros((len(Pos), 9))
+        Density_grad = np.zeros((len(Density), 3))
+        Volume   = np.asarray(data['PartType0']['Masses'], dtype=FloatType)/Density
+
+        VoronoiPos-=center
+        Pos       -=center    
+
+        for dim in range(3):
+            pos_from_center = Pos[:, dim]
+            too_high = pos_from_center > __Boxsize__ / 2
+            too_low  = pos_from_center < -__Boxsize__ / 2
+            Pos[too_high, dim] -= __Boxsize__
+            Pos[too_low,  dim] += __Boxsize__
+
+        table_data = [
+            ["__curr_snap__", filename.split('/')[-1]],
+            ["__cores_avail__", os.cpu_count()],
+            ["__rloc__", f"{__rloc__}" + " pc"],
+            ["__threshold__", f"{__threshold__}"+ " cm^-3"],
+            ["__dense_cloud__", f"{__dense_cloud__}"+ " cm^-3"],
+            ["__alloc_slots__", __alloc_slots__],
+            ["__sample_size__", __sample_size__]
+            ]
+
+        print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n', flush=True)
+
+        tree = cKDTree(Pos)
+
         try:
-            filename = file_hdf5[each]
-            center   = clst[each, :]
-            _time    = tlst[each]
-
-            snap = int(filename.split('.')[0][-3:])
-            data = h5py.File(filename, 'r')
-            __Boxsize__ = data['Header'].attrs['BoxSize']
-
-            Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
-            Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
-            VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-            Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
-            #Bfield_grad = np.zeros((len(Pos), 9))
-            Density_grad = np.zeros((len(Density), 3))
-            Volume   = np.asarray(data['PartType0']['Masses'], dtype=FloatType)/Density
-
-            VoronoiPos-=center
-            Pos       -=center    
-
-            for dim in range(3):
-                pos_from_center = Pos[:, dim]
-                too_high = pos_from_center > __Boxsize__ / 2
-                too_low  = pos_from_center < -__Boxsize__ / 2
-                Pos[too_high, dim] -= __Boxsize__
-                Pos[too_low,  dim] += __Boxsize__
-
-            table_data = [
-                ["__curr_snap__", filename.split('/')[-1]],
-                ["__cores_avail__", os.cpu_count()],
-                ["__rloc__", f"{__rloc__}" + " pc"],
-                ["__threshold__", f"{__threshold__}"+ " cm^-3"],
-                ["__dense_cloud__", f"{__dense_cloud__}"+ " cm^-3"],
-                ["__alloc_slots__", __alloc_slots__],
-                ["__sample_size__", __sample_size__]
-                ]
-
-            print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n', flush=True)
-
-            tree = cKDTree(Pos)
-
-            try:
-                x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
-            except (ValueError, RuntimeError) as e:
-                print(f"[Error] Faulty generation of 'x_input': {e}", flush=True)
-                print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3", flush=True)
-                continue
-                
-            directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
-
+            x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
+            print(x_input.shape, flush=True) 
+        except (ValueError, RuntimeError) as e:
+            print(f"[Error] Faulty generation of 'x_input': {e}", flush=True)
+            print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3", flush=True)
+            continue
+            
+        directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
+        try:
             __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
-            
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
+        except:
+            print("Function: line_of_sight or crs_path faulty")
+            break
 
-            print("__alloc_slots__: ", __alloc_slots__, flush=True)
-            print("__used_slots__ : ",__0.shape, flush=True)
+        print("__alloc_slots__: ", __alloc_slots__, flush=True)
+        print("__used_slots__ : ",__0.shape, flush=True)
 
-            assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
+        assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
-            data.close()
-            
-            if np.log10(__threshold__) < 2: # so if thresh = 100 cm-3, 
-                r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
-                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-            else:
-                r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # make redundant
-            survivors = np.logical_and(survivors1, survivors2)
+        data.close()
+        
+        if np.log10(__threshold__) < 2: 
+            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
+            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+        else:
+            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # make redundant
+        
+        survivors = np.logical_and(survivors1, survivors2)
 
-            print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
+        print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
+        
 
-            survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
-            u_input         = x_input[np.logical_not(survivors),:] # pc
-            x_input         = x_input[survivors,:]                 # pc
-            radius_vectors  = radius_vectors[:, survivors, :]      # pc
-            numb_densities  = numb_densities[:, survivors]         # cm-3
-            magnetic_fields = magnetic_fields[:, survivors]*gauss_code_to_gauss_cgs # Gauss CGS
-            mean_column     = mean_column[survivors]               # cm-2
-            median_column   = median_column[survivors]             # cm-2
-            path_column     = path_column[survivors]               # cm-2
-            n_rs            = n_rs[survivors]                      # cm-3
-            B_rs            = B_rs[survivors]*gauss_code_to_gauss_cgs # Gauss CGS
-            r_u             = r_u[survivors]                       # Adim
-            r_l             = r_l[survivors]                       # Adim
-            
+        survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
+        u_input         = x_input[np.logical_not(survivors),:] # pc
+        x_input         = x_input[survivors,:]                 # pc
+        radius_vectors  = radius_vectors[:, survivors, :]      # pc
+        numb_densities  = numb_densities[:, survivors]         # cm-3
+        magnetic_fields = magnetic_fields[:, survivors]*gauss_code_to_gauss_cgs # Gauss CGS
+        mean_column     = mean_column[survivors]               # cm-2
+        median_column   = median_column[survivors]             # cm-2
+        path_column     = path_column[survivors]               # cm-2
+        n_rs            = n_rs[survivors]                      # cm-3
+        B_rs            = B_rs[survivors]*gauss_code_to_gauss_cgs # Gauss CGS
+        r_u             = r_u[survivors]                       # Adim
+        r_l             = r_l[survivors]                       # Adim
+        
 
-            mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
-            mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
+        mean_r_u, median_r_u, skew_r_u, kurt_r_u = describe(r_u)
+        mean_r_l, median_r_l, skew_r_l, kurt_r_l = describe(r_l)
 
-            stats_dict = {
-                "time": _time, 
-                "x_input": x_input,
-                "n_rs": n_rs,
-                "B_rs": B_rs,
-                "n_path": path_column,
-                "n_los0": mean_column,
-                "n_los1": median_column,
-                "surv_fraction": survivors_fraction[each],
-                "r_u": r_u,
-                "r_l": r_l
-            }
+        stats_dict = {
+            "time": _time, 
+            "x_input": x_input,
+            "n_rs": n_rs,
+            "B_rs": B_rs,
+            "n_path": path_column,
+            "n_los0": mean_column,
+            "n_los1": median_column,
+            "surv_fraction": survivors_fraction[each],
+            "r_u": r_u,
+            "r_l": r_l
+        }
 
-            df_stats[str(snap)]  = stats_dict
-            """
-            field_dict = {
-                "time": _time,
-                #"x_index": follow_index,
-                "directions": directions,
-                "x_input": x_input,
-                "B_s": magnetic_fields,
-                "r_s": radius_vectors,
-                "n_s": numb_densities
-            }
+        df_stats[str(snap)]  = stats_dict
+        """
+        field_dict = {
+            "time": _time,
+            #"x_index": follow_index,
+            "directions": directions,
+            "x_input": x_input,
+            "B_s": magnetic_fields,
+            "r_s": radius_vectors,
+            "n_s": numb_densities
+        }
 
-            df_fields[str(snap)]  = field_dict
-            """
+        df_fields[str(snap)]  = field_dict
+        """
 
-            if 'Pos' in globals():
-                print("\nPos is global", flush=True)
+        if 'Pos' in globals():
+            print("\nPos is global", flush=True)
 
-            get_globals_memory()            
-            # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
-            del radius_vectors, numb_densities, magnetic_fields
-            del mean_column, median_column, path_column
-            del n_rs, B_rs, r_u, r_l, x_input, u_input, survivors, survivors1, survivors2
-            del tree, __0, __1, _1, _2, _3
+        get_globals_memory()            
+        # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
+        del tree, __0, __1, _1, _2, _3
 
-            gc.collect()
-            get_globals_memory()
-            
-        except Exception as e:
-            print(f"[Rank {rank}] ERROR on file {each}: {e}", flush=True)
+        gc.collect()
+        get_globals_memory()
 
     import pickle
 
