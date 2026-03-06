@@ -46,6 +46,7 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
+    import warnings
     while len(valid_vectors) < no:
         aux_vector, _ = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
@@ -55,16 +56,14 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
         if np.logical_not(np.any(valid_mask)):
-            raise LookupError
+            return None
         if len(valid_vectors) == 0:
             _rloc_ /=2
-            Warning(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
+            warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
         if _rloc_ < 1.0e-6:
-            #        Sun ---|----------1 AU (Earth)----------->
-            #               ^
-            #               4.848 × 10⁻⁶ pc
-            print("Current valid vectors: ",len(valid_vectors), flush=True)
-            raise LookupError(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
+            warnings.warn("Current valid vectors: ",len(valid_vectors), flush=True)
+            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
+            return None
     
     return np.array(deepcopy(valid_vectors))
 
@@ -553,14 +552,11 @@ if __name__=='__main__':
 
         tree = cKDTree(Pos)
 
-        try:
-            x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
-            print(x_input.shape, flush=True) 
-        except (ValueError, RuntimeError) as e:
-            print(f"[Error] Faulty generation of 'x_input': {e}", flush=True)
-            print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3", flush=True)
+        x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
+        if x_input is None:
+            print(f"[Snap] snap {snap}: skipping", flush=True)
             continue
-            
+
         directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
             __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
@@ -586,7 +582,7 @@ if __name__=='__main__':
         survivors = np.logical_and(survivors1, survivors2)
 
         print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
-        
+
 
         survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
         u_input         = x_input[np.logical_not(survivors),:] # pc
