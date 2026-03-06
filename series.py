@@ -59,7 +59,7 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
             _rloc_ /=2
             warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
         if _rloc_ < 1.0e-6:
-            warnings.warn("Current valid vectors: ",len(valid_vectors), flush=True)
+            warnings.warn("Current valid vectors: ",len(valid_vectors))
             warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
             return None
     
