@@ -75,7 +75,11 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
             _rloc_ /=2
             Warning(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
         
-        if _rloc_ < 1.0e-7:
+        if _rloc_ < 1.0e-6:
+
+            #        Sun ---|----------1 AU (Earth)----------->
+            #               ^
+            #               4.848 × 10⁻⁶ pc
             print("Current valid vectors: ",len(valid_vectors))
 
             raise LookupError(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3")
@@ -685,7 +689,9 @@ if __name__=='__main__':
             try:
                 x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)    
             except:
-                raise ValueError("[Error] Faulty generation of 'x_input'")
+                print("[Error] Faulty generation of 'x_input'")
+                print(f"[Snap]  Current snap {snap} is not above {__threshold__} cm-3")
+                continue
 
             directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
 
