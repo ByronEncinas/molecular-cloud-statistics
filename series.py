@@ -55,8 +55,6 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
-        if np.logical_not(np.any(valid_mask)):
-            return None
         if len(valid_vectors) == 0:
             _rloc_ /=2
             warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
