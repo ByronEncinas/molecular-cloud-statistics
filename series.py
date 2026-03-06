@@ -7,6 +7,7 @@ from copy import deepcopy
 from scipy.stats import skew
 from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
+import warnings
 from src.library import *
 from mpi4py import MPI          # Move to TOP of __main__
 
@@ -46,7 +47,6 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
-    import warnings
     while len(valid_vectors) < no:
         aux_vector, _ = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
