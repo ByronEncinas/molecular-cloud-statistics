@@ -647,6 +647,8 @@ if __name__=='__main__':
 
     for each in range(rank, len(file_hdf5), size):
         try:
+
+            _id_ = input_file.split('.')[0][0] + input_file.split('.')[0][-1]
             filename = file_hdf5[each]
             center   = clst[each, :]
             _time    = tlst[each]
@@ -667,7 +669,6 @@ if __name__=='__main__':
 
             VoronoiPos-=center
             Pos       -=center    
-
 
             for dim in range(3):
                 pos_from_center = Pos[:, dim]
@@ -707,10 +708,13 @@ if __name__=='__main__':
             assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
 
             data.close()
-
-            r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
-            r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # not needed
-
+            
+            if np.log10(__threshold__) < 2: # so if thresh = 100 cm-3, 
+                r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
+                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
+            else:
+                r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__) # make redundant
+                r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
             survivors = np.logical_and(survivors1, survivors2)
 
             print(np.sum(survivors)/survivors.shape[0], " Survivor fraction")  
@@ -789,11 +793,11 @@ if __name__=='__main__':
 
     surv_partial = {each: survivors_fraction[each] 
                     for each in range(rank, len(file_hdf5), size)}
-
-    with open(f'./series/tmp_stats_rank{rank}.pkl', 'wb') as f:
+    
+    with open(f'./series/tmp_{_id_}_rank{rank}.pkl', 'wb') as f:
         pickle.dump(df_stats, f)
 
-    with open(f'./series/tmp_surv_rank{rank}.pkl', 'wb') as f:
+    with open(f'./series/tmp_{_id_}_surv_rank{rank}.pkl', 'wb') as f:
         pickle.dump(surv_partial, f)
 
     comm.Barrier()
@@ -804,8 +808,8 @@ if __name__=='__main__':
         async def merge_and_save():
             loop = asyncio.get_event_loop()
 
-            stat_files = sorted(glob.glob('./series/tmp_stats_rank*.pkl'))
-            surv_files = sorted(glob.glob('./series/tmp_surv_rank*.pkl'))
+            stat_files = sorted(glob.glob(f'./series/tmp_{_id_}_rank*.pkl'))
+            surv_files = sorted(glob.glob(f'./series/tmp_{_id_}_surv_rank*.pkl'))
 
             # Read all rank files concurrently
             def load_pickle(path):
@@ -831,7 +835,7 @@ if __name__=='__main__':
             # Save final output
             df = pd.DataFrame.from_dict(merged_stats, orient='index')\
                 .reset_index().rename(columns={'index': 'snapshot'})
-            df.to_pickle(f'./series/data_dc{np.log10(__dense_cloud__)}_{__input_case__}.pkl')
+            df.to_pickle(f'./series/data_{int(np.log10(__dense_cloud__))}{_id_}.pkl')
 
             # Clean up temp files
             for f in stat_files + surv_files:
