@@ -553,23 +553,22 @@ if __name__=='__main__':
         x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
         if x_input is None:
             print(f"[Snap] snap {snap}: skipping", flush=True)
+            data.close()
             continue
 
         directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
             __0, __1, mean_column, median_column = line_of_sight(x_init=x_input, directions=directions, n_crit=__threshold__)
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = crs_path(x_init=x_input, n_crit=__threshold__)
+            assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
         except:
-            print("Function: line_of_sight or crs_path faulty")
-            break
+            print(f"[LOS/CRS] Invalid result from intergration: {snap}: skipping", flush=True)
+            data.close()
+            continue
 
         print("__alloc_slots__: ", __alloc_slots__, flush=True)
         print("__used_slots__ : ",__0.shape, flush=True)
 
-        assert np.any(numb_densities > __threshold__), f"No values above threshold {__threshold__} cm-3"
-
-        data.close()
-        
         if np.log10(__threshold__) < 2: 
             r_u, n_rs, B_rs, survivors2 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__*10)
             r_l, _1, _2, _3 = eval_reduction(magnetic_fields, numb_densities, follow_index, __threshold__)
@@ -580,7 +579,6 @@ if __name__=='__main__':
         survivors = np.logical_and(survivors1, survivors2)
 
         print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
-
 
         survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
         u_input         = x_input[np.logical_not(survivors),:] # pc
@@ -634,6 +632,7 @@ if __name__=='__main__':
         get_globals_memory()            
         # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
         del tree, __0, __1, _1, _2, _3
+        del radius_vectors, magnetic_fields, numb_densities
 
         gc.collect()
         get_globals_memory()
