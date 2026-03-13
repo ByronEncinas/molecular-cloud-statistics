@@ -42,26 +42,26 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
         x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
 
         rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
-        rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
-        return rho_cartesian, rho_spherical
+        #rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
+        return rho_cartesian #, rho_spherical
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
     while len(valid_vectors) < no:
-        aux_vector, _ = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
+        aux_vector = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
         inside_sphere = aux_vector[distances <= _rloc_]
         _, nearest_indices = tree.query(inside_sphere)
         valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
-        if len(valid_vectors) == 0:
+        if len(valid_points) == 0:
             _rloc_ /=2
             warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
-        if _rloc_ < 1.0e-6:
-            warnings.warn("Current valid vectors: ", RuntimeWarning)
-            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
-            return None
+            if _rloc_ < 1.0e-6:
+                warnings.warn("Current valid vectors: ", RuntimeWarning)
+                warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+                return None
     
     return np.array(deepcopy(valid_vectors))
 
@@ -551,6 +551,18 @@ if __name__=='__main__':
         tree = cKDTree(Pos)
 
         x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
+        if x_input is None:
+            print(f"[Snap] snap {snap}: skipping", flush=True)
+            data.close()
+            continue
+
+
+        try:
+            x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
+        except:
+            warnings.warn("Current valid vectors: ", RuntimeWarning)
+            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+
         if x_input is None:
             print(f"[Snap] snap {snap}: skipping", flush=True)
             data.close()
