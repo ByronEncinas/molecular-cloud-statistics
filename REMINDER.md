@@ -45,3 +45,22 @@
     __threshold__   = 1.0e+1
     
 ## Times (UT Cluster)
+
+- Elapsed time: 1h 36m 26s
+    __cores_avail__ = 40
+    __input_case__  = 'ideal'
+    __alloc_slots__ = 3_000
+    __sample_size__ = 10_000
+    __rloc__        = 1.0e-1
+    __dense_cloud__ = 1.0e+2
+    __threshold__   = 1.0e+1
+
+
+- Elapsed time: 3h 13m 46s 
+	__cores_avail__ = 16
+	__input_case__  = 'ideal'
+	__alloc_slots__ = 3_000
+	__sample_size__ = 1_000
+	__rloc__        = 1.0e-1
+	__dense_cloud__ = 1.0e+2
+	__threshold__   = 1.0e+1
