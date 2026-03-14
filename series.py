@@ -473,6 +473,7 @@ def declare_globals_and_constants():
     return None
 
 input_file = sys.argv[1]
+FLAG = sys.argv[-1]
 config = {}
 with open(input_file, 'r') as f:
     exec(f.read(), {}, config)
@@ -493,6 +494,7 @@ if __name__=='__main__':
     if rank == 0:
         clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
         _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
+        print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
         _id_ = None
@@ -550,18 +552,13 @@ if __name__=='__main__':
 
         tree = cKDTree(Pos)
 
-        x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
-        if x_input is None:
-            print(f"[Snap] snap {snap}: skipping", flush=True)
-            data.close()
-            continue
-
-
         try:
             x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
         except:
-            warnings.warn("Current valid vectors: ", RuntimeWarning)
-            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+            warnings.warn("[Error] when generating valid vectors", ValueError)
+            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3\n ", Warning)
+            print(f"[Snap] snap {snap}: skipping", flush=True)
+            continue
 
         if x_input is None:
             print(f"[Snap] snap {snap}: skipping", flush=True)
@@ -624,19 +621,19 @@ if __name__=='__main__':
         }
 
         df_stats[str(snap)]  = stats_dict
-        """
-        field_dict = {
-            "time": _time,
-            #"x_index": follow_index,
-            "directions": directions,
-            "x_input": x_input,
-            "B_s": magnetic_fields,
-            "r_s": radius_vectors,
-            "n_s": numb_densities
-        }
 
-        df_fields[str(snap)]  = field_dict
-        """
+        if FLAG == "--lines=true":
+            field_dict = {
+                "time": _time,
+                "directions": directions,
+                "x_input": x_input,
+                "B_s": magnetic_fields,
+                "r_s": radius_vectors,
+                "n_s": numb_densities
+            }
+
+            df_fields[str(snap)]  = field_dict
+
 
         if 'Pos' in globals():
             print("\nPos is global", flush=True)
