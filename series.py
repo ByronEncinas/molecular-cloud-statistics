@@ -473,6 +473,11 @@ def declare_globals_and_constants():
     return None
 
 input_file = sys.argv[1]
+print("IC file is: ", input_file)
+print("within inputs/ dir: ", input_file.split('/')[-1])
+input_file = input_file.split('/')[-1]
+print("ID of input file [type][number]: ", str(input_file.split('.')[0][0] + input_file.split('.')[0][-1]))
+
 FLAG = sys.argv[-1]
 config = {}
 with open(input_file, 'r') as f:
