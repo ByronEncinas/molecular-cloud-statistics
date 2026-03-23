@@ -391,17 +391,21 @@ def line_of_sight(*args, **kwargs):
 
 @timing_decorator
 def match_files_to_data(__input_case__):
+    print("__input_case__: ", __input_case__)
     
-    if 'ideal_mhd' in __input_case__:
+    if 'ideal' in __input_case__:
         subdirectory = 'ideal_mhd'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
         file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
-    elif 'ambipolar_diffusion' in __input_case__:
+    elif 'amb' in __input_case__:
         subdirectory = 'ambipolar_diffusion'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
         file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
 
     assert os.path.exists(file_xyz), f"[{file_xyz} cloud data not present]"
+
+    print(file_xyz)
+    print(file_hdf5)
  
     with open(file_xyz, mode='r') as file:
         clst = []; dlst = []; tlst = []; slst = []
@@ -417,7 +421,6 @@ def match_files_to_data(__input_case__):
             if (int(row[0]) < int(__start_snap__)):
                 break
 
-        
     assert len(slst) != 0, "Error accessing cloud data"
 
     clst, dlst, tlst, slst = [np.array(arr, dtype=FloatType) for arr in (clst[::-1], dlst[::-1], tlst[::-1], slst[::-1])]
@@ -425,9 +428,11 @@ def match_files_to_data(__input_case__):
     validated = np.logical_not(dlst); white_list = []
 
     for i, f in enumerate(file_hdf5):
-        if int(f.split('.')[0][-3:]) in slst: 
+        snap = int(f.split('/')[-1].split('.')[-2][-3:])
+        print(f"{snap} data available? ", snap in slst)
+        if snap in slst:
             #print(int(f.split('.')[0][-3:]), np.where(slst == int(f.split('.')[0][-3:])))    
-            validated[np.where(slst == int(f.split('.')[0][-3:]))] = True
+            validated[np.where(slst == snap)] = True
             white_list += [True]
         else:
             white_list += [False]
