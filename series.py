@@ -32,37 +32,46 @@ def get_globals_memory() -> None:
 @timing_decorator
 def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
-    def xyz_gen(size):
+    def xyz_gen(size, _r):          # ← accepts current radius as argument
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
         U2 = np.random.uniform(low=0.0, high=1.0, size=size)
         U3 = np.random.uniform(low=0.0, high=1.0, size=size)
-        r = rloc*np.cbrt(U1)
+        r     = _r * np.cbrt(U1)   # ← uses _r, not the frozen outer `rloc`
         theta = np.arccos(2*U2-1)
-        phi = 2*np.pi*U3
-        x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
-
-        rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
-        #rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
-        return rho_cartesian #, rho_spherical
+        phi   = 2*np.pi*U3
+        x = r*np.sin(theta)*np.cos(phi)
+        y = r*np.sin(theta)*np.sin(phi)
+        z = r*np.cos(theta)
+        return np.column_stack([x, y, z])
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
+    max_halvings = 20
+    halvings = 0
+
     while len(valid_vectors) < no:
-        aux_vector = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
-        distances = np.linalg.norm(aux_vector, axis=1)
-        inside_sphere = aux_vector[distances <= _rloc_]
+        aux_vector      = xyz_gen(no - len(valid_vectors), _rloc_)  
+        distances       = np.linalg.norm(aux_vector, axis=1)
+        inside_sphere   = aux_vector[distances <= _rloc_]
         _, nearest_indices = tree.query(inside_sphere)
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
+
+        valid_mask   = Density[nearest_indices] > n_crit           
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
+
         if len(valid_points) == 0:
-            _rloc_ /=2
-            warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
-            if _rloc_ < 1.0e-6:
-                warnings.warn("Current valid vectors: ", RuntimeWarning)
-                warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+            halvings += 1
+            _rloc_ /= 2                         # ← expand outward, not inward
+            warnings.warn(f"[snap={snap}] _rloc_ halved from {2*_rloc_} to {_rloc_}")
+
+            if halvings >= max_halvings:
+                warnings.warn(                  # ← fixed: message and category separated
+                    f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3 "
+                    f"after {halvings} halvings (final _rloc_={_rloc_})",
+                    RuntimeWarning
+                )
                 return None
-    
+
     return np.array(deepcopy(valid_vectors))
 
 @timing_decorator
@@ -383,11 +392,11 @@ def line_of_sight(*args, **kwargs):
 @timing_decorator
 def match_files_to_data(__input_case__):
     
-    if __input_case__ in 'ideal_mhd':
+    if 'ideal_mhd' in __input_case__:
         subdirectory = 'ideal_mhd'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
         file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
-    elif __input_case__ in 'ambipolar_diffusion':
+    elif 'ambipolar_diffusion' in __input_case__:
         subdirectory = 'ambipolar_diffusion'
         file_hdf5 = np.array(glob.glob(f'arepo_data/{subdirectory}/*.hdf5'))
         file_xyz       = f'./util/{__input_case__}_cloud_trajectory.txt'
@@ -476,7 +485,7 @@ input_file = sys.argv[1]
 print("IC file is: ", input_file)
 print("within inputs/ dir: ", input_file.split('/')[-1])
 
-FLAG = sys.argv[-1]
+FLAG0 = "--lines" 
 config = {}
 with open(input_file, 'r') as f:
     exec(f.read(), {}, config)
@@ -560,10 +569,9 @@ if __name__=='__main__':
 
         try:
             x_input    = uniform_in_3d_tree_dependent(tree, __sample_size__, rloc=__rloc__, n_crit=__dense_cloud__)   
-        except:
-            warnings.warn("[Error] when generating valid vectors", ValueError)
-            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3\n ", Warning)
-            print(f"[Snap] snap {snap}: skipping", flush=True)
+        except Exception as e:
+            print(f"[Snap] snap {snap}: skipping — {type(e).__name__}: {e}", flush=True)
+            data.close()  
             continue
 
         if x_input is None:
@@ -628,7 +636,7 @@ if __name__=='__main__':
 
         df_stats[str(snap)]  = stats_dict
 
-        if FLAG == "--lines=true":
+        if FLAG0 in sys.argv:
             field_dict = {
                 "time": _time,
                 "directions": directions,
@@ -648,7 +656,7 @@ if __name__=='__main__':
         # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
         del tree, __0, __1, _1, _2, _3
         del radius_vectors, magnetic_fields, numb_densities
-
+        del Pos, VoronoiPos, Bfield, Density, Volume, Density_grad
         gc.collect()
         get_globals_memory()
 
