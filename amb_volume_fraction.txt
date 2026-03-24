@@ -1,0 +1,78 @@
+IC file is:  inputs/amb0.input
+within inputs/ dir:  amb0.input
+ID of input file [type][number]:  a0
+
+[dens_distro.py]: started running...
+
+__input_case__:  amb
+./util/amb_cloud_trajectory.txt
+['arepo_data/ambipolar_diffusion/snap_ambipolar_300.hdf5'
+ 'arepo_data/ambipolar_diffusion/snap_ambipolar_100.hdf5'
+ 'arepo_data/ambipolar_diffusion/snap_ambipolar_495.hdf5']
+300 data available?  True
+100 data available?  True
+495 data available?  True
+ID of series.py run is a0
+38
+
+Snapthot:  100
+Total Cells:  38 
+
+Fraction of cells above $10^2$:  1.0
+Fraction of cells above $10^4$:  0.0
+Fraction of cells above $10^6$:  0.0
+Fraction of cells above $10^8$:  0.0
+Fraction of cells above $10^{10}$:  0.0
+Fraction of cells above $10^{12}$:  0.0
+Fraction of cells above $10^{14}$:  0.0
+Fraction of Volume above $10^2$:  1.0
+Fraction of Volume above $10^4$:  0.0
+Fraction of Volume above $10^6$:  0.0
+Fraction of Volume above $10^8$:  0.0
+Fraction of Volume above $10^{10}$:  0.0
+Fraction of Volume above $10^{12}$:  0.0
+Fraction of Volume above $10^{14}$:  0.0 
+
+
+259
+
+Snapthot:  300
+Total Cells:  259 
+
+Fraction of cells above $10^2$:  1.0
+Fraction of cells above $10^4$:  0.06563706563706563
+Fraction of cells above $10^6$:  0.0
+Fraction of cells above $10^8$:  0.0
+Fraction of cells above $10^{10}$:  0.0
+Fraction of cells above $10^{12}$:  0.0
+Fraction of cells above $10^{14}$:  0.0
+Fraction of Volume above $10^2$:  1.0
+Fraction of Volume above $10^4$:  0.0031883447714266145
+Fraction of Volume above $10^6$:  0.0
+Fraction of Volume above $10^8$:  0.0
+Fraction of Volume above $10^{10}$:  0.0
+Fraction of Volume above $10^{12}$:  0.0
+Fraction of Volume above $10^{14}$:  0.0 
+
+
+685408
+
+Snapthot:  495
+Total Cells:  685408 
+
+Fraction of cells above $10^2$:  1.0
+Fraction of cells above $10^4$:  0.9992311148979878
+Fraction of cells above $10^6$:  0.8374165460572389
+Fraction of cells above $10^8$:  0.3315251645735095
+Fraction of cells above $10^{10}$:  0.09963992249871609
+Fraction of cells above $10^{12}$:  0.044290408048928524
+Fraction of cells above $10^{14}$:  0.0
+Fraction of Volume above $10^2$:  1.0
+Fraction of Volume above $10^4$:  0.7849889467512857
+Fraction of Volume above $10^6$:  0.0028566485213035253
+Fraction of Volume above $10^8$:  3.943642662778482e-06
+Fraction of Volume above $10^{10}$:  5.7045685221958484e-09
+Fraction of Volume above $10^{12}$:  1.81267005860523e-11
+Fraction of Volume above $10^{14}$:  0.0 
+
+
