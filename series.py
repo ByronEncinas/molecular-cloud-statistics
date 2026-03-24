@@ -1,4 +1,4 @@
-import csv, glob, os, sys, time, h5py, gc, ctypes
+import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 import numpy as np

@@ -236,7 +236,7 @@ if __name__=='__main__':
         import numpy as np
 
         thresholds = [1e2, 1e4, 1e6, 1e8, 1e10, 1e12, 1e14]
-        labels = [r"$10^{2}$", r"$10^{4}$", r"$10^{6}$", r"$10^{8}$", r"$10^{10}$", r"$10^{12}$", r"$10^{14}$"]
+        labels = [r"$10^{2}$", r"$10^{4}$ ", r"$10^{6}$ ", r"$10^{8}$ ", r"$10^{10}$ ", r"$10^{12}$ ", r"$10^{14}$ "]
         masks = [mask2, mask4, mask6, mask8, mask10, mask12, mask14]
 
         total_cells = Density[mask_sphere].shape[0]
