@@ -1,6 +1,0 @@
-__input_case__  = 'amb'
-__alloc_slots__ = 1500
-__sample_size__ = 400
-__rloc__        = 2.0e-1
-__dense_cloud__ = 1.0e+2
-__threshold__   = 1.0e+2
