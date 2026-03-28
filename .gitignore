@@ -8,7 +8,7 @@ arepo_data/ambipolar_diffusion/
 **/__pycache__/
 clouds/
 jakarvenv/
-
+inputs/*
 # extension
 **/*.csv
 **/*.png
