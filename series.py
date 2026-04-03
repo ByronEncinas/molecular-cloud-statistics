@@ -13,23 +13,7 @@ from mpi4py import MPI          # Move to TOP of __main__
 
 start_time = time.time()
 
-def get_globals_memory() -> None:
-    import sys
-
-    total = 0
-    for name, obj in globals().items():
-        if name.startswith("__") and name.endswith("__"):
-            continue  # skip built-in entries
-        try:
-            total += sys.getsizeof(obj)
-        except TypeError:
-            pass  # some objects might not report size
-
-    # Convert bytes → gigabytes
-    gb = total / (1024 ** 3)
-    print(f"Memory used by globals: {gb:.6f} gigabytes", flush=True)
-
-@timing_decorator
+@timing
 def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     def xyz_gen(size, _r):          # ← accepts current radius as argument
@@ -74,7 +58,7 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     return np.array(deepcopy(valid_vectors))
 
-@timing_decorator
+@timing
 def crs_path(*args, **kwargs):
 
     x_init = kwargs.get('x_init', None)
@@ -213,7 +197,7 @@ def crs_path(*args, **kwargs):
 
     return radius_vectors, magnetic_fields, numb_densities, nz_irev, path_column, survivors_mask #p_r #, [threshold, threshold2, threshold_rev, threshold2_rev]
 
-@timing_decorator
+@timing
 def line_of_sight(*args, **kwargs):
 
     x_init = kwargs.get('x_init', None)
@@ -389,7 +373,6 @@ def line_of_sight(*args, **kwargs):
 
     return radius_vectors, numb_densities, mean_columns, median_columns
 
-@timing_decorator
 def match_files_to_data(__input_case__):
     print("__input_case__: ", __input_case__)
     
@@ -491,6 +474,7 @@ print("IC file is: ", input_file)
 print("within inputs/ dir: ", input_file.split('/')[-1])
 
 FLAG0 = "--lines" 
+FLAG1 = "--rloc" 
 config = {}
 with open(input_file, 'r') as f:
     exec(f.read(), {}, config)
@@ -514,6 +498,8 @@ if __name__=='__main__':
     if rank == 0:
         clst, dlst, tlst, slst, file_hdf5 = match_files_to_data(__input_case__)
         _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
+        if FLAG1 in sys.argv:
+            _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
         print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
@@ -544,7 +530,6 @@ if __name__=='__main__':
         Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
         VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
         Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
-        #Bfield_grad = np.zeros((len(Pos), 9))
         Density_grad = np.zeros((len(Density), 3))
         Volume   = np.asarray(data['PartType0']['Masses'], dtype=FloatType)/Density
 
@@ -570,6 +555,19 @@ if __name__=='__main__':
 
         print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n', flush=True)
 
+        stats_dict = {
+            "time": _time, 
+            "x_input": np.array([]),
+            "n_rs": np.array([]),
+            "B_rs": np.array([]),
+            "n_path": np.array([]),
+            "n_los0": np.array([]),
+            "n_los1": np.array([]),
+            "surv_fraction": np.array([]),
+            "r_u": np.array([]),
+            "r_l": np.array([])
+        }
+
         tree = cKDTree(Pos)
 
         try:
@@ -577,11 +575,14 @@ if __name__=='__main__':
         except Exception as e:
             print(f"[Snap] snap {snap}: skipping — {type(e).__name__}: {e}", flush=True)
             data.close()  
+            df_stats[str(snap)]  = stats_dict
             continue
+
 
         if x_input is None:
             print(f"[Snap] snap {snap}: skipping", flush=True)
             data.close()
+            df_stats[str(snap)]  = stats_dict
             continue
 
         directions=fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
@@ -592,6 +593,7 @@ if __name__=='__main__':
         except:
             print(f"[LOS/CRS] Invalid result from intergration: {snap}: skipping", flush=True)
             data.close()
+            df_stats[str(snap)]  = stats_dict
             continue
 
         print("__alloc_slots__: ", __alloc_slots__, flush=True)
@@ -657,13 +659,11 @@ if __name__=='__main__':
         if 'Pos' in globals():
             print("\nPos is global", flush=True)
 
-        get_globals_memory()            
         # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
         del tree, __0, __1, _1, _2, _3
         del radius_vectors, magnetic_fields, numb_densities
         del Pos, VoronoiPos, Bfield, Density, Volume, Density_grad
         gc.collect()
-        get_globals_memory()
 
     import pickle
 

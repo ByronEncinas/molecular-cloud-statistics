@@ -52,7 +52,6 @@ def reduction_to_density(factor, numb):
     return x_n, matrix, mean_vec, median_vec, ten_vec, sample_size
 
 def get_globals_memory() -> None:
-    import sys
 
     total = 0
     for name, obj in globals().items():
@@ -65,7 +64,8 @@ def get_globals_memory() -> None:
 
     # Convert bytes → gigabytes
     gb = total / (1024 ** 3)
-    print(f"Memory used by globals: {gb:.6f} gigabytes")
+    print(f"Memory used by globals: {gb:.6f} gigabytes", flush=True)
+
 
 """ Constants and convertion factor """
 
@@ -784,7 +784,7 @@ Obtained from: https://towardsdatascience.com/python-decorators-for-data-science
 I like this for runs that take time and are not in parallel
 """
 
-def timing_decorator(func):
+def timing(func):
     import time
     def wrapper(*args, **kwargs):
         start_time = time.time()

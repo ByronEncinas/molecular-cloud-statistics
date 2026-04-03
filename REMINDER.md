@@ -44,7 +44,7 @@
     __dense_cloud__ = 1.0e+2
     __threshold__   = 1.0e+1
     
-## Times (UT Cluster)
+## Times (UT Cluster/MPI.comm)
 
 - Elapsed time: 1h 36m 26s
     __cores_avail__ = 40

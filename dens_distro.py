@@ -6,52 +6,76 @@ from copy import deepcopy
 from scipy.spatial import cKDTree
 import warnings
 from src.library import *
+import pandas as pd
+import matplotlib as mpl
+
+mpl.rcParams['text.usetex'] = True
+MARKERS = ['v', 'o']
+COLORS  = ["#8E2BAF", "#148A02"]
+ALPHA   = 0.9
+SIZE    = 8
+FONTSIZE = 18
+GRID_ALPHA = 0.5
 
 start_time = time.time()
 
-def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
+cases = ['ideal', 'amb']
 
-    def xyz_gen(size, _r):          # ← accepts current radius as argument
-        U1 = np.random.uniform(low=0.0, high=1.0, size=size)
-        U2 = np.random.uniform(low=0.0, high=1.0, size=size)
-        U3 = np.random.uniform(low=0.0, high=1.0, size=size)
-        r     = _r * np.cbrt(U1)   # ← uses _r, not the frozen outer `rloc`
-        theta = np.arccos(2*U2-1)
-        phi   = 2*np.pi*U3
-        x = r*np.sin(theta)*np.cos(phi)
-        y = r*np.sin(theta)*np.sin(phi)
-        z = r*np.cos(theta)
-        return np.column_stack([x, y, z])
+s_ideal = []
+s_amb = []
+t_ideal = []
+t_amb = []
+nc_ideal = []
+nc_amb = []
 
-    valid_vectors = []
-    _rloc_ = deepcopy(rloc)
-    max_halvings = 20
-    halvings = 0
+for case in cases:
+    file_path = f'./util/{case}_cloud_trajectory.txt'
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            if case == "ideal":
+                s_ideal.append(str(row[0]))
+                t_ideal.append(float(row[1]))
+                nc_ideal.append(float(row[-1]))
 
-    while len(valid_vectors) < no:
-        aux_vector      = xyz_gen(no - len(valid_vectors), _rloc_)  
-        distances       = np.linalg.norm(aux_vector, axis=1)
-        inside_sphere   = aux_vector[distances <= _rloc_]
-        _, nearest_indices = tree.query(inside_sphere)
+            if case == "amb":
+                s_amb.append(str(row[0]))
+                t_amb.append(float(row[1]))
+                nc_amb.append(float(row[-1]))
 
-        valid_mask   = Density[nearest_indices] > n_crit           
-        valid_points = inside_sphere[valid_mask]
-        valid_vectors.extend(valid_points)
+mu_mH = 2.35 * 1.67e-24
+rho_ideal = np.array(nc_ideal) * mu_mH
+rho_amb = np.array(nc_amb) * mu_mH
 
-        if len(valid_points) == 0:
-            halvings += 1
-            _rloc_ /= 2                         # ← expand outward, not inward
-            warnings.warn(f"[snap={snap}] _rloc_ halved from {2*_rloc_} to {_rloc_}")
+_min, _max = min(rho_ideal.min(), rho_amb.min())*1.1, max(rho_ideal.max(), rho_amb.max())*10
 
-            if halvings >= max_halvings:
-                warnings.warn(                  # ← fixed: message and category separated
-                    f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3 "
-                    f"after {halvings} halvings (final _rloc_={_rloc_})",
-                    RuntimeWarning
-                )
-                return None
+fig, ax1 = plt.subplots()
 
-    return np.array(deepcopy(valid_vectors))
+plt.setp(ax1.get_xticklabels(), fontsize = FONTSIZE-2)
+plt.setp(ax1.get_yticklabels(), fontsize = FONTSIZE-2)
+ax1.set_xlabel(r'Elapsed Time [Myrs]', fontsize=FONTSIZE)
+ax1.set_ylabel(r'log$_{10}(n_{gas})$ [cm$^{-3}$]', fontsize=FONTSIZE)
+ax1.plot(t_ideal, nc_ideal, '.-', label='ideal MHD')
+ax1.plot(t_amb, nc_amb, '.-', label='non-ideal MHD')
+ax1.set_yscale('log')
+ax1.tick_params(axis='y')
+ax1.legend(fontsize =FONTSIZE -4)
+ax1.grid(True, which='both', alpha=ALPHA)
+
+ax2 = ax1.twinx()
+plt.setp(ax2.get_xticklabels(), fontsize = FONTSIZE-2)
+plt.setp(ax2.get_yticklabels(), fontsize = FONTSIZE-2)
+
+ax2.set_ylabel(r'log$_{10}(\rho_{gas})$ [g cm$^{-3}$]', fontsize=FONTSIZE)
+ax2.set_ylim(_min, _max)
+ax2.set_yscale('log')
+
+fig.tight_layout()
+plt.savefig('./series/core_den.png', dpi=300)
+plt.show()
+plt.close(fig)
+
 
 def match_files_to_data(__input_case__):
     print("__input_case__: ", __input_case__)
