@@ -474,8 +474,8 @@ input_file = sys.argv[1]
 print("IC file is: ", input_file)
 print("within inputs/ dir: ", input_file.split('/')[-1])
 
-FLAG0 = "--lines" 
-FLAG1 = "--rloc" 
+FLAG0 = "-l" 
+FLAG1 = "-e" 
 config = {}
 with open(input_file, 'r') as f:
     exec(f.read(), {}, config)
@@ -517,6 +517,7 @@ if __name__=='__main__':
     df_stats = dict()
     df_fields= dict()
 
+    print(_id_)
     for each in range(rank, len(file_hdf5), size):
         filename = file_hdf5[each]
         center   = clst[each, :]
