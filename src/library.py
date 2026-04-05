@@ -1,3 +1,4 @@
+from functools import wraps
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,7 +6,7 @@ from scipy import spatial
 from scipy.spatial import cKDTree
 from scipy import interpolate
 import matplotlib as mpl
-
+import time
 mpl.rcParams['text.usetex'] = False
 
 """ Toggle Parameters """
@@ -822,21 +823,3 @@ def email_on_failure(sender_email, password, recipient_email):
         return wrapper
     return decorator
 
-import time
-from functools import wraps
-
-def retry(max_tries=3, delay_seconds=1):
-    def decorator_retry(func):
-        @wraps(func)
-        def wrapper_retry(*args, **kwargs):
-            tries = 0
-            while tries < max_tries:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    tries += 1
-                    if tries == max_tries:
-                        raise e
-                    time.sleep(delay_seconds)
-        return wrapper_retry
-    return decorator_retry

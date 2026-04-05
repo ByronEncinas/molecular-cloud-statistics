@@ -1,3 +1,4 @@
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 import csv, glob, os, sys, time, h5py, gc
 import matplotlib.pyplot as plt
 from tabulate import tabulate
@@ -664,28 +665,30 @@ if __name__=='__main__':
         del radius_vectors, magnetic_fields, numb_densities
         del Pos, VoronoiPos, Bfield, Density, Volume, Density_grad
         gc.collect()
+        data.close()
 
     import pickle
-
-    surv_partial = {each: survivors_fraction[each] 
-                    for each in range(rank, len(file_hdf5), size)}
     
     with open(f'./series/tmp_{_id_}_rank{rank}.pkl', 'wb') as f:
         pickle.dump(df_stats, f)
-
-    with open(f'./series/tmp_{_id_}_surv_rank{rank}.pkl', 'wb') as f:
-        pickle.dump(surv_partial, f)
-
+        f.flush()
+        os.fsync(f.fileno())
+    
     comm.Barrier()
     if rank == 0:
         import asyncio
         import glob
+    
+        expected = comm.Get_size()
 
+        @retry(
+            stop=stop_after_attempt(5),
+            wait=wait_fixed(0.2),
+            retry=retry_if_exception_type(RuntimeError))    
         async def merge_and_save():
             loop = asyncio.get_event_loop()
 
             stat_files = sorted(glob.glob(f'./series/tmp_{_id_}_rank*.pkl'))
-            surv_files = sorted(glob.glob(f'./series/tmp_{_id_}_surv_rank*.pkl'))
 
             # Read all rank files concurrently
             def load_pickle(path):
@@ -693,33 +696,26 @@ if __name__=='__main__':
                     return pickle.load(f)
 
             stat_tasks = [loop.run_in_executor(None, load_pickle, f) for f in stat_files]
-            surv_tasks = [loop.run_in_executor(None, load_pickle, f) for f in surv_files]
 
             all_stats = await asyncio.gather(*stat_tasks)
-            all_survs = await asyncio.gather(*surv_tasks)
 
             # Merge stats
             merged_stats = {}
             for d in all_stats:
                 merged_stats.update(d)
 
-            # Merge survivors_fraction
-            for partial in all_survs:
-                for idx, val in partial.items():
-                    survivors_fraction[idx] = val
-
             # Save final output
             df = pd.DataFrame.from_dict(merged_stats, orient='index')\
                 .reset_index().rename(columns={'index': 'snapshot'})
             df.to_pickle(f'./series/data_{int(np.log10(__dense_cloud__))}{_id_}.pkl')
 
-            # Clean up temp files
-            for f in stat_files + surv_files:
-                os.remove(f)
-
             print(f"Merged {len(stat_files)} rank files successfully.", flush=True)
 
+            for f in stat_files:
+                os.remove(f)
+
         asyncio.run(merge_and_save())
+        comm.Barrier()
 
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)
