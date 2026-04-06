@@ -1,4 +1,5 @@
 from functools import wraps
+import numba
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -105,8 +106,9 @@ _cached_pos = None
 
 """ Arepo Process Methods (written by A. Mayer at MPA July 2024)
 
-(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas))
+(Original Functions Made By A. Mayer (Max Planck Institute) + contributions B. E. Velazquez (University of Texas at El Paso))
 """
+
 def get_magnetic_field_at_points(x, Bfield, rel_pos):
 	n = len(rel_pos[:,0])
 	local_fields = np.zeros((n,3))
@@ -143,11 +145,11 @@ def find_points_and_relative_positions(x, Pos, VoronoiPos):
 
 def find_points_and_get_fields(x, Bfield, Density, Density_grad, Pos, VoronoiPos):
 	dist, cells, rel_pos = find_points_and_relative_positions(x, Pos, VoronoiPos)
-	local_fields = get_magnetic_field_at_points(x, Bfield[cells], rel_pos)
-	local_densities = get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos)
+	local_fields = Bfield[cells] #get_magnetic_field_at_points(x, Bfield[cells], rel_pos) commented if no grad_bfields
+	local_densities = Density[cells] #get_density_at_points(x, Density[cells], Density_grad[cells], rel_pos) commented if no grad_density
 	abs_local_fields = np.sqrt(np.sum(local_fields**2,axis=1))
 	return local_fields, abs_local_fields, local_densities, cells
-	
+
 def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdirection=None):
 
     # campo en x, mangitud campo en x, densidad en x y ID de la celda
@@ -171,10 +173,8 @@ def Heun_step(x, dx, Bfield, Density, Density_grad, Pos, VoronoiPos, Volume, bdi
     local_fields_2, abs_local_fields_2, _, _ = find_points_and_get_fields(
         x_tilde, Bfield, Density, Density_grad, Pos, VoronoiPos
     )
-    # vector unitario en la dirección del campo en x intermedio
     local_fields_2 = local_fields_2 / np.tile(abs_local_fields_2, (3, 1)).T
 
-    # promedio entre paso inicial e intermedio
     x_final = x + 0.5 * scaled_dx[:, np.newaxis] * (local_fields_1 + local_fields_2)
 
     return x_final, abs_local_fields_1, local_densities, CellVol
