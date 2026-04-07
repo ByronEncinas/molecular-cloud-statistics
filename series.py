@@ -11,7 +11,7 @@ from scipy.spatial import cKDTree
 import warnings
 from src.library import *
 from mpi4py import MPI          # Move to TOP of __main__
-
+import pickle
 start_time = time.time()
 
 @timing
@@ -668,12 +668,10 @@ if __name__=='__main__':
         gc.collect()
         data.close()
 
-    import pickle
-    
-    with open(f'./series/tmp_{_id_}_rank{rank}.pkl', 'wb') as f:
-        pickle.dump(df_stats, f)
-        f.flush()
-        os.fsync(f.fileno())
+        with open(f'./series/tmp_{_id_}_rank{rank}.pkl', 'wb') as f:
+            pickle.dump(df_stats, f)
+            f.flush()
+            os.fsync(f.fileno())
     
     comm.Barrier()
     if rank == 0:
@@ -684,7 +682,7 @@ if __name__=='__main__':
 
         @retry(
             stop=stop_after_attempt(5),
-            wait=wait_fixed(0.2),
+            wait=wait_fixed(0.5),
             retry=retry_if_exception_type(RuntimeError))    
         async def merge_and_save():
             loop = asyncio.get_event_loop()
