@@ -12,6 +12,8 @@ import warnings
 from src.library import *
 from mpi4py import MPI          # Move to TOP of __main__
 import pickle
+import asyncio
+
 start_time = time.time()
 
 @timing
@@ -684,10 +686,11 @@ if __name__=='__main__':
             stop=stop_after_attempt(5),
             wait=wait_fixed(0.5),
             retry=retry_if_exception_type(RuntimeError))    
-        async def merge_and_save():
+        async def merge_and_save(_id_, __dense_cloud__):
             loop = asyncio.get_event_loop()
 
             stat_files = sorted(glob.glob(f'./series/tmp_{_id_}_rank*.pkl'))
+            print(stat_files)
 
             # Read all rank files concurrently
             def load_pickle(path):
@@ -711,9 +714,10 @@ if __name__=='__main__':
             print(f"Merged {len(stat_files)} rank files successfully.", flush=True)
 
             for f in stat_files:
-                os.remove(f)
+                #os.remove(f)
+                print(f)
 
-        asyncio.run(merge_and_save())
+        asyncio.run(merge_and_save(_id_, __dense_cloud__))
         comm.Barrier()
 
     elapsed_time =time.time() - start_time
