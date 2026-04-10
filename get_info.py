@@ -64,36 +64,42 @@ def imporfromfile(file, identifier):
         "rurl":  rurl
     }
 
-files = sorted(glob.glob(f'./series/pickles/*.pkl'))
+files = sorted(glob.glob(f'../m-c-data/series/rloc/*.pkl'))
+files = sorted(glob.glob(f'./series/data*.pkl'))
+print(files)
 
 df = pd.DataFrame()  # empty DataFrame
 
 for index, file in enumerate(files):
-    ID = file.split("/")[-1].split(".")[0][-3:]
-    #print(file.split("/")[-1].split(".")[0][-3:])
+    ID = file.split("/")[-1].split(".")[0][-5:]
+    print(ID)
     data = imporfromfile(file, ID)
     if not data:
         continue
-    if data["x"].shape[0] < 5:
+    #if data["x"].shape[0] < 5:
         # should I delete? 
         # os.remove(file)
-        continue
-
+    #    continue
+    if "e-" in ID:
+        _rloc_ = f"1.0e-{ID[4:][0]}"
+        _dc_   = f"1.0e+{file.split('/')[-1].split('.')[0][-5:-4]}"
+    else:
+        _rloc_ = data["rloc"]
+        _dc_   = f"1.0e+{ID[2]}"
     info = {
         "identifier": ID,
         "times"  : data["t"].shape[0],
-        "dense_cloud"  : f"1.0e+{ID[0]}",
-        "rloc"  : data["rloc"],
+        "dense_cloud"  : _dc_,
+        "rloc"  : _rloc_,
         "min_size": np.min([ru.shape[0] for ru in data["factu"]]),
+        "max_size": np.max([ru.shape[0] for ru in data["factu"]]),
         "frac_<1": np.mean(([np.sum(ru[ru<1])/ru.shape for ru in data["factu"]])),
         "rej_lines":  [round(1-np.min(data["surf"]), 4),round(1-np.max(data["surf"]),4)]
     }
-    
     if index == 0:
         df = pd.DataFrame([info])
     else:
         df = pd.concat([df, pd.DataFrame([info])], ignore_index=True)
 
 print(df)
-
 

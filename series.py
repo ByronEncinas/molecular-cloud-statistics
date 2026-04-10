@@ -682,10 +682,6 @@ if __name__=='__main__':
     
         expected = comm.Get_size()
 
-        @retry(
-            stop=stop_after_attempt(5),
-            wait=wait_fixed(0.5),
-            retry=retry_if_exception_type(RuntimeError))    
         async def merge_and_save(_id_, __dense_cloud__):
             loop = asyncio.get_event_loop()
 
