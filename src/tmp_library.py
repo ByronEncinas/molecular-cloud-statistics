@@ -60,7 +60,6 @@ def Heun_step(x, dx, Bfield, Density, Pos, VoronoiPos, Volume, bdirection=None):
 
     return x_final, abs_local_fields_1, local_densities, CellVol
 
-
 mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM (Wilms, 2000)
 gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 gauss_code_to_gauss_cgs = (4 * np.pi)**0.5   * (3.086e18)**(-1.5) * (1.99e33)**0.5 * 1e5 # cgs units

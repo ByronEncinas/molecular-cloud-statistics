@@ -19,7 +19,8 @@ tmplib.config_ic(input_file)
 
 print(f"\n[{sys.argv[0]}]: started running...\n", flush=True)
 print(f"[__input_case__] ", tmplib.__input_case__,flush=True)
-# amb:   t > 3.0 Myrs snap > 225    
+
+# amb:   t > 3.0 Myrs snap > 225
 # ideal: t > 3.0 Myrs snap > 270
 __start_time__  = 3.0 # Myrs
 
@@ -44,7 +45,8 @@ if __name__=='__main__':
         clst, dlst, tlst, slst, file_hdf5 = tmplib.match_files_to_data(tmplib.__input_case__,__start_snap__)
         _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
         if tmplib.FLAG1 in sys.argv:
-            _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
+            _ia_ = str(input_file.split('/')[1][0]) #ideal/amb
+            _id_ = _ia_ + "e-" + str(input_file.split("e-")[1][0])
         print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
@@ -53,11 +55,13 @@ if __name__=='__main__':
     clst, dlst, tlst, slst, file_hdf5, _id_ = comm.bcast(
         (clst, dlst, tlst, slst, file_hdf5, _id_), root=0
     )
-    
+
     assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
 
     survivors_fraction = np.zeros(file_hdf5.shape[0])
-    
+
+    print(_id_, file_hdf5)
+
     df_stats = dict()
     df_fields= dict()
 
@@ -65,7 +69,7 @@ if __name__=='__main__':
         filename = file_hdf5[each]
         center   = clst[each, :]
         _time    = tlst[each]
-        
+
         tmplib.config_arepo(filename, center)
 
         table_data = [
