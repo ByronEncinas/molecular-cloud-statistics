@@ -191,11 +191,15 @@ if __name__=='__main__':
         tmplib.config_arepo(filename, center, True)
         tmplib.get_globals_memory()
 
-    with open(f'./series/tmp_{_id_}_rank{rank}.pkl', 'wb') as f:
-        pickle.dump(df_stats, f)
-        f.flush()
-        os.fsync(f.fileno())
+    if "HOSTNAME" in list(os.environ.keys()):
+        os.makedirs("/work/bjencinasvelaz/series/", exist_ok=True)
+        workdir = f"/work/bjencinasvelaz/series/tmp_{_id_}_rank{rank}.pkl"
 
+        with open(workdir, 'wb') as f:
+            pickle.dump(df_stats, f)
+            f.flush()
+            os.fsync(f.filen())
+            
     comm.Barrier()
     if rank == 0:
         expected = comm.Get_size()
