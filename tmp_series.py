@@ -193,7 +193,8 @@ if __name__=='__main__':
         if "HOSTNAME" in list(os.environ.keys()):
             os.makedirs("/work/bjencinasvelaz/series/", exist_ok=True)
             workdir = f"/work/bjencinasvelaz/series/tmp_{_id_}_rank{rank}.pkl"
-
+            print("Output files saved at :", flush=True)
+            print(workdir, flush=True)
             with open(workdir, 'wb') as f:
                 pickle.dump(df_stats, f)
                 f.flush()
