@@ -198,7 +198,7 @@ if __name__=='__main__':
         with open(workdir, 'wb') as f:
             pickle.dump(df_stats, f)
             f.flush()
-            os.fsync(f.filen())
+            os.fsync(f.filename())
             
     comm.Barrier()
     if rank == 0:
