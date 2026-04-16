@@ -1,4 +1,4 @@
-import glob, os, sys, time, h5py, gc, ctypes
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 import numpy as np
@@ -10,6 +10,7 @@ from mpi4py import MPI          # Move to TOP of __main__
 import pickle
 import asyncio
 import glob
+import os, sys, time
 
 start_time = time.time()
 
@@ -19,8 +20,7 @@ tmplib.config_ic(input_file)
 
 print(f"\n[{sys.argv[0]}]: started running...\n", flush=True)
 print(f"[__input_case__] ", tmplib.__input_case__,flush=True)
-
-# amb:   t > 3.0 Myrs snap > 225
+# amb:   t > 3.0 Myrs snap > 225    
 # ideal: t > 3.0 Myrs snap > 270
 __start_time__  = 3.0 # Myrs
 
@@ -45,8 +45,7 @@ if __name__=='__main__':
         clst, dlst, tlst, slst, file_hdf5 = tmplib.match_files_to_data(tmplib.__input_case__,__start_snap__)
         _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
         if tmplib.FLAG1 in sys.argv:
-            _ia_ = str(input_file.split('/')[1][0]) #ideal/amb
-            _id_ = _ia_ + "e-" + str(input_file.split("e-")[1][0])
+            _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
         print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
@@ -55,13 +54,11 @@ if __name__=='__main__':
     clst, dlst, tlst, slst, file_hdf5, _id_ = comm.bcast(
         (clst, dlst, tlst, slst, file_hdf5, _id_), root=0
     )
-
+    
     assert len(file_hdf5) == len(clst) == len(tlst), "Arrays must all have the same length"
 
     survivors_fraction = np.zeros(file_hdf5.shape[0])
-
-    print(_id_, file_hdf5)
-
+    
     df_stats = dict()
     df_fields= dict()
 
@@ -69,7 +66,7 @@ if __name__=='__main__':
         filename = file_hdf5[each]
         center   = clst[each, :]
         _time    = tlst[each]
-
+        
         tmplib.config_arepo(filename, center)
 
         table_data = [
@@ -191,15 +188,15 @@ if __name__=='__main__':
         tmplib.config_arepo(filename, center, True)
         tmplib.get_globals_memory()
 
-    if "HOSTNAME" in list(os.environ.keys()):
-        os.makedirs("/work/bjencinasvelaz/series/", exist_ok=True)
-        workdir = f"/work/bjencinasvelaz/series/tmp_{_id_}_rank{rank}.pkl"
+        if "HOSTNAME" in list(os.environ.keys()):
+            os.makedirs("/work/bjencinasvelaz/series/", exist_ok=True)
+            workdir = f"/work/bjencinasvelaz/series/tmp_{_id_}_rank{rank}.pkl"
 
-        with open(workdir, 'wb') as f:
-            pickle.dump(df_stats, f)
-            f.flush()
-            os.fsync(f.filename())
-            
+            with open(workdir, 'wb') as f:
+                pickle.dump(df_stats, f)
+                f.flush()
+                os.fsync(f.fileno())
+
     comm.Barrier()
     if rank == 0:
         expected = comm.Get_size()
