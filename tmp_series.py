@@ -45,7 +45,9 @@ if __name__=='__main__':
 
     if rank == 0:
         clst, dlst, tlst, slst, file_hdf5 = tmplib.match_files_to_data(tmplib.__input_case__,__start_snap__)
-        _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-1])
+        input_file_ = input_file.split('/')[-1]
+        _id_ = str(input_file_.split('.')[0][0] + input_file_.split('.')[0][-1])
+
         if tmplib.FLAG1 in sys.argv:
             _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
         print("ID of series.py run is", _id_)
