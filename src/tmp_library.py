@@ -136,8 +136,8 @@ def fibonacci_sphere(samples=20):
     return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
 
 async def merge_and_save(_id_, __dense_cloud__, path = "series"):
-    loop = asyncio.get_event_loop()
 
+    loop = asyncio.get_event_loop()
     stat_files = sorted(glob.glob(f'./{path}/tmp_{_id_}_rank*.pkl'))
 
     # Read all rank files concurrently
@@ -157,8 +157,10 @@ async def merge_and_save(_id_, __dense_cloud__, path = "series"):
     # Save final output
     df = pd.DataFrame.from_dict(merged_stats, orient='index')\
         .reset_index().rename(columns={'index': 'snapshot'})
-    df.to_pickle(f'./{path}/data_{int(np.log10(__dense_cloud__))}{_id_}.pkl')
-
+    output_path = os.path.join(path, f"data_{int(np.log10(__dense_cloud__))}{_id_}.pkl")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    df.to_pickle(output_path)
+    
     print(f"Merged {len(stat_files)} rank files successfully.", flush=True)
 
     for f in stat_files:
