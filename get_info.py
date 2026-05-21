@@ -47,6 +47,7 @@ def imporfromfile(file, identifier):
     if "e-" in identifier:
         int_extract = float(identifier.split("e-")[-1][0])
         radius = 10**int_extract
+    print(surf)
 
     return {
         "id": identifier,
@@ -64,28 +65,24 @@ def imporfromfile(file, identifier):
         "rurl":  rurl
     }
 
-files = sorted(glob.glob(f'../m-c-data/series/rloc/*.pkl'))
-files = sorted(glob.glob(f'./series/data*.pkl'))
-print(files)
+#files = sorted(glob.glob(f'../m-c-data/series/rloc/*.pkl'))
+files = sorted(glob.glob(f'./series/i0/data*.pkl'))
+
 
 df = pd.DataFrame()  # empty DataFrame
 
 for index, file in enumerate(files):
-    ID = file.split("/")[-1].split(".")[0][-5:]
-    print(ID)
+    ID = file.split("/")[-1].split(".")[0][-3:]
     data = imporfromfile(file, ID)
     if not data:
         continue
-    #if data["x"].shape[0] < 5:
-        # should I delete? 
-        # os.remove(file)
-    #    continue
     if "e-" in ID:
         _rloc_ = f"1.0e-{ID[4:][0]}"
         _dc_   = f"1.0e+{file.split('/')[-1].split('.')[0][-5:-4]}"
     else:
         _rloc_ = data["rloc"]
-        _dc_   = f"1.0e+{ID[2]}"
+        print(_rloc_)
+        _dc_   = f"1.0e+{ID[0]}"
     info = {
         "identifier": ID,
         "times"  : data["t"].shape[0],

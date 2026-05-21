@@ -9,6 +9,7 @@ from scipy.stats import skew
 from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
 import src.tmp_library as tmplib
+import src.sampling as sam
 import warnings
 from mpi4py import MPI          # Move to TOP of __main__
 import pickle
@@ -35,7 +36,7 @@ if tmplib.__input_case__ =='amb':
 if tmplib.FLAG2 in sys.argv:
     __start_snap__  = '000'
 
-os.makedirs("series", exist_ok=True)
+os.makedirs("./series/", exist_ok=True)
 
 if __name__=='__main__':
 
@@ -72,6 +73,9 @@ if __name__=='__main__':
         _time    = tlst[each]
         
         tmplib.config_arepo(filename, center)
+        #minb = np.min(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
+        #maxb = np.max(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
+        #continue
 
         table_data = [
             ["__curr_snap__", filename.split('/')[-1]],
@@ -90,24 +94,31 @@ if __name__=='__main__':
         try:
             x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
         except Exception as e:
-            warnings.warn(f"[snap={tmplib.snap}]", e)
+            print(x_input)
+            warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             warnings.warn(f"[snap={tmplib.snap}] At current snapshots, no cloud above {tmplib.__dense_cloud__} cm-3", Warning)
             print(f"[Snap] snap {filename}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
 
-
-        if x_input is None:
+        if x_input is None or x_input.shape == (0,):
             print(f"[Snap] snap {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
 
-        directions=tmplib.fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
+        """
+        # Generated points and uniformity 
+        sam.gkde_plt(x_input, _id_+str(tmplib.snap))
+        print(np.log10(np.max(tmplib.Density)))
+        continue
+        """
+        
+        directions=tmplib.fibonacci_sphere(20) # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
-            print(tmplib.__threshold__)
             __0, __1, mean_column, median_column = tmplib.line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
+            #__0, __1, mean_column, median_column = tmplib.edge_to_p_line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
         except Exception as e:
-            warnings.warn(f"[snap={tmplib.snap}]", e)
+            warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             print(f"[LOS] Invalid result from intergration: {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
@@ -116,7 +127,7 @@ if __name__=='__main__':
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = tmplib.crs_path(x_init=x_input, n_crit=tmplib.__threshold__)
             assert np.any(numb_densities > tmplib.__threshold__), f"No values above threshold {tmplib.__threshold__} cm-3"
         except Exception as e:
-            warnings.warn(f"[snap={tmplib.snap}]", e)
+            warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             print(f"[CRS] Invalid result from intergration: {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
@@ -149,27 +160,10 @@ if __name__=='__main__':
         r_u             = r_u[survivors]                       # Adim
         r_l             = r_l[survivors]                       # Adim
         
-
         mean_r_u, median_r_u, skew_r_u, kurt_r_u = tmplib.describes(r_u)
         mean_r_l, median_r_l, skew_r_l, kurt_r_l = tmplib.describes(r_l)
-
-        stats_dict = {
-            "time": _time, 
-            "x_input": x_input,
-            "n_rs": n_rs,
-            "B_rs": B_rs,
-            "n_path": path_column,
-            "n_los0": mean_column,
-            "n_los1": median_column,
-            "surv_fraction": survivors_fraction[each],
-            "r_u": r_u,
-            "r_l": r_l
-        }
-
-        df_stats[str(tmplib.snap)]  = stats_dict
-        print(df_stats)
         
-        if tmplib.FLAG0 in sys.argv:
+        if tmplib.FLAG0 in sys.argv: # -l
             field_dict = {
                 "time": _time,
                 "directions": directions,
@@ -179,7 +173,25 @@ if __name__=='__main__':
                 "n_s": numb_densities
             }
 
-            df_fields[str(tmplib.snap)]  = field_dict
+            #df_fields[str(tmplib.snap)]  = field_dict
+            df_stats[str(tmplib.snap)]  = field_dict
+
+        else:
+            stats_dict = {
+                "time": _time, 
+                "x_input": x_input,
+                "n_rs": n_rs,
+                "B_rs": B_rs,
+                "n_path": path_column,
+                "n_los0": mean_column,
+                "n_los1": median_column,
+                "surv_fraction": survivors_fraction[each],
+                "r_u": r_u,
+                "r_l": r_l
+            }
+
+            df_stats[str(tmplib.snap)]  = stats_dict
+
         if 'Pos' in globals():
             print("\nPos is global", flush=True)
 
@@ -191,21 +203,48 @@ if __name__=='__main__':
         gc.collect()
         tmplib.config_arepo(filename, center, True)
         tmplib.get_globals_memory()
+        if tmplib.FLAG0 in sys.argv: # -l
+            os.makedirs("./lines", exist_ok=True)
+            workdir = f"./lines/tmp_{_id_}_rank{rank}.pkl"
+            print("Output files saved at :", workdir, flush=True)
 
-        if "HOSTNAME" in list(os.environ.keys()):
-            os.makedirs("/work/bjencinasvelaz/series/", exist_ok=True)
-            workdir = f"/work/bjencinasvelaz/series/tmp_{_id_}_rank{rank}.pkl"
-            print("Output files saved at :", flush=True)
-            print(workdir, flush=True)
+            with open(workdir, 'wb') as f:
+                pickle.dump(df_stats, f)
+                f.flush()
+                os.fsync(f.fileno())
+        if (tmplib.FLAG2 in sys.argv) or (tmplib.FLAG1 in sys.argv): # -all or -exp
+            os.makedirs(f"./series/{_id_}/", exist_ok=True)
+            workdir = f"./series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
+            print("Output files saved at :", workdir, flush=True)
+
             with open(workdir, 'wb') as f:
                 pickle.dump(df_stats, f)
                 f.flush()
                 os.fsync(f.fileno())
 
+        else:
+            if "HOSTNAME" in list(os.environ.keys()):
+                os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
+                workdir = f"/work/bjencinasvelaz/series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
+                print("Output files saved at :", workdir, flush=True)
+
+                with open(workdir, 'wb') as f:
+                    pickle.dump(df_stats, f)
+                    f.flush()
+                    os.fsync(f.fileno())
+
     comm.Barrier()
     if rank == 0:
         expected = comm.Get_size()
-        asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__))
+        if "HOSTNAME" in list(os.environ.keys()):
+            os.makedirs(f"./series/{_id_}/", exist_ok=True)
+            asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"/work/bjencinasvelaz/series/{_id_}/"))
+        elif (tmplib.FLAG2 in sys.argv) or (tmplib.FLAG1 in sys.argv): # -all or -exp
+            os.makedirs(f"./series/{_id_}/", exist_ok=True)
+            asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"./series/{_id_}"))
+        elif tmplib.FLAG0 in sys.argv:
+            os.makedirs(f"./lines", exist_ok=True)
+            asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, "./lines"))
 
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)

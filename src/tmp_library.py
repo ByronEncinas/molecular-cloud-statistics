@@ -61,10 +61,13 @@ def Heun_step(x, dx, Bfield, Density, Pos, VoronoiPos, Volume, bdirection=None):
     return x_final, abs_local_fields_1, local_densities, CellVol
 
 mean_molecular_weight_ism = 2.35  # mean molecular weight of the ISM (Wilms, 2000)
-gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
+density_code_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 gauss_code_to_gauss_cgs = (4 * np.pi)**0.5   * (3.086e18)**(-1.5) * (1.99e33)**0.5 * 1e5 # cgs units
 pc_to_cm = 3.086 * 1.0e+18  # cm per parsec
 gauss_to_micro_gauss = 1e+6
+
+# legacy
+gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms, 2000 ; Padovani, 2018 ism mean molecular weight is # conversion from g/cm^3 to nuclei/cm^3
 
 # global variables that can be modified from anywhere in the code
 global FloatType, FloatType2, IntType
@@ -77,9 +80,10 @@ def config_ic(input_file):
     global __rloc__, __sample_size__, __input_case__, __start_snap__
     global __dense_cloud__,__threshold__, __alloc_slots__, FLAG0, FLAG1, FLAG2
     
-    FLAG0 = "-l" # dump field lines
-    FLAG1 = "-e" # rloc analysis
-    FLAG2 = "-l" # testing, reduce number of snapshots
+    FLAG0 = "-lin" # dump field lines
+    FLAG1 = "-exp" # rloc analysis
+    FLAG2 = "-all" # testing, use all snapshots
+
     config = {}
     with open(input_file, 'r') as f:
         exec(f.read(), {}, config)
@@ -89,7 +93,7 @@ config_ic(sys.argv[1])
 
 def config_arepo(filename, center, close = False):
     if "snap" not in globals():
-        global snap, __Boxsize__, Pos, Density
+        global snap, __Boxsize__, Pos, Density, Mass
         global Volume, VoronoiPos, Bfield, data
         
     if close:
@@ -99,11 +103,17 @@ def config_arepo(filename, center, close = False):
     snap = int(filename.split('.')[0][-3:])
     data = h5py.File(filename, 'r')
     __Boxsize__ = data['Header'].attrs['BoxSize']
+
+    # units solar mass, parsec and km/s
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
-    Density = np.asarray(data['PartType0']['Density'], dtype=FloatType)*gr_cm3_to_nuclei_cm3
+    Density  = np.asarray(data['PartType0']['Density'], dtype=FloatType)
+    Mass     = np.asarray(data['PartType0']['Masses'], dtype=FloatType)
     VoronoiPos = np.asarray(data['PartType0']['Coordinates'], dtype=FloatType)
-    Bfield = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
-    Volume   = np.asarray(data['PartType0']['Masses'], dtype=FloatType)/Density
+    Bfield     = np.asarray(data['PartType0']['MagneticField'], dtype=FloatType)
+    Volume   = Mass/Density
+
+    # units cm-3
+    Density    = Density*gr_cm3_to_nuclei_cm3 # density is in cm-3 from the get go
 
     VoronoiPos-=center
     Pos       -=center    
@@ -125,10 +135,10 @@ def fibonacci_sphere(samples=20):
     z = radius * np.sin(theta)
     return np.vstack((x, y, z)).T  # Stack into a (N, 3) array
 
-async def merge_and_save(_id_, __dense_cloud__):
+async def merge_and_save(_id_, __dense_cloud__, path = "series"):
     loop = asyncio.get_event_loop()
 
-    stat_files = sorted(glob.glob(f'./series/tmp_{_id_}_rank*.pkl'))
+    stat_files = sorted(glob.glob(f'./{path}/tmp_{_id_}_rank*.pkl'))
 
     # Read all rank files concurrently
     def load_pickle(path):
@@ -147,7 +157,7 @@ async def merge_and_save(_id_, __dense_cloud__):
     # Save final output
     df = pd.DataFrame.from_dict(merged_stats, orient='index')\
         .reset_index().rename(columns={'index': 'snapshot'})
-    df.to_pickle(f'./series/data_{int(np.log10(__dense_cloud__))}{_id_}.pkl')
+    df.to_pickle(f'./{path}/data_{int(np.log10(__dense_cloud__))}{_id_}.pkl')
 
     print(f"Merged {len(stat_files)} rank files successfully.", flush=True)
 
@@ -199,21 +209,25 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     valid_vectors = []
     _rloc_ = deepcopy(rloc)
-    while len(valid_vectors) < no:
+    flag = True
+    while (len(valid_vectors) < no) and (flag):
         aux_vector = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
         distances = np.linalg.norm(aux_vector, axis=1)
         inside_sphere = aux_vector[distances <= _rloc_]
         _, nearest_indices = tree.query(inside_sphere)
-        valid_mask = Density[nearest_indices] * gr_cm3_to_nuclei_cm3 > n_crit
+        valid_mask = Density[nearest_indices] > n_crit
         valid_points = inside_sphere[valid_mask]
         valid_vectors.extend(valid_points)
+        #density_above_threshold = Density[nearest_indices] > n_crit
+        #print(density_above_threshold.shape)
+
         if len(valid_points) == 0:
-            _rloc_ /=2
-            warnings.warn(f"[snap={snap}] _rloc_ halved from {_rloc_*2} to {_rloc_}")
-            if _rloc_ < 1.0e-6:
-                warnings.warn("Current valid vectors: ", RuntimeWarning)
-                warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
-                return None
+            #_rloc_ /=2
+            flag = False
+            warnings.warn(f"[snap={snap}] low probability of populating ")
+            warnings.warn("Current valid vectors: 0", RuntimeWarning)
+            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+            return None
                 
     return np.array(deepcopy(valid_vectors))
 
@@ -224,8 +238,8 @@ def crs_path(*args, **kwargs):
     n_crit = kwargs.get('n_crit', 1.0e+2)
 
     
-    """
-    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
+    """ deprecated
+    Default density threshold is 100 cm^-3  but saves index for both 10 and 100 boundary. 
     This way, all data is part of a comparison between 10 and 100 
     """
     m = x_init.shape[0]
@@ -249,7 +263,7 @@ def crs_path(*args, **kwargs):
 
     vol = Volume[cells]
     #densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
-    dens = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:] # * gr_cm3_to_nuclei_cm3
     k=0
 
     mask2 = dens > n_crit
@@ -262,7 +276,7 @@ def crs_path(*args, **kwargs):
     vol_rev = Volume[cells]
 
     #densities_rev[0,:] = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
-    dens_rev = densities_rev[0,:] * gr_cm3_to_nuclei_cm3
+    dens_rev = densities_rev[0,:]  #* gr_cm3_to_nuclei_cm3
     
     k=0
     k_rev=0
@@ -281,7 +295,7 @@ def crs_path(*args, **kwargs):
             x_rev_aux = x_rev[mask2_rev]
 
             x_rev_aux, bfield_aux_rev, dens_aux_rev, vol_rev = Heun_step(x_rev_aux, -1.0, Bfield, Density, Pos, VoronoiPos, Volume)
-            dens_aux_rev = dens_aux_rev * gr_cm3_to_nuclei_cm3
+            #dens_aux_rev = dens_aux_rev * gr_cm3_to_nuclei_cm3
             
             x_rev[mask2_rev] = x_rev_aux
             dens_rev[mask2_rev] = dens_aux_rev
@@ -306,7 +320,7 @@ def crs_path(*args, **kwargs):
 
             x_aux = x[mask2]
             x_aux, bfield_aux, dens_aux, vol = Heun_step(x_aux, 1.0, Bfield, Density, Pos, VoronoiPos, Volume)
-            dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
+            #dens_aux = dens_aux * gr_cm3_to_nuclei_cm3
             
             x[mask2]                   = x_aux
             dens[mask2]                = dens_aux
@@ -423,7 +437,7 @@ def line_of_sight(*args, **kwargs):
 
             _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Pos, VoronoiPos, Volume)
 
-            dens *= gr_cm3_to_nuclei_cm3
+            #dens *= gr_cm3_to_nuclei_cm3
             
             vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
 
@@ -442,7 +456,8 @@ def line_of_sight(*args, **kwargs):
             # continue if still lines alive and below allocation
 
             _, bfield_rev, dens_rev, vol_rev = Heun_step(x_rev, 1.0, Bfield, Density, Pos, VoronoiPos, Volume)
-            dens_rev *= gr_cm3_to_nuclei_cm3
+            
+            #dens_rev *= gr_cm3_to_nuclei_cm3
             
             vol_rev[un_masked_rev] = 0
 
@@ -525,6 +540,97 @@ def line_of_sight(*args, **kwargs):
 
         plt.savefig(f'./series/c_vs_s.png',dpi=300)
         plt.close(fig1)
+
+    return radius_vectors, numb_densities, mean_columns, median_columns
+
+@timing
+def edge_to_p_line_of_sight(*args, **kwargs):
+    x_init = kwargs.get('x_init', None)
+    directions = kwargs.get('directions', fibonacci_sphere(20))
+    n_crit = kwargs.get('n_crit', 1.0e+2)
+
+    """
+    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
+    This way, all data is part of a comparison between 10 and 100 
+    """
+    directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
+    dx = 0.5
+    """
+    Here you need to 
+    directions = its repeated version 'm' times
+    directions = np.tile(directions, m)
+    x_init     = figure out how to repeat according to the example
+    """
+    m0 = x_init.shape[0]
+    l0 = directions.shape[0]
+    directions = np.tile(directions, (m0, 1))
+    x_init = np.repeat(x_init, l0, axis=0)
+    m = x_init.shape[0]
+    l = directions.shape[0]
+    """
+    Now, a new feature that might speed the while loop, can be to double the size of all arrays
+    and start calculating backwards and forwards simultaneously. This creates a more difficult condition
+    for the 'mask', nevertheless, for a large array 'x_init' it may not be as different and it will definitely scale efficiently in parallel
+    """
+    line      = np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    densities = np.zeros((__alloc_slots__+1,m))
+    threshold = np.zeros((m,))
+
+    line[0,:,:]     = x_init.copy()
+    x = x_init.copy()
+    dummy, _0, densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+    #densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:].copy()
+    k=0
+
+    mask  = dens > n_crit# 1 if not finished
+    un_masked = np.logical_not(mask) # 1 if finished
+
+    while np.any(mask) and (k + 1 < __alloc_slots__):
+        mask = dens > n_crit              # still alive?
+        un_masked = np.logical_not(mask)  # any deaths?
+
+
+        # continue if still lines alive and below allocation
+
+        _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Pos, VoronoiPos, Volume)
+
+        #dens *= gr_cm3_to_nuclei_cm3
+        
+        vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
+
+        dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        x += dx_vec[:, np.newaxis] * directions
+
+        line[k+1,:,:]    = x
+        densities[k+1,:] = dens
+
+        k += 1
+
+        
+    threshold = threshold.astype(int)
+    max_th     = np.max(threshold) + 1
+
+    radius_vectors = line[1:max_th,:,:]*pc_to_cm
+    numb_densities = densities[1:max_th,:]
+    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0)
+    
+    mean_columns = np.zeros(m0)
+    median_columns= np.zeros(m0)
+    i = 0
+    
+    #print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
+
+    for x in range(0, l0*m0, l0): 
+
+        mean_columns[i] = np.mean(column_densities[x:x+l0])
+        median_columns[i] = np.median(column_densities[x:x+l0])
+        i += 1
 
     return radius_vectors, numb_densities, mean_columns, median_columns
 
@@ -669,7 +775,6 @@ def pocket_finder(bfield, numb, p_r, plot=False):
 
     return (indexes, peaks), (index_global_max, upline)
 
-
 def eval_reduction(field, numb, follow_index, threshold):
 
     R10      = []
@@ -720,7 +825,7 @@ def eval_reduction(field, numb, follow_index, threshold):
             raise IndexError(f"\np_r={p_r} is out of bounds for bfield10 of length {len(bfield10)}")
 
         # pockets with density threshold of 10cm-3
-        pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=flag)
+        pocket, global_info = pocket_finder(bfield10, numb10, p_r, plot=False)
         index_pocket, field_pocket = pocket[0], pocket[1]
         flag = False
         p_i = np.searchsorted(index_pocket, p_r)
