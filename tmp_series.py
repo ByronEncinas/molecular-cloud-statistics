@@ -203,7 +203,7 @@ if __name__=='__main__':
         gc.collect()
         tmplib.config_arepo(filename, center, True)
         tmplib.get_globals_memory()
-        if tmplib.FLAG0 in sys.argv: # -l
+        if tmplib.FLAG0 in sys.argv: # -lin
             os.makedirs("./lines", exist_ok=True)
             workdir = f"./lines/tmp_{_id_}_rank{rank}.pkl"
             print("Output files saved at :", workdir, flush=True)
@@ -212,7 +212,7 @@ if __name__=='__main__':
                 pickle.dump(df_stats, f)
                 f.flush()
                 os.fsync(f.fileno())
-        if (tmplib.FLAG2 in sys.argv) or (tmplib.FLAG1 in sys.argv): # -all or -exp
+        if (tmplib.FLAG1 in sys.argv): # -exp
             os.makedirs(f"./series/{_id_}/", exist_ok=True)
             workdir = f"./series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
             print("Output files saved at :", workdir, flush=True)
@@ -222,22 +222,21 @@ if __name__=='__main__':
                 f.flush()
                 os.fsync(f.fileno())
 
-        else:
-            if "HOSTNAME" in list(os.environ.keys()):
-                os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
-                workdir = f"/work/bjencinasvelaz/series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
-                print("Output files saved at :", workdir, flush=True)
+        if "HOSTNAME" in list(os.environ.keys()):
+            os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
+            workdir = f"/work/bjencinasvelaz/series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
+            print("Output files saved at :", workdir, flush=True)
 
-                with open(workdir, 'wb') as f:
-                    pickle.dump(df_stats, f)
-                    f.flush()
-                    os.fsync(f.fileno())
+            with open(workdir, 'wb') as f:
+                pickle.dump(df_stats, f)
+                f.flush()
+                os.fsync(f.fileno())
 
     comm.Barrier()
     if rank == 0:
         expected = comm.Get_size()
         if "HOSTNAME" in list(os.environ.keys()):
-            os.makedirs(f"./series/{_id_}/", exist_ok=True)
+            os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
             asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"/work/bjencinasvelaz/series/{_id_}/"))
         elif (tmplib.FLAG2 in sys.argv) or (tmplib.FLAG1 in sys.argv): # -all or -exp
             os.makedirs(f"./series/{_id_}/", exist_ok=True)
