@@ -1,0 +1,5 @@
+__alloc_slots__ = 2000
+__sample_size__ = 10000
+__rloc__        = 1.0e-1
+__dense_cloud__ = 1.0e+2
+__threshold__   = 1.0e+2
