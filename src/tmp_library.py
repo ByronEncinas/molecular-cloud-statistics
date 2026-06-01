@@ -78,11 +78,12 @@ IntType            = np.int32
 
 def config_ic(input_file):
     global __rloc__, __sample_size__, __input_case__, __start_snap__
-    global __dense_cloud__,__threshold__, __alloc_slots__, FLAG0, FLAG1, FLAG2
+    global __dense_cloud__,__threshold__, __alloc_slots__, FLAG0, FLAG1, FLAG2, FLAG3
     
     FLAG0 = "-lin" # dump field lines
     FLAG1 = "-exp" # rloc analysis
     FLAG2 = "-all" # testing, use all snapshots
+    FLAG3 = "-weight" # use weighted uniform points instead of uniform
 
     config = {}
     with open(input_file, 'r') as f:
@@ -194,6 +195,53 @@ def timing(func):
     return wrapper
 
 @timing
+def weighted_in_3d_tree_dependent(tree, Density, no, rloc=1.0, n_crit=1.0e+2):
+
+    def xyz_gen(size):
+        U1 = np.random.uniform(low=0.0, high=1.0, size=size)
+        U1 = np.random.uniform(low=0.0, high=1.0, size=size)
+        U2 = np.random.uniform(low=0.0, high=1.0, size=size)
+        U3 = np.random.uniform(low=0.0, high=1.0, size=size)
+        r = rloc*U1
+        #a = np.sqrt(U1* (2 - rloc ) / 2.0)
+        #r = 1.0 - np.sqrt(1.0 - 2.0*a)
+        #r = rloc*np.cbrt(U1)
+        #r = rloc*np.exp(-U1)
+        #r = rloc*np.log(1 + U1)
+        #r = np.exp(U1 - 1) * (rloc + 1) - 1
+        theta = np.arccos(2*U2-1)
+        phi = 2*np.pi*U3
+        x,y,z = r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)
+
+        rho_cartesian = np.array([[a,b,c] for a,b,c in zip(x,y,z)])
+        #rho_spherical = np.array([[a,b,c] for a,b,c in zip(r, theta, phi)])
+        return rho_cartesian #, rho_spherical
+
+    valid_vectors = []
+    _rloc_ = deepcopy(rloc)
+    flag = True
+    while (len(valid_vectors) < no) and (flag):
+        aux_vector = xyz_gen(no - len(valid_vectors)) # [[x,y,z], [x,y,z], ...] <= np array
+        distances = np.linalg.norm(aux_vector, axis=1)
+        inside_sphere = aux_vector[distances <= _rloc_]
+        _, nearest_indices = tree.query(inside_sphere)
+        valid_mask = Density[nearest_indices] > n_crit
+        valid_points = inside_sphere[valid_mask]
+        valid_vectors.extend(valid_points)
+        #density_above_threshold = Density[nearest_indices] > n_crit
+        #print(density_above_threshold.shape)
+
+        if len(valid_points) == 0:
+            #_rloc_ /=2
+            flag = False
+            warnings.warn(f"[snap] low probability of populating ")
+            warnings.warn("Current valid vectors: 0", RuntimeWarning)
+            warnings.warn(f"[snap] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+            return None
+                
+    return np.array(deepcopy(valid_vectors))
+
+@timing
 def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
 
     def xyz_gen(size):
@@ -226,9 +274,8 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
         if len(valid_points) == 0:
             #_rloc_ /=2
             flag = False
-            warnings.warn(f"[snap={snap}] low probability of populating ")
             warnings.warn("Current valid vectors: 0", RuntimeWarning)
-            warnings.warn(f"[snap={snap}] At current snapshots, no cloud above {n_crit} cm-3", Warning)
+            warnings.warn(f"[snap={snap}] At current snapshots, no points found in cloud above {n_crit} cm-3", Warning)
             return None
                 
     return np.array(deepcopy(valid_vectors))

@@ -35,6 +35,7 @@ if tmplib.__input_case__ =='amb':
 
 if tmplib.FLAG2 in sys.argv:
     __start_snap__  = '000'
+    
 
 os.makedirs("./series/", exist_ok=True)
 
@@ -51,6 +52,9 @@ if __name__=='__main__':
 
         if tmplib.FLAG1 in sys.argv:
             _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
+        if tmplib.FLAG3 in sys.argv:
+            _id_ = "w" + str(input_file_.split('.')[0][0] + input_file_.split('.')[0][-1])
+
         print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
@@ -88,11 +92,15 @@ if __name__=='__main__':
             ]
 
         print(tabulate(table_data, headers=["Property", "Value"], tablefmt="grid"), '\n', flush=True)
-
+        
         tree = cKDTree(tmplib.Pos)
 
         try:
-            x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
+            if tmplib.FLAG3 in sys.argv:
+                print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
+                x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
+            else:
+                x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
         except Exception as e:
             print(x_input)
             warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
@@ -122,7 +130,10 @@ if __name__=='__main__':
             print(f"[LOS] Invalid result from intergration: {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
-        
+
+        if _id_[-1] == "0":
+            tmplib.__threshold__ = 1e+1
+
         try:
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = tmplib.crs_path(x_init=x_input, n_crit=tmplib.__threshold__)
             assert np.any(numb_densities > tmplib.__threshold__), f"No values above threshold {tmplib.__threshold__} cm-3"
@@ -135,12 +146,19 @@ if __name__=='__main__':
         print("__alloc_slots__: ", tmplib.__alloc_slots__, flush=True)
         print("__used_slots__ : ",__0.shape, flush=True)
 
-        if np.log10(tmplib.__threshold__) < 2: 
-            r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__*10)
-            r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__)
+        if tmplib.__threshold__ == 1e+1: 
+            r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+2)
+            r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+1)
         else:
             r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__)
             r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__) # make redundant
+
+
+        fig, ax = plt.subplots()
+        ax.scatter(n_rs, r_u)
+        ax.set_xscale("log")
+        plt.show()
+        plt.close(fig)
         
         survivors = np.logical_and(survivors1, survivors2)
 
@@ -203,24 +221,6 @@ if __name__=='__main__':
         gc.collect()
         tmplib.config_arepo(filename, center, True)
         tmplib.get_globals_memory()
-        if tmplib.FLAG0 in sys.argv: # -lin
-            os.makedirs("./lines", exist_ok=True)
-            workdir = f"./lines/tmp_{_id_}_rank{rank}.pkl"
-            print("Output files saved at :", workdir, flush=True)
-
-            with open(workdir, 'wb') as f:
-                pickle.dump(df_stats, f)
-                f.flush()
-                os.fsync(f.fileno())
-        if (tmplib.FLAG1 in sys.argv): # -exp
-            os.makedirs(f"./series/{_id_}/", exist_ok=True)
-            workdir = f"./series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
-            print("Output files saved at :", workdir, flush=True)
-
-            with open(workdir, 'wb') as f:
-                pickle.dump(df_stats, f)
-                f.flush()
-                os.fsync(f.fileno())
 
         if "HOSTNAME" in list(os.environ.keys()):
             os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
@@ -231,6 +231,24 @@ if __name__=='__main__':
                 pickle.dump(df_stats, f)
                 f.flush()
                 os.fsync(f.fileno())
+        else:
+            if tmplib.FLAG0 in sys.argv: # -lin
+                os.makedirs("./lines", exist_ok=True)
+                workdir = f"./lines/tmp_{_id_}_rank{rank}.pkl"
+                print("Output files saved at :", workdir, flush=True)
+                with open(workdir, 'wb') as f:
+                    pickle.dump(df_stats, f)
+                    f.flush()
+                    os.fsync(f.fileno())
+            else: # -exp or -weight since each of this modify _id_ variable
+                os.makedirs(f"./series/{_id_}/", exist_ok=True)
+                workdir = f"./series/{_id_}/tmp_{_id_}_rank{rank}.pkl"
+                print("Output files saved at :", workdir, flush=True)
+
+                with open(workdir, 'wb') as f:
+                    pickle.dump(df_stats, f)
+                    f.flush()
+                    os.fsync(f.fileno())
 
     comm.Barrier()
     if rank == 0:
@@ -238,12 +256,13 @@ if __name__=='__main__':
         if "HOSTNAME" in list(os.environ.keys()):
             os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
             asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"/work/bjencinasvelaz/series/{_id_}/"))
-        elif (tmplib.FLAG2 in sys.argv) or (tmplib.FLAG1 in sys.argv): # -all or -exp
-            os.makedirs(f"./series/{_id_}/", exist_ok=True)
-            asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"./series/{_id_}"))
-        elif tmplib.FLAG0 in sys.argv:
-            os.makedirs(f"./lines", exist_ok=True)
-            asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, "./lines"))
+        else:
+            if (tmplib.FLAG1 in sys.argv): # -all or -exp
+                os.makedirs(f"./series/{_id_}/", exist_ok=True)
+                asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"./series/{_id_}"))
+            elif tmplib.FLAG0 in sys.argv:
+                os.makedirs(f"./lines", exist_ok=True)
+                asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, "./lines"))
 
     elapsed_time =time.time() - start_time
     hours = int(elapsed_time // 3600)
