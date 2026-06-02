@@ -17,7 +17,7 @@ import asyncio
 def mult_clouds_config_arepo(filename, center, close = False):
     if "snap" not in globals():
         global snap, __Boxsize__, Pos, Density, Mass
-        global Volume, VoronoiPos, Bfield, data
+        global Volume, VoronoiPos, Bfield, data, _time
         
     if close:
         data.close()
@@ -26,6 +26,7 @@ def mult_clouds_config_arepo(filename, center, close = False):
     snap = int(filename.split('.')[0][-3:])
     data = h5py.File(filename, 'r')
     __Boxsize__ = data['Header'].attrs['BoxSize']
+    _time = data['Header'].attrs['Time']
 
     # units solar mass, parsec and km/s
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
@@ -119,6 +120,33 @@ gr_cm3_to_nuclei_cm3 = 6.02214076e+23 / (2.35) * 6.771194847794873e-23  # Wilms,
 
 # global variables that can be modified from anywhere in the code
 global FloatType, FloatType2, IntType
+global __alloc_slots__, __sample_size__, __rloc__, FLAG0, FLAG1, FLAG2, FLAG3
+global __dense_cloud__, __threshold__, __start_time__, __start_snap__
+
+if "HOSTNAME" in list(os.environ.keys()):
+    print("Running on Jakar Cluster - Univeristy of Texas")
+    __start_snap__  = 0
+    __start_time__  = 0.0 # Myrs
+    __alloc_slots__ = 1500   #
+    __sample_size__ = 10000    # N
+    __rloc__        = 1.0e-1 # parsec
+    __dense_cloud__ = 1.0e+2 # per cm^3
+    __threshold__   = 1.0e+2 # per cm^3
+else:
+    print("Running on Local Machine - Byron J. Encinas Velázquez")
+    __start_snap__  = 0
+    __start_time__  = 0.0 # Myrs
+    __alloc_slots__ = 1000   #
+    __sample_size__ = 500    # N
+    __rloc__        = 1.0e-1 # parsec
+    __dense_cloud__ = 1.0e+2 # per cm^3
+    __threshold__   = 1.0e+2 # per cm^3
+
+FLAG0 = "-lin" # dump field lines
+FLAG1 = "-exp" # rloc analysis
+FLAG2 = "-all" # testing, use all snapshots
+FLAG3 = "-weight" # use weighted uniform points instead of uniform
+
 
 FloatType          = np.float64
 FloatType2         = np.float128
@@ -127,7 +155,7 @@ IntType            = np.int32
 def config_arepo(filename, center, close = False):
     if "snap" not in globals():
         global snap, __Boxsize__, Pos, Density, Mass
-        global Volume, VoronoiPos, Bfield, data
+        global Volume, VoronoiPos, Bfield, data, _time
         
     if close:
         data.close()
@@ -136,6 +164,7 @@ def config_arepo(filename, center, close = False):
     snap = int(filename.split('.')[0][-3:])
     data = h5py.File(filename, 'r')
     __Boxsize__ = data['Header'].attrs['BoxSize']
+    _time = data['Header'].attrs['Time']
 
     # units solar mass, parsec and km/s
     Pos = np.asarray(data['PartType0']['CenterOfMass'], dtype=FloatType)
@@ -161,7 +190,8 @@ def config_arepo(filename, center, close = False):
 async def merge_and_save(_id_, __dense_cloud__, path = "series"):
 
     loop = asyncio.get_event_loop()
-    stat_files = sorted(glob.glob(f'./{path}/tmp_{_id_}_rank*.pkl'))
+
+    stat_files = sorted(glob.glob(f'./{path}/tmp_{_id_}_rank.pkl'))
 
     # Read all rank files concurrently
     def load_pickle(path):

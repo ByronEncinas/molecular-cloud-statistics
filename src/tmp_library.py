@@ -89,8 +89,10 @@ def config_ic(input_file):
     with open(input_file, 'r') as f:
         exec(f.read(), {}, config)
     globals().update(config) # This injects every key as a variable in your script
-    
-config_ic(sys.argv[1])
+
+if len(sys.argv) > 1:
+
+    config_ic(sys.argv[1])
 
 def config_arepo(filename, center, close = False):
     if "snap" not in globals():
