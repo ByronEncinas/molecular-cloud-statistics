@@ -204,7 +204,7 @@ def weighted_in_3d_tree_dependent(tree, Density, no, rloc=1.0, n_crit=1.0e+2):
         U1 = np.random.uniform(low=0.0, high=1.0, size=size)
         U2 = np.random.uniform(low=0.0, high=1.0, size=size)
         U3 = np.random.uniform(low=0.0, high=1.0, size=size)
-        r = rloc*(U1**(1.5))#r = rloc*U1
+        r = rloc*(U1**(1.5))#U1 
         #a = np.sqrt(U1* (2 - rloc ) / 2.0)
         #r = 1.0 - np.sqrt(1.0 - 2.0*a)
         #r = rloc*np.cbrt(U1)

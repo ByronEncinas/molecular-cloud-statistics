@@ -98,7 +98,7 @@ if __name__=='__main__':
         try:
             if tmplib.FLAG3 in sys.argv:
                 print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
-                x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
+                x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=0.5, n_crit=tmplib.__dense_cloud__)   
             else:
                 x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
         except Exception as e:
@@ -113,8 +113,53 @@ if __name__=='__main__':
             print(f"[Snap] snap {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
-
+        
         """
+
+        dist, cells, rel_pos = tmplib.find_points_and_relative_positions(x_input, tmplib.Pos, tmplib.VoronoiPos)
+
+        Distances = np.linalg.norm(x_input, axis = 1)
+
+        maskA = tmplib.Density[cells] > 1.0e+2
+        maskM = tmplib.Density[cells] < 1.0e+2
+
+        print(np.min(tmplib.Density[cells][maskA]))
+        print(tmplib.Density[cells][maskA].shape)
+
+        rl = 0.5
+
+        fig, ax = plt.subplots()
+
+        ax.scatter(Distances[maskA], tmplib.Density[cells][maskA], s=1, color = "red")
+        ax.hlines(100, -0.01, rl*1.01, linestyle='--', color="black")
+        ax.set_ylim(10**1.8, 10**14)
+        ax.set_xlim(-0.01, rl*1.01)
+        ax.set_xlabel(r"$r$ [pc]")
+        ax.set_ylabel(r"$\log_{10}(n_g / \rm{cm}^{-3})$")
+        ax.set_title(rf"Weighted Sampling $X_r$")
+        ax.set_yscale("log")
+        #ax.set_xscale("log")
+        #plt.savefig("./DensityVRadiusAbove10e2.png", dpi = 150)
+        plt.show()
+        plt.close(fig)
+        
+        fig, ax = plt.subplots()
+        #ax.hist(np.log10(Density[cells][maskA]), bins = 80, color = "black")
+        ax.hist(Distances[maskA], bins = 100, color = "black")
+        #ax.plot(np.log10(Density[cells][maskA]), bins = 80, color = "black")
+        #ax.hist(Density[cells][maskM], bins = 80, color = "black")
+        #ax.vlines(100, -0.01, rl*1.01, linestyle='--', color="black")
+        #ax.set_xlim(1, 14)
+        #ax.set_xscale("log")
+        ax.set_ylabel(r"Count")
+        ax.set_xlabel(r"$r$ [pc]")
+        ax.set_title(rf"Weighted Sampling $X_r$")
+        #plt.savefig("./HistogramDensityAbove10e2.png", dpi = 150)
+        plt.show()
+        plt.close(fig)
+        continue
+
+        
         # Generated points and uniformity 
         sam.gkde_plt(x_input, _id_+str(tmplib.snap))
         print(np.log10(np.max(tmplib.Density)))
