@@ -97,7 +97,7 @@ if __name__=='__main__':
 
         try:
             if tmplib.FLAG3 in sys.argv:
-                print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
+                print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_3/2$",flush = True)
                 x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=0.5, n_crit=tmplib.__dense_cloud__)   
             else:
                 x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
