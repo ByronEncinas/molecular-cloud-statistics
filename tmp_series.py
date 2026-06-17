@@ -97,7 +97,7 @@ if __name__=='__main__':
 
         try:
             if tmplib.FLAG3 in sys.argv:
-                print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_3/2$",flush = True)
+                print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
                 x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=0.5, n_crit=tmplib.__dense_cloud__)   
             else:
                 x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
@@ -114,7 +114,6 @@ if __name__=='__main__':
             tmplib.config_arepo(filename, center, True)
             continue
         
-        """
 
         dist, cells, rel_pos = tmplib.find_points_and_relative_positions(x_input, tmplib.Pos, tmplib.VoronoiPos)
 
@@ -159,7 +158,7 @@ if __name__=='__main__':
         plt.close(fig)
         continue
 
-        
+        """
         # Generated points and uniformity 
         sam.gkde_plt(x_input, _id_+str(tmplib.snap))
         print(np.log10(np.max(tmplib.Density)))
@@ -168,8 +167,8 @@ if __name__=='__main__':
         
         directions=tmplib.fibonacci_sphere(20) # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
-            __0, __1, mean_column, median_column = tmplib.line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
-            #__0, __1, mean_column, median_column = tmplib.edge_to_p_line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
+            #__0, __1, mean_column, median_column = tmplib.line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
+            __0, __1, mean_column, median_column = tmplib.edge_to_p_line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
         except Exception as e:
             warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             print(f"[LOS] Invalid result from intergration: {tmplib.snap}: skipping", flush=True)
