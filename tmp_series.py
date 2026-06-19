@@ -297,6 +297,7 @@ if __name__=='__main__':
     comm.Barrier()
     if rank == 0:
         expected = comm.Get_size()
+        
         if "HOSTNAME" in list(os.environ.keys()):
             os.makedirs(f"/work/bjencinasvelaz/series/{_id_}/", exist_ok=True)
             asyncio.run(tmplib.merge_and_save(_id_, tmplib.__dense_cloud__, f"/work/bjencinasvelaz/series/{_id_}/"))
