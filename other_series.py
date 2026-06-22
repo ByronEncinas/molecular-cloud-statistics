@@ -110,6 +110,8 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
             mcls.config_arepo(filename, center, True)
             continue
         
+        mcls.__threshold__ = 10
+
         try:
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = mcls.crs_path(x_init=x_input, n_crit=mcls.__threshold__)
             assert np.any(numb_densities > mcls.__threshold__), f"No values above threshold {mcls.__threshold__} cm-3"
