@@ -119,12 +119,10 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
             mcls.config_arepo(filename, center, True)
             continue
 
-        if np.log10(mcls.__threshold__) < 2: 
-            r_u, n_rs, B_rs, survivors2 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__*10)
-            r_l, _1, _2, _3 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__)
-        else:
-            r_u, n_rs, B_rs, survivors2 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__)
-            r_l, _1, _2, _3 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__) # make redundant
+        #if np.log10(mcls.__threshold__) < 2: 
+        r_u, n_rs, B_rs, survivors2 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__*10)
+        r_l, _1, _2, _3 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__)
+
         
         survivors = np.logical_and(survivors1, survivors2)
 
