@@ -175,8 +175,7 @@ if __name__=='__main__':
             tmplib.config_arepo(filename, center, True)
             continue
 
-        if _id_[-1] == "0":
-            tmplib.__threshold__ = 1e+1
+        tmplib.__threshold__ = 10
 
         try:
             radius_vectors, magnetic_fields, numb_densities, follow_index, path_column, survivors1 = tmplib.crs_path(x_init=x_input, n_crit=tmplib.__threshold__)
@@ -190,13 +189,8 @@ if __name__=='__main__':
         print("__alloc_slots__: ", tmplib.__alloc_slots__, flush=True)
         print("__used_slots__ : ",__0.shape, flush=True)
 
-        if tmplib.__threshold__ == 1e+1: 
-            r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+2)
-            r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+1)
-        else:
-            r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__)
-            r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, tmplib.__threshold__) # make redundant
-
+        r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+2)
+        r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+1)
 
         fig, ax = plt.subplots()
         ax.scatter(n_rs, r_u)
