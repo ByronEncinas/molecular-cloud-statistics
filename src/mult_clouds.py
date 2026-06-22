@@ -137,7 +137,7 @@ else:
     __start_snap__  = 0
     __start_time__  = 0.0 # Myrs
     __alloc_slots__ = 1000   #
-    __sample_size__ = 500    # N
+    __sample_size__ = 100    # N
     __rloc__        = 1.0e-1 # parsec
     __dense_cloud__ = 1.0e+2 # per cm^3
     __threshold__   = 1.0e+2 # per cm^3

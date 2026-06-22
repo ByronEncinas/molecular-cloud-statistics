@@ -119,9 +119,6 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
             mcls.config_arepo(filename, center, True)
             continue
 
-        print("__alloc_slots__: ", mcls.__alloc_slots__, flush=True)
-        print("__used_slots__ : ",_0.shape, flush=True)
-
         if np.log10(mcls.__threshold__) < 2: 
             r_u, n_rs, B_rs, survivors2 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__*10)
             r_l, _1, _2, _3 = mcls.eval_reduction(magnetic_fields, numb_densities, follow_index, mcls.__threshold__)
@@ -132,6 +129,9 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
         survivors = np.logical_and(survivors1, survivors2)
 
         print(np.sum(survivors)/survivors.shape[0], " Survivor fraction", flush=True)
+
+        print("__alloc_slots__: ", mcls.__alloc_slots__, flush=True)
+        print("__used_slots__ : ",survivors1.shape, flush=True)
 
         survivors_fraction[each] = np.sum(survivors)/survivors.shape[0]
         u_input         = x_input[np.logical_not(survivors),:] # pc
@@ -171,7 +171,7 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
 
         mcls.get_globals_memory()            
         # at the end of the loop, drop all that will be reasigned, to avoid memory overflow
-        del tree, _0, _1, _2, _3
+        del tree, _1, _2, _3, __0, __1
         del radius_vectors, magnetic_fields, numb_densities
 
         gc.collect()
