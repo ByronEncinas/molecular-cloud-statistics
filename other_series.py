@@ -8,7 +8,7 @@ from copy import deepcopy
 from scipy.stats import skew
 from scipy.stats import kurtosis
 from scipy.spatial import cKDTree
-#import src.tmp_library as mcls
+#import src.tmp_library as tml
 import src.mult_clouds as mcls
 import warnings
 from mpi4py import MPI         
@@ -102,8 +102,8 @@ def compute_reduction_factor_in_parallel(centers: np.array, snaps: np.array, fil
         directions=mcls.fibonacci_sphere(20)        # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
             print(mcls.__threshold__)
-            #__0, __1, mean_column, median_column = tmplib.line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
-            __0, __1, mean_column, median_column = tmplib.edge_to_p_line_of_sight(x_init=x_input, directions=directions, n_crit=tmplib.__threshold__)
+            #__0, __1, mean_column, median_column = mcls.line_of_sight(x_init=x_input, directions=directions, n_crit=mcls.__threshold__)
+            __0, __1, mean_column, median_column = mcls.edge_to_p_line_of_sight(x_init=x_input, directions=directions, n_crit=mcls.__threshold__)
         except Exception as e:
             warnings.warn(f"[snap={snap}]", e)
             print(f"[LOS] Invalid result from intergration: {snap}: skipping", flush=True)

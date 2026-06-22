@@ -333,6 +333,97 @@ def uniform_in_3d_tree_dependent(tree, no, rloc=1.0, n_crit=1.0e+2):
     return np.array(deepcopy(valid_vectors))
 
 @timing
+def edge_to_p_line_of_sight(*args, **kwargs):
+    x_init = kwargs.get('x_init', None)
+    directions = kwargs.get('directions', fibonacci_sphere(20))
+    n_crit = kwargs.get('n_crit', 1.0e+2)
+
+    """
+    Default density threshold is 10 cm^-3  but saves index for both 10 and 100 boundary. 
+    This way, all data is part of a comparison between 10 and 100 
+    """
+    directions = directions/np.linalg.norm(directions, axis=1)[:, np.newaxis]
+    dx = 0.5
+    """
+    Here you need to 
+    directions = its repeated version 'm' times
+    directions = np.tile(directions, m)
+    x_init     = figure out how to repeat according to the example
+    """
+    m0 = x_init.shape[0]
+    l0 = directions.shape[0]
+    directions = np.tile(directions, (m0, 1))
+    x_init = np.repeat(x_init, l0, axis=0)
+    m = x_init.shape[0]
+    l = directions.shape[0]
+    """
+    Now, a new feature that might speed the while loop, can be to double the size of all arrays
+    and start calculating backwards and forwards simultaneously. This creates a more difficult condition
+    for the 'mask', nevertheless, for a large array 'x_init' it may not be as different and it will definitely scale efficiently in parallel
+    """
+    line      = np.zeros((__alloc_slots__+1,m,3)) # from __alloc_slots__+1 elements to the double, since it propagates forward and backward
+    densities = np.zeros((__alloc_slots__+1,m))
+    threshold = np.zeros((m,))
+
+    line[0,:,:]     = x_init.copy()
+    x = x_init.copy()
+    dummy, _0, densities[0,:], cells = find_points_and_get_fields(x_init, Bfield, Density, Pos, VoronoiPos)
+
+    vol = Volume[cells]
+    #densities[0,:] = densities[0,:] * gr_cm3_to_nuclei_cm3
+    dens = densities[0,:].copy()
+    k=0
+
+    mask  = dens > n_crit# 1 if not finished
+    un_masked = np.logical_not(mask) # 1 if finished
+
+    while np.any(mask) and (k + 1 < __alloc_slots__):
+        mask = dens > n_crit              # still alive?
+        un_masked = np.logical_not(mask)  # any deaths?
+
+
+        # continue if still lines alive and below allocation
+
+        _, bfield, dens, vol = Heun_step(x, 1.0, Bfield, Density, Pos, VoronoiPos, Volume)
+
+        #dens *= gr_cm3_to_nuclei_cm3
+        
+        vol[un_masked] = 0               # artifically make cell volume of finished lines equal to cero
+
+        dx_vec = ((4 / 3) * vol / np.pi) ** (1 / 3)
+
+        threshold += mask.astype(int)  # Increment threshold count only for values still above 100
+
+        x += dx_vec[:, np.newaxis] * directions
+
+        line[k+1,:,:]    = x
+        densities[k+1,:] = dens
+
+        k += 1
+
+        
+    threshold = threshold.astype(int)
+    max_th     = np.max(threshold) + 1
+
+    radius_vectors = line[1:max_th,:,:]*pc_to_cm
+    numb_densities = densities[1:max_th,:]
+    column_densities = np.sum(numb_densities[1:, :] * np.linalg.norm(np.diff(radius_vectors, axis=0), axis=2), axis=0)
+    
+    mean_columns = np.zeros(m0)
+    median_columns= np.zeros(m0)
+    i = 0
+    
+    #print("null means good", np.sum(np.where(numb_densities == 0)), "\n") # if this prints null then we alright
+
+    for x in range(0, l0*m0, l0): 
+
+        mean_columns[i] = np.mean(column_densities[x:x+l0])
+        median_columns[i] = np.median(column_densities[x:x+l0])
+        i += 1
+
+    return radius_vectors, numb_densities, mean_columns, median_columns
+    
+@timing
 def crs_path(*args, **kwargs):
 
     x_init = kwargs.get('x_init', None)
