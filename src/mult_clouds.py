@@ -246,6 +246,7 @@ def timing(func):
         return result
     return wrapper
 
+
 @timing
 def weighted_in_3d_tree_dependent(tree, Density, no, rloc=1.0, n_crit=1.0e+2):
 

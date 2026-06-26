@@ -70,13 +70,17 @@ if __name__=='__main__':
     
     df_stats = dict()
     df_fields= dict()
-
+    print(file_hdf5)
     for each in range(rank, len(file_hdf5), size):
         filename = file_hdf5[each]
         center   = clst[each, :]
         _time    = tlst[each]
-        
+
+        #if "495" not in filename:
+        #    continue
+
         tmplib.config_arepo(filename, center)
+
         #minb = np.min(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
         #maxb = np.max(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
         #continue
@@ -96,13 +100,15 @@ if __name__=='__main__':
         tree = cKDTree(tmplib.Pos)
 
         try:
-            if tmplib.FLAG3 in sys.argv:
+            if "-dense" in sys.argv:
+                x_input = tmplib.dense_segments_in_3d_tree_dependent(tree, tmplib.Density, tmplib.Pos, rloc=tmplib.__rloc__)
+                _id_ = _id_ + "_dense"
+            elif tmplib.FLAG3 in sys.argv:
                 print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
                 x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=0.5, n_crit=tmplib.__dense_cloud__)   
             else:
                 x_input    = tmplib.uniform_in_3d_tree_dependent(tree, tmplib.__sample_size__, rloc=tmplib.__rloc__, n_crit=tmplib.__dense_cloud__)   
         except Exception as e:
-            print(x_input)
             warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             warnings.warn(f"[snap={tmplib.snap}] At current snapshots, no cloud above {tmplib.__dense_cloud__} cm-3", Warning)
             print(f"[Snap] snap {filename}: skipping", flush=True)
@@ -113,26 +119,44 @@ if __name__=='__main__':
             print(f"[Snap] snap {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
+
+        dist, cells, rel_pos = tmplib.find_points_and_relative_positions(x_input, tmplib.Pos, tmplib.VoronoiPos)
+        sample_dens = tmplib.Density[cells]
+
+        distances = np.linalg.norm(x_input, axis = 1)
         
+        fig, ax = plt.subplots()
+
+        ax.scatter(distances, sample_dens, s = 1)
+        ax.set_yscale("log")
+        plt.show()
+        plt.close(fig)
+
+
+        """
+        mask = tmplib.Pos[:,0]*tmplib.Pos[:,0] + tmplib.Pos[:,1]*tmplib.Pos[:,1]+tmplib.Pos[:,2]*tmplib.Pos[:,2] < 0.1
+
+        x_input =  tmplib.Pos[mask,:]
 
         dist, cells, rel_pos = tmplib.find_points_and_relative_positions(x_input, tmplib.Pos, tmplib.VoronoiPos)
 
         Distances = np.linalg.norm(x_input, axis = 1)
 
-        maskA = tmplib.Density[cells] > 1.0e+2
-        maskM = tmplib.Density[cells] < 1.0e+2
+        maskA = tmplib.Density[cells] > 1.0e+10
+        #maskA = np.logical_and(tmplib.Density[cells] > 1.0e+8, tmplib.Density[cells] < 1.0e+10)
 
-        print(np.min(tmplib.Density[cells][maskA]))
-        print(tmplib.Density[cells][maskA].shape)
+        print(np.sum(maskA))
 
-        rl = 0.5
+        #rl = 0.1
 
         fig, ax = plt.subplots()
 
         ax.scatter(Distances[maskA], tmplib.Density[cells][maskA], s=1, color = "red")
-        ax.hlines(100, -0.01, rl*1.01, linestyle='--', color="black")
-        ax.set_ylim(10**1.8, 10**14)
-        ax.set_xlim(-0.01, rl*1.01)
+        #ax.hlines(100, -0.0, 0.1, linestyle='--', color="black")
+
+
+        #ax.set_ylim(10**1.8, 10**14)
+        #ax.set_xlim(-0.01, rl*1.01)
         ax.set_xlabel(r"$r$ [pc]")
         ax.set_ylabel(r"$\log_{10}(n_g / \rm{cm}^{-3})$")
         ax.set_title(rf"Weighted Sampling $X_r$")
@@ -144,7 +168,7 @@ if __name__=='__main__':
         
         fig, ax = plt.subplots()
         #ax.hist(np.log10(Density[cells][maskA]), bins = 80, color = "black")
-        ax.hist(Distances[maskA], bins = 100, color = "black")
+        ax.hist(Distances[maskA], bins = 50, color = "black")
         #ax.plot(np.log10(Density[cells][maskA]), bins = 80, color = "black")
         #ax.hist(Density[cells][maskM], bins = 80, color = "black")
         #ax.vlines(100, -0.01, rl*1.01, linestyle='--', color="black")
@@ -153,17 +177,19 @@ if __name__=='__main__':
         ax.set_ylabel(r"Count")
         ax.set_xlabel(r"$r$ [pc]")
         ax.set_title(rf"Weighted Sampling $X_r$")
+        ax.set_yscale("log")
         #plt.savefig("./HistogramDensityAbove10e2.png", dpi = 150)
         plt.show()
         plt.close(fig)
-        continue
+        break
 
-        """
         # Generated points and uniformity 
         sam.gkde_plt(x_input, _id_+str(tmplib.snap))
         print(np.log10(np.max(tmplib.Density)))
         continue
+
         """
+
         
         directions=tmplib.fibonacci_sphere(20) # dodecahedron (12 faces), and icosahedron (20 faces)
         try:
@@ -192,11 +218,6 @@ if __name__=='__main__':
         r_u, n_rs, B_rs, survivors2 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+2)
         r_l, _1, _2, _3 = tmplib.eval_reduction(magnetic_fields, numb_densities, follow_index, 1.0e+1)
 
-        fig, ax = plt.subplots()
-        ax.scatter(n_rs, r_u)
-        ax.set_xscale("log")
-        plt.show()
-        plt.close(fig)
         
         survivors = np.logical_and(survivors1, survivors2)
 
@@ -223,6 +244,7 @@ if __name__=='__main__':
             field_dict = {
                 "time": _time,
                 "directions": directions,
+                "u_input": u_input,
                 "x_input": x_input,
                 "B_s": magnetic_fields,
                 "r_s": radius_vectors,
@@ -231,10 +253,10 @@ if __name__=='__main__':
 
             #df_fields[str(tmplib.snap)]  = field_dict
             df_stats[str(tmplib.snap)]  = field_dict
-
         else:
             stats_dict = {
                 "time": _time, 
+                "u_input": u_input,
                 "x_input": x_input,
                 "n_rs": n_rs,
                 "B_rs": B_rs,

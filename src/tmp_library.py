@@ -197,6 +197,68 @@ def timing(func):
     return wrapper
 
 @timing
+def dense_segments_in_3d_tree_dependent(tree, Density, Pos, rloc=1.0):
+
+    # selected a randome sample of 1 k  for range 10^10 - 10^14
+
+    sphere = Pos[:,0]*Pos[:,0] + Pos[:,1]*Pos[:,1]+Pos[:,2]*Pos[:,2] < rloc*rloc
+    if np.all(Density[sphere] < 1.0e+6):
+        print("No Densities above 1.0e+6 cm-3")
+        return None
+    n_inner_boundary = np.max(Density[sphere])
+    n_outer_boundary = 10**(np.log10(n_inner_boundary )- 2) # assuming max of Density is not < 2
+
+    n_above_boundary = np.logical_and(Density > n_outer_boundary, Density < n_inner_boundary) 
+    mask = np.logical_and(n_above_boundary, sphere)
+
+    cell_centers = Pos[mask,:]
+    cell_densities = Density[mask]
+
+    #sample1 = np.random.choice(cell_centers, size=1000, replace=False)
+    idx = np.random.choice(len(cell_centers), size=3334, replace=False)
+    sample1 = cell_centers[idx]
+    sample_dens1 = cell_densities[idx]
+    # selected a randome sample of 1 k  for range 10^8 - 10^10
+    
+    n_inner_boundary = n_outer_boundary #1.0e+10
+    n_outer_boundary = 10**(np.log10(n_outer_boundary) - 2)#1.0e+8
+
+    sphere = Pos[:,0]*Pos[:,0] + Pos[:,1]*Pos[:,1]+Pos[:,2]*Pos[:,2] < rloc*rloc
+    n_above_boundary = np.logical_and(Density > n_outer_boundary, Density < n_inner_boundary) 
+    mask = np.logical_and(n_above_boundary, sphere)
+
+    cell_centers = Pos[mask,:]
+    cell_densities = Density[mask]
+
+    #sample2 = np.random.choice(cell_centers, size=1000, replace=False)
+    idx = np.random.choice(len(cell_centers), size=3333, replace=False)
+    sample2 = cell_centers[idx]
+    sample_dens2 = cell_densities[idx]
+
+    # selected a randome sample of 1 k  for range 10^8 - 10^10
+    n_inner_boundary = n_outer_boundary #1.0e+10
+    n_outer_boundary = 10**(np.log10(n_outer_boundary) - 2)#1.0e+8
+
+    sphere = Pos[:,0]*Pos[:,0] + Pos[:,1]*Pos[:,1]+Pos[:,2]*Pos[:,2] < rloc*rloc
+    n_above_boundary = np.logical_and(Density > n_outer_boundary, Density < n_inner_boundary) 
+    mask = np.logical_and(n_above_boundary, sphere)
+
+    cell_centers = Pos[mask,:]
+    cell_densities = Density[mask]
+
+    #sample2 = np.random.choice(cell_centers, size=1000, replace=False)
+    idx = np.random.choice(len(cell_centers), size=3333, replace=False)
+    sample3 = cell_centers[idx]
+    sample_dens3 = cell_densities[idx]
+
+    sample = np.concatenate([sample1, sample2, sample3], axis=0)
+    sample_dens = np.concatenate([sample_dens1, sample_dens2, sample_dens3], axis=0)
+
+    return sample
+
+
+
+@timing
 def weighted_in_3d_tree_dependent(tree, Density, no, rloc=1.0, n_crit=1.0e+2):
 
     def xyz_gen(size):
