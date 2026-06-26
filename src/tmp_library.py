@@ -197,9 +197,11 @@ def timing(func):
     return wrapper
 
 @timing
-def dense_segments_in_3d_tree_dependent(tree, Density, Pos, rloc=1.0):
+def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0):
 
     # selected a randome sample of 1 k  for range 10^10 - 10^14
+
+    print("Each section has a sample size of: ", no_per_seg)
 
     sphere = Pos[:,0]*Pos[:,0] + Pos[:,1]*Pos[:,1]+Pos[:,2]*Pos[:,2] < rloc*rloc
     if np.all(Density[sphere] < 1.0e+6):
@@ -215,7 +217,7 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, rloc=1.0):
     cell_densities = Density[mask]
 
     #sample1 = np.random.choice(cell_centers, size=1000, replace=False)
-    idx = np.random.choice(len(cell_centers), size=3334, replace=False)
+    idx = np.random.choice(len(cell_centers), size=no_per_seg + 1, replace=False)
     sample1 = cell_centers[idx]
     sample_dens1 = cell_densities[idx]
     # selected a randome sample of 1 k  for range 10^8 - 10^10
@@ -231,7 +233,7 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, rloc=1.0):
     cell_densities = Density[mask]
 
     #sample2 = np.random.choice(cell_centers, size=1000, replace=False)
-    idx = np.random.choice(len(cell_centers), size=3333, replace=False)
+    idx = np.random.choice(len(cell_centers), size=no_per_seg, replace=False)
     sample2 = cell_centers[idx]
     sample_dens2 = cell_densities[idx]
 
@@ -247,7 +249,7 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, rloc=1.0):
     cell_densities = Density[mask]
 
     #sample2 = np.random.choice(cell_centers, size=1000, replace=False)
-    idx = np.random.choice(len(cell_centers), size=3333, replace=False)
+    idx = np.random.choice(len(cell_centers), size=no_per_seg, replace=False)
     sample3 = cell_centers[idx]
     sample_dens3 = cell_densities[idx]
 

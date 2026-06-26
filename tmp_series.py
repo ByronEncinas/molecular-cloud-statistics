@@ -54,7 +54,9 @@ if __name__=='__main__':
             _id_ = str(input_file.split('.')[0][0] + input_file.split('.')[0][-3:])
         if tmplib.FLAG3 in sys.argv:
             _id_ = "w" + str(input_file_.split('.')[0][0] + input_file_.split('.')[0][-1])
-
+        if "-dense" in sys.argv:
+            _id_ = _id_ + "_dense"
+    
         print("ID of series.py run is", _id_)
     else:
         clst = dlst = tlst = slst = file_hdf5 = None
@@ -76,14 +78,7 @@ if __name__=='__main__':
         center   = clst[each, :]
         _time    = tlst[each]
 
-        #if "495" not in filename:
-        #    continue
-
         tmplib.config_arepo(filename, center)
-
-        #minb = np.min(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
-        #maxb = np.max(np.linalg.norm(tmplib.Bfield, axis = 0)) #*tmplib.gauss_code_to_gauss_cgs*tmplib.gauss_to_micro_gauss
-        #continue
 
         table_data = [
             ["__curr_snap__", filename.split('/')[-1]],
@@ -101,8 +96,7 @@ if __name__=='__main__':
 
         try:
             if "-dense" in sys.argv:
-                x_input = tmplib.dense_segments_in_3d_tree_dependent(tree, tmplib.Density, tmplib.Pos, rloc=tmplib.__rloc__)
-                _id_ = _id_ + "_dense"
+                x_input = tmplib.dense_segments_in_3d_tree_dependent(tree, tmplib.Density, tmplib.Pos, tmplib.__sample_size__//3, rloc=tmplib.__rloc__)
             elif tmplib.FLAG3 in sys.argv:
                 print(f"Flag {tmplib.FLAG3} was used, therefore Random Variable $X_r \sim U_1$",flush = True)
                 x_input    = tmplib.weighted_in_3d_tree_dependent(tree, tmplib.Density, tmplib.__sample_size__, rloc=0.5, n_crit=tmplib.__dense_cloud__)   
@@ -119,6 +113,7 @@ if __name__=='__main__':
             print(f"[Snap] snap {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
             continue
+        print(x_input.shape)
 
         dist, cells, rel_pos = tmplib.find_points_and_relative_positions(x_input, tmplib.Pos, tmplib.VoronoiPos)
         sample_dens = tmplib.Density[cells]
@@ -131,7 +126,6 @@ if __name__=='__main__':
         ax.set_yscale("log")
         plt.show()
         plt.close(fig)
-
 
         """
         mask = tmplib.Pos[:,0]*tmplib.Pos[:,0] + tmplib.Pos[:,1]*tmplib.Pos[:,1]+tmplib.Pos[:,2]*tmplib.Pos[:,2] < 0.1
@@ -199,6 +193,7 @@ if __name__=='__main__':
             warnings.warn(f"[snap={tmplib.snap}]", RuntimeWarning)
             print(f"[LOS] Invalid result from intergration: {tmplib.snap}: skipping", flush=True)
             tmplib.config_arepo(filename, center, True)
+            print(f"{e}", flush=True)
             continue
 
         tmplib.__threshold__ = 10
