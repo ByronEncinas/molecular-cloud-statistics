@@ -256,6 +256,7 @@ def detect_oscillating_line(cell_indices, threshold=20, max_gap=50):
 @timing
 def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0):
 
+    print("Total Points to choose", no_per_seg)
     # selected a randome sample of 1 k  for range 10^10 - 10^14
     sphere = Pos[:,0]*Pos[:,0] + Pos[:,1]*Pos[:,1]+Pos[:,2]*Pos[:,2] < rloc*rloc
 
@@ -277,7 +278,8 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
     no_step = 5
     width_step = (np.log10(max_den_snap)- np.log10(min_den_snap)) / no_step
     no_per_seg = no_per_seg // no_step
-    
+    print("no_per_seg", no_per_seg)
+
     print(f"Max density in r = {rloc} pc: ", np.max(Density[sphere]), flush=True)
     print(f"Min density in r = {rloc} pc: ", np.min(Density[sphere]), flush=True)
 
@@ -291,15 +293,15 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
             if n_bottom_boundary < 100:
                 n_bottom_boundary = 100
         
-        print(np.log10(n_top_boundary), np.log10(n_bottom_boundary))
+        print("LogMax", np.log10(n_top_boundary), "LogMin", np.log10(n_bottom_boundary), width_step)
         n_above_boundary = np.logical_and(Density > n_bottom_boundary, Density < n_top_boundary) 
         mask = np.logical_and(n_above_boundary, sphere)
 
         cell_centers = Pos[mask,:]
         cell_densities = Density[mask]
-
+        print("Cells available", cell_densities.shape)
         try:
-            idx = np.random.choice(len(cell_centers), size=no_per_seg + 1, replace=False)
+            idx = np.random.choice(len(cell_centers), size=no_per_seg, replace=False)
             sample = cell_centers[idx]
             sample_dens = cell_densities[idx]
         except:
@@ -308,6 +310,7 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
             sample = cell_centers
             sample_dens = cell_densities
 
+        print(f"Cells Selected in interval no. {window}", sample_dens.shape)
 
         if window == 0:
             new_sample = np.concatenate([sample], axis=0)
@@ -317,10 +320,45 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
         new_sample = np.concatenate([new_sample, sample], axis=0)
         new_sample_dens = np.concatenate([new_sample_dens, sample_dens], axis=0)
 
+        # it too few cells, ignore
         if n_bottom_boundary < 100:
             break
 
     return new_sample
+
+def min_interval_count(densities, peaks):
+    no_step = 5
+    min_den = 2  # log10(100), asumiendo que min_den_snap == 100 (ver nota abajo)
+
+    for dens, max_den in zip(densities, peaks):
+        print("Min, Max", min_den, max_den)
+        
+        total_sum = 0
+        log_dens = np.log10(dens)
+        width_step = (max_den - min_den) / no_step
+
+        print("Interval Sample Size, Log Interval Lower Bound, Log Interval Upper Bound")
+
+        for window in range(no_step):
+            if window == 0:
+                n_top = max_den
+                n_bottom = max_den - width_step * (window + 1)
+            else:
+                n_top = max_den - width_step * window
+                n_bottom = max_den - width_step * (window + 1)
+                if n_bottom < min_den:
+                    n_bottom = min_den
+
+            _mask = np.logical_and(log_dens > n_bottom, log_dens < n_top)
+            c = np.sum(_mask)
+            print(c, n_bottom, n_top)
+
+            total_sum += c
+
+            if n_bottom <= min_den:
+                break
+
+        print(total_sum, log_dens.shape[0])
 
 @timing
 def weighted_in_3d_tree_dependent(tree, Density, no, rloc=1.0, n_crit=1.0e+2):
@@ -528,7 +566,6 @@ def crs_path(*args, **kwargs):
             densities[k + 1, mask2]    = dens_aux
 
             k += 1
-        print(f"k_rev={k_rev}, sum(pst_mask_rev)={np.sum(pst_mask_rev)}")
         
     print(np.logical_not((np.any(mask2_rev) and (k_rev + 1 < __alloc_slots__))), np.logical_not((np.any(mask2) and (k + 1 < __alloc_slots__))))
     #threshold = threshold.astype(int)
