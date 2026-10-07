@@ -274,14 +274,14 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
         return None
 
     max_den_snap = np.max(Density[sphere])
-    min_den_snap = min(np.min(Density[sphere]), 100)
+    min_den_snap = max(np.min(Density[sphere]), 100)
     no_step = 5
     width_step = (np.log10(max_den_snap)- np.log10(min_den_snap)) / no_step
     no_per_seg = no_per_seg // no_step
     print("no_per_seg", no_per_seg)
 
-    print(f"Max density in r = {rloc} pc: ", np.max(Density[sphere]), flush=True)
-    print(f"Min density in r = {rloc} pc: ", np.min(Density[sphere]), flush=True)
+    print(f"Log Max density in r = {rloc} pc: ", np.log10(np.max(Density[sphere])), flush=True)
+    print(f"Log Min density in r = {rloc} pc: ", np.log10(np.min(Density[sphere])), flush=True)
 
     for window in range(5):
         if window == 0:
@@ -293,13 +293,13 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
             if n_bottom_boundary < 100:
                 n_bottom_boundary = 100
         
-        print("LogMax", np.log10(n_top_boundary), "LogMin", np.log10(n_bottom_boundary), width_step)
+        
         n_above_boundary = np.logical_and(Density > n_bottom_boundary, Density < n_top_boundary) 
         mask = np.logical_and(n_above_boundary, sphere)
 
         cell_centers = Pos[mask,:]
         cell_densities = Density[mask]
-        print("Cells available", cell_densities.shape)
+
         try:
             idx = np.random.choice(len(cell_centers), size=no_per_seg, replace=False)
             sample = cell_centers[idx]
@@ -310,8 +310,7 @@ def dense_segments_in_3d_tree_dependent(tree, Density, Pos, no_per_seg, rloc=1.0
             sample = cell_centers
             sample_dens = cell_densities
 
-        print(f"Cells Selected in interval no. {window}", sample_dens.shape)
-
+        print("Top:", np.log10(n_top_boundary), "Bot:", np.log10(n_bottom_boundary), "W:", width_step, "C:", cell_densities.shape, f"C Sel{window}:",sample_dens.shape)
         if window == 0:
             new_sample = np.concatenate([sample], axis=0)
             new_sample_dens = np.concatenate([sample_dens], axis=0)
